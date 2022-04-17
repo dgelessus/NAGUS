@@ -1,0 +1,11 @@
+# Python bytecode
+*.py[co]
+__pycache__
+
+# setuptools
+*.egg-info
+build
+dist
+
+# mypy
+.mypy_cache
