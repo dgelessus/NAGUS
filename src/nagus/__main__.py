@@ -111,6 +111,24 @@ class NagusRequestHandler(socketserver.StreamRequestHandler):
 				self.request.sendall(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
 			
 			logger.debug("Auth server connection set up")
+			
+			message_type = int.from_bytes(self.rfile.read(2), "little")
+			logger.debug("Received message: type %d", message_type)
+			
+			if message_type == 1:
+				build_id = int.from_bytes(self.rfile.read(4), "little")
+				logger.debug("Build ID: %d", build_id)
+				
+				# Reply to client register request
+				self.request.sendall(b"\x03\x00\xde\xad\xbe\xef")
+				
+				data = self.rfile.read(14)
+				logger.debug("Received stuff: %s", data)
+				if data[:2] == "\x00\x00":
+					# Reply to ping
+					self.request.sendall(data)
+				
+				logger.debug("Received stuff: %s", self.rfile.read(50))
 
 
 def main() -> typing.NoReturn:
