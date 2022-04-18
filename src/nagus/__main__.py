@@ -69,10 +69,29 @@ class SetupMessageType(enum.Enum):
 
 
 class NagusRequestHandler(socketserver.StreamRequestHandler):
+	def _read(self, byte_count: int) -> bytes:
+		"""Read ``byte_count`` bytes from the socket and raise :class:`EOFError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""
+		
+		data = self.rfile.read(byte_count)
+		if len(data) != byte_count:
+			raise EOFError(f"Attempted to read {byte_count} bytes of data, but only got {len(data)} bytes")
+		return data
+	
+	def _write(self, data: bytes) -> None:
+		"""Write ``data`` to the socket.
+		
+		Currently this uses :func:`socket.socket.sendall`,
+		but this might change in the future ---
+		it seems that Uru expects certain data to arrive as a single packet,
+		even though TCP doesn't guarantee that packet boundaries are preserved in transmission.
+		"""
+		
+		self.request.sendall(data)
+	
 	def handle(self) -> None:
 		logger.info("Connection from %s", self.client_address)
 		
-		data = self.rfile.read(ASYNC_SOCKET_CONNECT_PACKET.size)
+		data = self._read(ASYNC_SOCKET_CONNECT_PACKET.size)
 		conn_type, hdr_bytes, build_id, build_type, branch_id, product_id = ASYNC_SOCKET_CONNECT_PACKET.unpack(data)
 		conn_type = ConnectionType(conn_type)
 		build_type = BuildType(build_type)
@@ -80,17 +99,17 @@ class NagusRequestHandler(socketserver.StreamRequestHandler):
 		logger.debug("Received connect packet: connection type %s, %d bytes, build ID %d, build type %s, branch ID %d, product ID %s", conn_type, hdr_bytes, build_id, build_type, branch_id, product_id)
 		
 		if conn_type == ConnectionType.cli2auth:
-			data = self.rfile.read(CLI2AUTH_CONNECT_DATA.size)
+			data = self._read(CLI2AUTH_CONNECT_DATA.size)
 			data_bytes, token = CLI2AUTH_CONNECT_DATA.unpack(data)
 			token = uuid.UUID(bytes_le=token)
 			logger.debug("Received client-to-auth connect data: %d bytes, token %s", data_bytes, token)
 			
-			data = self.rfile.read(SETUP_MESSAGE_HEADER.size)
+			data = self._read(SETUP_MESSAGE_HEADER.size)
 			message_type, length = SETUP_MESSAGE_HEADER.unpack(data)
 			message_type = SetupMessageType(message_type)
 			logger.debug("Received setup message: type %s, %d bytes", message_type, length)
 			
-			data = self.rfile.read(length - SETUP_MESSAGE_HEADER.size)
+			data = self._read(length - SETUP_MESSAGE_HEADER.size)
 			logger.debug("Setup message data: %s", data)
 			
 			if data:
@@ -102,33 +121,33 @@ class NagusRequestHandler(socketserver.StreamRequestHandler):
 				# we have to send back a seed of the correct length,
 				# but the client will not use it and the connection will be unencrypted.
 				logger.debug("Received a server seed, but encryption not supported yet! Assuming NO_ENCRYPTION and replying with a dummy client seed.")
-				self.request.sendall(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
+				self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
 			else:
 				# H'uru internal client sent an empty server seed to explicitly request no encryption.
 				# We have to reply with an empty client seed,
 				# or else the client will abort the connection.
 				logger.debug("Received empty server seed - setting up unencrypted connection.")
-				self.request.sendall(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
+				self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
 			
 			logger.debug("Auth server connection set up")
 			
-			message_type = int.from_bytes(self.rfile.read(2), "little")
+			message_type = int.from_bytes(self._read(2), "little")
 			logger.debug("Received message: type %d", message_type)
 			
 			if message_type == 1:
-				build_id = int.from_bytes(self.rfile.read(4), "little")
+				build_id = int.from_bytes(self._read(4), "little")
 				logger.debug("Build ID: %d", build_id)
 				
 				# Reply to client register request
-				self.request.sendall(b"\x03\x00\xde\xad\xbe\xef")
+				self._write(b"\x03\x00\xde\xad\xbe\xef")
 				
-				data = self.rfile.read(14)
+				data = self._read(14)
 				logger.debug("Received stuff: %s", data)
 				if data[:2] == "\x00\x00":
 					# Reply to ping
-					self.request.sendall(data)
+					self._write(data)
 				
-				logger.debug("Received stuff: %s", self.rfile.read(50))
+				logger.debug("Received stuff: %s", self._read(50))
 
 
 def main() -> typing.NoReturn:
