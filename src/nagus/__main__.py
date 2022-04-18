@@ -60,11 +60,11 @@ class ConnectionType(enum.Enum):
 	admin_interface = ord("a")
 
 
-class NagusRequestHandler(socketserver.BaseRequestHandler):
+class NagusRequestHandler(socketserver.StreamRequestHandler):
 	def handle(self) -> None:
 		logger.info("Connection from %s", self.client_address)
 		
-		data = self.request.recv(ASYNC_SOCKET_CONNECT_PACKET.size)
+		data = self.rfile.read(ASYNC_SOCKET_CONNECT_PACKET.size)
 		conn_type, hdr_bytes, build_id, build_type, branch_id, product_id = ASYNC_SOCKET_CONNECT_PACKET.unpack(data)
 		conn_type = ConnectionType(conn_type)
 		build_type = BuildType(build_type)
@@ -72,7 +72,7 @@ class NagusRequestHandler(socketserver.BaseRequestHandler):
 		logger.debug("Received connect packet: connection type %s, %d bytes, build ID %d, build type %s, branch ID %d, product ID %s", conn_type, hdr_bytes, build_id, build_type, branch_id, product_id)
 		
 		if conn_type == ConnectionType.cli2auth:
-			data = self.request.recv(CLI2AUTH_CONNECT_DATA.size)
+			data = self.rfile.read(CLI2AUTH_CONNECT_DATA.size)
 			data_bytes, token = CLI2AUTH_CONNECT_DATA.unpack(data)
 			token = uuid.UUID(bytes_le=token)
 			logger.debug("Received client-to-auth connect data: %d bytes, token %s", data_bytes, token)
