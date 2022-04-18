@@ -88,24 +88,30 @@ class NagusRequestHandler(socketserver.StreamRequestHandler):
 		
 		self.request.sendall(data)
 	
+	def _read_unpack(self, st: struct.Struct) -> tuple:
+		"""Read and unpack data from the socket according to the struct ``st``.
+		
+		The number of bytes to read is determined using :field:`struct.Struct.size`,
+		so variable-sized structs cannot be used with this method.
+		"""
+		
+		return st.unpack(self._read(st.size))
+	
 	def handle(self) -> None:
 		logger.info("Connection from %s", self.client_address)
 		
-		data = self._read(ASYNC_SOCKET_CONNECT_PACKET.size)
-		conn_type, hdr_bytes, build_id, build_type, branch_id, product_id = ASYNC_SOCKET_CONNECT_PACKET.unpack(data)
+		conn_type, hdr_bytes, build_id, build_type, branch_id, product_id = self._read_unpack(ASYNC_SOCKET_CONNECT_PACKET)
 		conn_type = ConnectionType(conn_type)
 		build_type = BuildType(build_type)
 		product_id = uuid.UUID(bytes_le=product_id)
 		logger.debug("Received connect packet: connection type %s, %d bytes, build ID %d, build type %s, branch ID %d, product ID %s", conn_type, hdr_bytes, build_id, build_type, branch_id, product_id)
 		
 		if conn_type == ConnectionType.cli2auth:
-			data = self._read(CLI2AUTH_CONNECT_DATA.size)
-			data_bytes, token = CLI2AUTH_CONNECT_DATA.unpack(data)
+			data_bytes, token = self._read_unpack(CLI2AUTH_CONNECT_DATA)
 			token = uuid.UUID(bytes_le=token)
 			logger.debug("Received client-to-auth connect data: %d bytes, token %s", data_bytes, token)
 			
-			data = self._read(SETUP_MESSAGE_HEADER.size)
-			message_type, length = SETUP_MESSAGE_HEADER.unpack(data)
+			message_type, length = self._read_unpack(SETUP_MESSAGE_HEADER)
 			message_type = SetupMessageType(message_type)
 			logger.debug("Received setup message: type %s, %d bytes", message_type, length)
 			
