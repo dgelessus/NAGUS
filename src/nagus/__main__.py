@@ -30,6 +30,8 @@ logger = logging.getLogger(__name__)
 ASYNC_SOCKET_CONNECT_PACKET = struct.Struct("<BHIII16s")
 CLI2AUTH_CONNECT_DATA = struct.Struct("<I16s")
 
+SETUP_MESSAGE_HEADER = struct.Struct("<BB")
+
 
 class BuildType(enum.Enum):
 	dev = 10
@@ -60,6 +62,12 @@ class ConnectionType(enum.Enum):
 	admin_interface = ord("a")
 
 
+class SetupMessageType(enum.Enum):
+	cli2srv_connect = 0
+	srv2cli_encrypt = 1
+	srv2cli_error = 2
+
+
 class NagusRequestHandler(socketserver.StreamRequestHandler):
 	def handle(self) -> None:
 		logger.info("Connection from %s", self.client_address)
@@ -76,6 +84,33 @@ class NagusRequestHandler(socketserver.StreamRequestHandler):
 			data_bytes, token = CLI2AUTH_CONNECT_DATA.unpack(data)
 			token = uuid.UUID(bytes_le=token)
 			logger.debug("Received client-to-auth connect data: %d bytes, token %s", data_bytes, token)
+			
+			data = self.rfile.read(SETUP_MESSAGE_HEADER.size)
+			message_type, length = SETUP_MESSAGE_HEADER.unpack(data)
+			message_type = SetupMessageType(message_type)
+			logger.debug("Received setup message: type %s, %d bytes", message_type, length)
+			
+			data = self.rfile.read(length - SETUP_MESSAGE_HEADER.size)
+			logger.debug("Setup message data: %s", data)
+			
+			if data:
+				# Received a server seed from client.
+				# We don't support encryption yet,
+				# so for now,
+				# assume it's a CWE/OpenUru client built with NO_ENCRYPTION.
+				# In this case,
+				# we have to send back a seed of the correct length,
+				# but the client will not use it and the connection will be unencrypted.
+				logger.debug("Received a server seed, but encryption not supported yet! Assuming NO_ENCRYPTION and replying with a dummy client seed.")
+				self.request.sendall(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
+			else:
+				# H'uru internal client sent an empty server seed to explicitly request no encryption.
+				# We have to reply with an empty client seed,
+				# or else the client will abort the connection.
+				logger.debug("Received empty server seed - setting up unencrypted connection.")
+				self.request.sendall(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
+			
+			logger.debug("Auth server connection set up")
 
 
 def main() -> typing.NoReturn:
