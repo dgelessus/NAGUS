@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 ASYNC_SOCKET_CONNECT_PACKET = struct.Struct("<BHIII16s")
+CLI2AUTH_CONNECT_DATA = struct.Struct("<I16s")
 
 
 class BuildType(enum.Enum):
@@ -69,6 +70,12 @@ class NagusRequestHandler(socketserver.BaseRequestHandler):
 		build_type = BuildType(build_type)
 		product_id = uuid.UUID(bytes_le=product_id)
 		logger.debug("Received connect packet: connection type %s, %d bytes, build ID %d, build type %s, branch ID %d, product ID %s", conn_type, hdr_bytes, build_id, build_type, branch_id, product_id)
+		
+		if conn_type == ConnectionType.cli2auth:
+			data = self.request.recv(CLI2AUTH_CONNECT_DATA.size)
+			data_bytes, token = CLI2AUTH_CONNECT_DATA.unpack(data)
+			token = uuid.UUID(bytes_le=token)
+			logger.debug("Received client-to-auth connect data: %d bytes, token %s", data_bytes, token)
 
 
 def main() -> typing.NoReturn:
