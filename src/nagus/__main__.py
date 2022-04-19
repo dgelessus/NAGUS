@@ -37,6 +37,9 @@ CLI2AUTH_CONNECT_DATA = struct.Struct("<I16s")
 SETUP_MESSAGE_HEADER = struct.Struct("<BB")
 
 
+ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
+
+
 class BuildType(enum.Enum):
 	dev = 10
 	qa = 20
@@ -127,9 +130,15 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 		logger.debug("Received connect packet header: connection type %s, build ID %d, build type %s, branch ID %d, product ID %s", self.type, self.build_id, self.build_type, self.branch_id, self.product_id)
 		
 		if self.type == ConnectionType.cli2auth:
-			data_bytes, token = self._read_unpack(CLI2AUTH_CONNECT_DATA)
+			data_length, token = self._read_unpack(CLI2AUTH_CONNECT_DATA)
+			if data_length != CLI2AUTH_CONNECT_DATA.size:
+				logger.error("Client sent client-to-auth connect data with unexpected length %d (should be %d)", data_length, CLI2AUTH_CONNECT_DATA.size)
+				return
+			
 			token = uuid.UUID(bytes_le=token)
-			logger.debug("Received client-to-auth connect data: %d bytes, token %s", data_bytes, token)
+			if token != ZERO_UUID:
+				logger.error("Client sent client-to-auth connect data with unexpected token %s (should be %s)", token, ZERO_UUID)
+				return
 		else:
 			logger.error("Unsupported connection type: %s", self.type)
 			return
