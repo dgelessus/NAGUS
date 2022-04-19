@@ -73,6 +73,12 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 	# Try to ensure that every send call goes out as an actual TCP packet right away - see docstring of _write below.
 	disable_nagle_algorithm = True
 	
+	type: ConnectionType
+	build_id: int
+	build_type: BuildType
+	branch_id: int
+	product_id: uuid.UUID
+	
 	def _read(self, byte_count: int) -> bytes:
 		"""Read ``byte_count`` bytes from the socket and raise :class:`EOFError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""
 		
@@ -105,12 +111,14 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 		logger.info("Connection from %s", self.client_address)
 		
 		conn_type, hdr_bytes, build_id, build_type, branch_id, product_id = self._read_unpack(ASYNC_SOCKET_CONNECT_PACKET)
-		conn_type = ConnectionType(conn_type)
-		build_type = BuildType(build_type)
-		product_id = uuid.UUID(bytes_le=product_id)
-		logger.debug("Received connect packet: connection type %s, %d bytes, build ID %d, build type %s, branch ID %d, product ID %s", conn_type, hdr_bytes, build_id, build_type, branch_id, product_id)
+		self.type = ConnectionType(conn_type)
+		self.build_id = build_id
+		self.build_type = BuildType(build_type)
+		self.branch_id = branch_id
+		self.product_id = uuid.UUID(bytes_le=product_id)
+		logger.debug("Received connect packet: connection type %s, %d bytes, build ID %d, build type %s, branch ID %d, product ID %s", self.type, hdr_bytes, self.build_id, self.build_type, self.branch_id, self.product_id)
 		
-		if conn_type == ConnectionType.cli2auth:
+		if self.type == ConnectionType.cli2auth:
 			data_bytes, token = self._read_unpack(CLI2AUTH_CONNECT_DATA)
 			token = uuid.UUID(bytes_le=token)
 			logger.debug("Received client-to-auth connect data: %d bytes, token %s", data_bytes, token)
