@@ -69,7 +69,7 @@ class SetupMessageType(enum.Enum):
 	srv2cli_error = 2
 
 
-class NagusRequestHandler(socketserver.StreamRequestHandler):
+class NAGUSConnection(socketserver.StreamRequestHandler):
 	# Try to ensure that every send call goes out as an actual TCP packet right away - see docstring of _write below.
 	disable_nagle_algorithm = True
 	
@@ -162,7 +162,7 @@ class NagusRequestHandler(socketserver.StreamRequestHandler):
 
 class NAGUS(socketserver.TCPServer):
 	def __init__(self, server_address: typing.Tuple[str, int]) -> None:
-		super().__init__(server_address, NagusRequestHandler)
+		super().__init__(server_address, NAGUSConnection)
 		logger.info("NAGUS listening on address %s...", server_address)
 	
 	def handle_error(self, request: socket.socket, client_address: typing.Tuple[str, int]) -> None:
