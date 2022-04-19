@@ -70,6 +70,9 @@ class SetupMessageType(enum.Enum):
 
 
 class NagusRequestHandler(socketserver.StreamRequestHandler):
+	# Try to ensure that every send call goes out as an actual TCP packet right away - see docstring of _write below.
+	disable_nagle_algorithm = True
+	
 	def _read(self, byte_count: int) -> bytes:
 		"""Read ``byte_count`` bytes from the socket and raise :class:`EOFError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""
 		
