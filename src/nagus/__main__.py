@@ -169,6 +169,10 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 				self._write(data)
 			
 			logger.debug("Received stuff: %s", self._read(50))
+	
+	def finish(self) -> None:
+		super().finish()
+		logger.info("Disconnecting %s", self.client_address)
 
 
 class NAGUS(socketserver.TCPServer):
