@@ -17,6 +17,7 @@
 
 import enum
 import logging
+import socket
 import socketserver
 import struct
 import sys
@@ -156,14 +157,22 @@ class NagusRequestHandler(socketserver.StreamRequestHandler):
 				logger.debug("Received stuff: %s", self._read(50))
 
 
+class NAGUS(socketserver.TCPServer):
+	def __init__(self, server_address: typing.Tuple[str, int]) -> None:
+		super().__init__(server_address, NagusRequestHandler)
+		logger.info("NAGUS listening on address %s...", server_address)
+	
+	def handle_error(self, request: socket.socket, client_address: typing.Tuple[str, int]) -> None:
+		logger.error("Uncaught exception while handling request from %s:", client_address, exc_info=True)
+
+
 def main() -> typing.NoReturn:
 	logging.basicConfig(level=logging.DEBUG)
 	
 	address = ("", 14617)
 	
 	try:
-		with socketserver.TCPServer(address, NagusRequestHandler) as server:
-			logger.info("NAGUS running and listening on address %s...", address)
+		with NAGUS(address) as server:
 			server.serve_forever()
 	except KeyboardInterrupt:
 		logger.info("KeyboardInterrupt received, stopping server.")
