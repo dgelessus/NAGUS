@@ -75,6 +75,10 @@ class SetupMessageType(enum.Enum):
 	srv2cli_error = 2
 
 
+class ProtocolError(Exception):
+	pass
+
+
 class NAGUSConnection(socketserver.StreamRequestHandler):
 	# Try to ensure that every send call goes out as an actual TCP packet right away - see docstring of _write below.
 	disable_nagle_algorithm = True
@@ -86,11 +90,11 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 	product_id: uuid.UUID
 	
 	def _read(self, byte_count: int) -> bytes:
-		"""Read ``byte_count`` bytes from the socket and raise :class:`EOFError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""
+		"""Read ``byte_count`` bytes from the socket and raise :class:`ProtocolError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""
 		
 		data = self.rfile.read(byte_count)
 		if len(data) != byte_count:
-			raise EOFError(f"Attempted to read {byte_count} bytes of data, but only got {len(data)} bytes")
+			raise ProtocolError(f"Attempted to read {byte_count} bytes of data, but only got {len(data)} bytes")
 		return data
 	
 	def _write(self, data: bytes) -> None:
@@ -118,8 +122,7 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 		
 		conn_type, header_length = self._read_unpack(CONNECT_HEADER_1)
 		if header_length != CONNECT_HEADER_LENGTH:
-			logger.error("Client sent connect header with unexpected length %d (should be %d)", header_length, CONNECT_HEADER_LENGTH)
-			return
+			raise ProtocolError(f"Client sent connect header with unexpected length {header_length} (should be {CONNECT_HEADER_LENGTH})")
 		
 		self.type = ConnectionType(conn_type)
 		build_id, build_type, branch_id, product_id = self._read_unpack(CONNECT_HEADER_2)
@@ -132,16 +135,13 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 		if self.type == ConnectionType.cli2auth:
 			data_length, token = self._read_unpack(CLI2AUTH_CONNECT_DATA)
 			if data_length != CLI2AUTH_CONNECT_DATA.size:
-				logger.error("Client sent client-to-auth connect data with unexpected length %d (should be %d)", data_length, CLI2AUTH_CONNECT_DATA.size)
-				return
+				raise ProtocolError(f"Client sent client-to-auth connect data with unexpected length {data_length} (should be {CLI2AUTH_CONNECT_DATA.size})")
 			
 			token = uuid.UUID(bytes_le=token)
 			if token != ZERO_UUID:
-				logger.error("Client sent client-to-auth connect data with unexpected token %s (should be %s)", token, ZERO_UUID)
-				return
+				raise ProtocolError(f"Client sent client-to-auth connect data with unexpected token {token} (should be {ZERO_UUID})")
 		else:
-			logger.error("Unsupported connection type: %s", self.type)
-			return
+			raise ProtocolError(f"Unsupported connection type {self.type}")
 		
 		message_type, length = self._read_unpack(SETUP_MESSAGE_HEADER)
 		message_type = SetupMessageType(message_type)
@@ -198,7 +198,11 @@ class NAGUS(socketserver.TCPServer):
 		logger.info("NAGUS listening on address %s...", server_address)
 	
 	def handle_error(self, request: socket.socket, client_address: typing.Tuple[str, int]) -> None:
-		logger.error("Uncaught exception while handling request from %s:", client_address, exc_info=True)
+		exc = sys.exc_info()[1]
+		if isinstance(exc, ProtocolError):
+			logger.error("Error in data sent by %s: %s", client_address, exc)
+		else:
+			logger.error("Uncaught exception while handling request from %s:", client_address, exc_info=True)
 
 
 def main() -> typing.NoReturn:
