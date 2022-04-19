@@ -122,50 +122,53 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 			data_bytes, token = self._read_unpack(CLI2AUTH_CONNECT_DATA)
 			token = uuid.UUID(bytes_le=token)
 			logger.debug("Received client-to-auth connect data: %d bytes, token %s", data_bytes, token)
+		else:
+			logger.error("Unsupported connection type: %s", self.type)
+			return
+		
+		message_type, length = self._read_unpack(SETUP_MESSAGE_HEADER)
+		message_type = SetupMessageType(message_type)
+		logger.debug("Received setup message: type %s, %d bytes", message_type, length)
+		
+		data = self._read(length - SETUP_MESSAGE_HEADER.size)
+		logger.debug("Setup message data: %s", data)
+		
+		if data:
+			# Received a server seed from client.
+			# We don't support encryption yet,
+			# so for now,
+			# assume it's a CWE/OpenUru client built with NO_ENCRYPTION.
+			# In this case,
+			# we have to send back a seed of the correct length,
+			# but the client will not use it and the connection will be unencrypted.
+			logger.debug("Received a server seed, but encryption not supported yet! Assuming NO_ENCRYPTION and replying with a dummy client seed.")
+			self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
+		else:
+			# H'uru internal client sent an empty server seed to explicitly request no encryption.
+			# We have to reply with an empty client seed,
+			# or else the client will abort the connection.
+			logger.debug("Received empty server seed - setting up unencrypted connection.")
+			self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
+		
+		logger.debug("Auth server connection set up")
+		
+		message_type = int.from_bytes(self._read(2), "little")
+		logger.debug("Received message: type %d", message_type)
+		
+		if self.type == ConnectionType.cli2auth and message_type == 1:
+			build_id = int.from_bytes(self._read(4), "little")
+			logger.debug("Build ID: %d", build_id)
 			
-			message_type, length = self._read_unpack(SETUP_MESSAGE_HEADER)
-			message_type = SetupMessageType(message_type)
-			logger.debug("Received setup message: type %s, %d bytes", message_type, length)
+			# Reply to client register request
+			self._write(b"\x03\x00\xde\xad\xbe\xef")
 			
-			data = self._read(length - SETUP_MESSAGE_HEADER.size)
-			logger.debug("Setup message data: %s", data)
+			data = self._read(14)
+			logger.debug("Received stuff: %s", data)
+			if data[:2] == "\x00\x00":
+				# Reply to ping
+				self._write(data)
 			
-			if data:
-				# Received a server seed from client.
-				# We don't support encryption yet,
-				# so for now,
-				# assume it's a CWE/OpenUru client built with NO_ENCRYPTION.
-				# In this case,
-				# we have to send back a seed of the correct length,
-				# but the client will not use it and the connection will be unencrypted.
-				logger.debug("Received a server seed, but encryption not supported yet! Assuming NO_ENCRYPTION and replying with a dummy client seed.")
-				self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
-			else:
-				# H'uru internal client sent an empty server seed to explicitly request no encryption.
-				# We have to reply with an empty client seed,
-				# or else the client will abort the connection.
-				logger.debug("Received empty server seed - setting up unencrypted connection.")
-				self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
-			
-			logger.debug("Auth server connection set up")
-			
-			message_type = int.from_bytes(self._read(2), "little")
-			logger.debug("Received message: type %d", message_type)
-			
-			if message_type == 1:
-				build_id = int.from_bytes(self._read(4), "little")
-				logger.debug("Build ID: %d", build_id)
-				
-				# Reply to client register request
-				self._write(b"\x03\x00\xde\xad\xbe\xef")
-				
-				data = self._read(14)
-				logger.debug("Received stuff: %s", data)
-				if data[:2] == "\x00\x00":
-					# Reply to ping
-					self._write(data)
-				
-				logger.debug("Received stuff: %s", self._read(50))
+			logger.debug("Received stuff: %s", self._read(50))
 
 
 class NAGUS(socketserver.TCPServer):
