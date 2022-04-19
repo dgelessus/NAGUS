@@ -28,7 +28,10 @@ import uuid
 logger = logging.getLogger(__name__)
 
 
-ASYNC_SOCKET_CONNECT_PACKET = struct.Struct("<BHIII16s")
+CONNECT_HEADER_1 = struct.Struct("<BH")
+CONNECT_HEADER_2 = struct.Struct("<III16s") 
+CONNECT_HEADER_LENGTH = CONNECT_HEADER_1.size + CONNECT_HEADER_2.size
+
 CLI2AUTH_CONNECT_DATA = struct.Struct("<I16s")
 
 SETUP_MESSAGE_HEADER = struct.Struct("<BB")
@@ -110,13 +113,18 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 	def handle(self) -> None:
 		logger.info("Connection from %s", self.client_address)
 		
-		conn_type, hdr_bytes, build_id, build_type, branch_id, product_id = self._read_unpack(ASYNC_SOCKET_CONNECT_PACKET)
+		conn_type, header_length = self._read_unpack(CONNECT_HEADER_1)
+		if header_length != CONNECT_HEADER_LENGTH:
+			logger.error("Client sent connect header with unexpected length %d (should be %d)", header_length, CONNECT_HEADER_LENGTH)
+			return
+		
 		self.type = ConnectionType(conn_type)
+		build_id, build_type, branch_id, product_id = self._read_unpack(CONNECT_HEADER_2)
 		self.build_id = build_id
 		self.build_type = BuildType(build_type)
 		self.branch_id = branch_id
 		self.product_id = uuid.UUID(bytes_le=product_id)
-		logger.debug("Received connect packet: connection type %s, %d bytes, build ID %d, build type %s, branch ID %d, product ID %s", self.type, hdr_bytes, self.build_id, self.build_type, self.branch_id, self.product_id)
+		logger.debug("Received connect packet header: connection type %s, build ID %d, build type %s, branch ID %d, product ID %s", self.type, self.build_id, self.build_type, self.branch_id, self.product_id)
 		
 		if self.type == ConnectionType.cli2auth:
 			data_bytes, token = self._read_unpack(CLI2AUTH_CONNECT_DATA)
