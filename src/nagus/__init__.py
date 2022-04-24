@@ -15,4 +15,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+"""This is NAGUS, an Uru Live server that is not very good.
+
+For the moment,
+see the source code of __main__.py for documentation.
+"""
+
+
 __version__ = "0.0.0.dev"
