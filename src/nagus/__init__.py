@@ -17,8 +17,7 @@
 
 """This is NAGUS, an Uru Live server that is not very good.
 
-For the moment,
-see the source code of __main__.py for documentation.
+See the submodules and the docs directory for documentation.
 """
 
 

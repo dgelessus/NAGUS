@@ -25,7 +25,27 @@ $ python3 -m pip install .
 $ nagus
 ```
 
+## Documentation
+
+Some documentation about the implementation,
+as well as Uru's network architecture and protocols in general,
+can be found in the [docs](./docs/) subdirectory.
+The docs are built using Sphinx:
+
+```sh
+$ cd docs
+$ python3 -m pip install -r requirements_docs.txt
+$ make html
+```
+
+The built files can then be found at docs/_build/html.
+
 ## License
+
+The code is licensed under AGPL 3.0 or later.
+The documentation is licensed under CC BY-SA 4.0.
+
+### Code
 
 Copyright (C) 2022 dgelessus
 
@@ -41,3 +61,9 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+### Documentation
+
+[![Creative Commons License](https://i.creativecommons.org/l/by-sa/4.0/88x31.png)](http://creativecommons.org/licenses/by-sa/4.0/)
+
+This work is licensed under a [Creative Commons Attribution-ShareAlike 4.0 International License](http://creativecommons.org/licenses/by-sa/4.0/).

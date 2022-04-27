@@ -4,3 +4,9 @@ root = true
 charset = utf-8
 indent_style = tab
 insert_final_newline = true
+
+[*.rst]
+# reStructuredText sometimes requires visually-aligned indents,
+# which makes it impossible to consistently indent with tabs.
+indent_style = space
+indent_size = 4
