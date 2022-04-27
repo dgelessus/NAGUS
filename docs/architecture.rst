@@ -79,8 +79,19 @@ and no open-source server software implements them in this form,
 so they are not relevant here.
 
 As of 2022,
-MOULa uses the following hosts for its public-facing servers:
+Cyan's MOULa uses the following hosts for its public-facing servers:
 
 * account.mystonline.com (184.73.198.22): status, gatekeeper, auth, game
 * 52.72.29.91: TODO unclear --- only contacted very briefly when the login screen appears
 * 54.236.8.109: file
+
+All fan-run shards use a single host for all public-facing "servers",
+including the status server.
+For example,
+Minkata uses foundry.openuru.org aka urufoundry.haverhillcoop.net (70.91.173.88)
+and Gehn uses guildofwriters.org (155.254.30.63).
+
+.. warning::
+   
+   You probably shouldn't hardcode these IP addresses anywhere,
+   although they seem to be quite stable.
