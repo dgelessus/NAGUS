@@ -41,6 +41,9 @@ In this documentation,
 I try to avoid this ambiguity where the difference is relevant
 (e. g. "Cyan's MOULa server" vs. "MOULa-based shards").
 
+.. index:: Plasma
+   single: CWE
+
 Confusingly,
 the MOULa game engine is also known under two names:
 Plasma and CWE.

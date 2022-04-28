@@ -7,6 +7,8 @@ all communication goes through centralized servers (not peer-to-peer),
 but most aspects of gameplay are managed by the clients,
 without much logic and checks on the server side.
 
+.. index:: server
+
 The server side of MOULa actually consists of multiple servers that are mostly independent from each other.
 Each of these servers may be hosted at a different address or port,
 and certain server types may also have multiple instances,
@@ -24,7 +26,10 @@ Server types
 
 These are all the server types used by the open-sourced MOULa client code:
 
-* **Status server:**
+* .. index:: status server
+     single: server; status
+  
+  **Status server:**
   Serves the status message (unsurprisingly)
   that is displayed in the patcher and login window.
   Unlike all the other servers,
@@ -33,16 +38,31 @@ These are all the server types used by the open-sourced MOULa client code:
   with the advantage that the status will display even if the Uru server itself is down.
   Alternatively,
   DIRTSAND also includes an optional minimal HTTP server for the status message.
-* **Gatekeeper server (GateKeeperSrv):**
+
+* .. index:: gatekeeper server
+     single: server; gatekeeper
+     single: GateKeeperSrv
+  
+  **Gatekeeper server (GateKeeperSrv):**
   Used by the patcher and game to get the address of the file server.
   If the file server address was overridden on the command line,
   the gatekeeper server is not contacted.
-* **File server (FileSrv):**
+
+* .. index:: file server
+     single: server; file
+     single: FileSrv
+  
+  **File server (FileSrv):**
   Used by the patcher and game to update the data files.
   This is the only server that uses unencrypted communication during normal operation.
   Some files are considered "secure" and are served via the auth server instead,
   although especially H'uru/DIRTSAND-based servers serve everything via the file server.
-* **Auth server (AuthSrv):**
+
+* .. index:: auth server
+     single: server; auth
+     single: AuthSrv
+  
+  **Auth server (AuthSrv):**
   Handles not just the login process,
   but all kinds of global communication
   that is not specific to the player's current age.
@@ -52,7 +72,14 @@ These are all the server types used by the open-sourced MOULa client code:
   The client code was apparently designed to support multiple alternative auth servers,
   but this was not fully implemented,
   so in practice there can be only one.
-* **Game server (GameSrv):**
+
+* .. index:: game server
+     single: server; game
+     single: GameSrv
+     single: game manager
+     single: GameMgr
+  
+  **Game server (GameSrv):**
   Provides communication within a single age instance
   by relaying Plasma messages over the network.
   It also provides the "game manager" (GameMgr),
@@ -63,7 +90,11 @@ These are all the server types used by the open-sourced MOULa client code:
   and the DIRTSAND server has never implemented it.
   There can theoretically be multiple game server instances,
   but in practice all MOULa servers use a single game server for all age instances.
-* **CsrSrv:**
+
+* .. index:: CsrSrv
+     single: server; CSR
+  
+  **CsrSrv:**
   Not clear what this stands for --- "customer service representative"?
   Included in the open-sourced client code,
   but not actually used anywhere.
