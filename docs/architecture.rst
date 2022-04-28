@@ -1,7 +1,7 @@
-The Uru network architecture
-============================
+The MOUL network architecture
+=============================
 
-MOULa uses a client-server architecture with a client-authoritative model.
+Myst Online: Uru Live and its derivatives use a client-server architecture with a client-authoritative model.
 That is,
 all communication goes through centralized servers (not peer-to-peer),
 but most aspects of gameplay are managed by the clients,
@@ -9,16 +9,16 @@ without much logic and checks on the server side.
 
 .. index:: server
 
-The server side of MOULa actually consists of multiple servers that are mostly independent from each other.
+The server side of MOUL actually consists of multiple servers that are mostly independent from each other.
 Each of these servers may be hosted at a different address or port,
 and certain server types may also have multiple instances,
-allowing the server side to be distributed over multiple processes or machines,
+allowing the server side to be distributed over multiple processes or machines.
 This is not a requirement though ---
 despite the name,
 it is actually possible to host multiple (or all!) of these "servers" on the same port
-and implement them all using a single server program.
+and implement them all in a single monolithic server process.
 This is the solution chosen by all fan-developed server implementations.
-Cyan's MOULa server is the only one that actually uses the distributed architecture,
+Cyan's MOULa shard is the only one that actually uses the distributed architecture,
 and even it only separates the file server and runs everything else on a single shared port.
 
 Server types
@@ -102,7 +102,7 @@ These are all the server types used by the open-sourced MOULa client code:
 
 The open-sourced client code also mentions a number of backend servers:
 Mcp, Vault, Db, State, Log, Score.
-These are apparently used internally by Cyan's MOULa server,
+These are apparently used internally by Cyan's MOUL(a) server software,
 but because that has not been open-sourced,
 very little is publicly known about them.
 The client does not communicate with them directly
@@ -110,7 +110,7 @@ and no open-source server software implements them in this form,
 so they are not relevant here.
 
 As of 2022,
-Cyan's MOULa uses the following hosts for its public-facing servers:
+Cyan's MOULa shard uses the following hosts for its public-facing servers:
 
 * account.mystonline.com (184.73.198.22): status, gatekeeper, auth, game
 * 52.72.29.91: TODO unclear --- only contacted very briefly when the login screen appears

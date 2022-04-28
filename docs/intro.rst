@@ -39,7 +39,9 @@ MOUL, MOULa, and Gehn are three different Uru versions/shards,
 but one might also say that MOULa is a MOUL shard or that Gehn is a MOULa shard.
 In this documentation,
 I try to avoid this ambiguity where the difference is relevant
-(e. g. "Cyan's MOULa server" vs. "MOULa-based shards").
+(e. g. "Cyan's MOULa shard" vs. "MOULa-based shards").
+If I don't specify which one I mean,
+assume that I mean "that version or later".
 
 .. index:: Plasma
    single: CWE
