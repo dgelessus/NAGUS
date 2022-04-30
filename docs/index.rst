@@ -19,6 +19,8 @@ Contents
    
    intro
    architecture
+   product_id
+   protocol
 
 Indices and tables
 ==================
