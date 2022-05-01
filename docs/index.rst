@@ -20,6 +20,7 @@ Contents
    intro
    architecture
    product_id
+   encryption_keys
    protocol
 
 Indices and tables

@@ -21,6 +21,8 @@ This is the solution chosen by all fan-developed server implementations.
 Cyan's MOULa shard is the only one that actually uses the distributed architecture,
 and even it only separates the file server and runs everything else on a single shared port.
 
+.. _server_types:
+
 Server types
 ------------
 

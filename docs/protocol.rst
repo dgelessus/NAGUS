@@ -76,6 +76,11 @@ Both sections should be sent together :ref:`as a single packet <packet_boundarie
 * **Data:** Varies depending on the connection type,
   but always has a fixed size for each type.
 
+The server doesn't reply to the connect packet in any way.
+If the server isn't happy with the connect packet (e. g. wrong build number),
+it simply closes the connection.
+Otherwise the server awaits the next packet from the client.
+
 .. _connection_types:
 
 Connection types
@@ -105,3 +110,117 @@ but not used in any of the open-source code:
 * CliToCsr = 20 (only used in CsrSrv communication code, which is unused)
 * SimpleNet = 21 (only used in SimpleNet protocol code, which is unused)
 * AdminInterface = 97 (ASCII code for the letter ``a``)
+
+.. _connection_encryption:
+
+Encryption
+----------
+
+Connections using the MOUL protocol are normally encrypted using RC4.
+After sending the connect packet,
+the client begins setting up encryption.
+
+The main exception is the file server connection,
+which is never encrypted.
+When connecting to the file server,
+the encryption setup is skipped
+and the client begins sending unencrypted messages immediately after the connect packet.
+For development and testing purposes,
+encryption can also be disabled entirely --- see :ref:`disabling_connection_encryption`.
+
+Every encrypted connection uses a new 56-bit key,
+derived using Diffie-Hellman key exchange from the values described in :ref:`dh_keys`.
+The key exchange process goes like this:
+
+1. Client generates a new random 512-bit private key *b*.
+2. Client calculates *kb = x*:sup:`b` *mod n* and *y = g*:sup:`b` *mod n*.
+3. Client sends *y* to the server.
+4. Server calculates *ka = y*:sup:`a` *mod n*.
+5. Server generates a random 56-bit *seed*.
+6. Server sends *seed* to the client.
+7. Server calculates *key = seed xor* (*ka* truncated to 56 bits).
+8. Client calculates *key = seed xor* (*kb* truncated to 56 bits).
+
+Because Diffie-Hellman,
+*ka* is equal to *kb*,
+so both client and server now have the same 56-bit *key*.
+Both sides now initialize standard RC4 encryption using this *key* in both directions.
+All communication from this point on is transparently encrypted.
+
+Encryption setup packets
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+During the key exchange process,
+client and server communicate using a minimal type-length-value packet format.
+Every packet during encryption setup has this format:
+
+* **Message type:** 1-byte unsigned int.
+* **Packet byte count:** 1-byte unsigned int.
+* **Packet data:** Varies depending on message type.
+
+The open-source client code defines the following message types and contents:
+
+* (client -> server) **Connect** = 0
+  
+  * **Value of y:** Variable-length integer (maximum 16 bytes).
+    Length is implied by the packet byte count.
+    *y* should always be 16 bytes long.
+    The main exception is when a H'uru client :ref:`requests no encryption <disabling_connection_encryption>`,
+    in which case it sends a 0-byte "value" for *y*.
+  
+* (server -> client) **Encrypt** = 1
+  
+  * **Seed:** 7 bytes ---
+    except when replying to a H'uru client :ref:`requests no encryption <disabling_connection_encryption>`,
+    in which case it must be 0 bytes.
+  
+* (server -> client) **Error** = 2
+  
+  * **Error code:** 4-byte unsigned int.
+
+In practice,
+only Connect and Encrypt messages are used.
+Message type Error is mostly ignored by the client ---
+it doesn't display the error in any way
+and just continues waiting for an Encrypt message.
+The client only considers encryption as failed
+if the server closes the connection entirely
+(resulting in a generic "Disconnected from Myst Online" error,
+even if the server sent an error code before disconnecting).
+
+.. _disabling_connection_encryption:
+
+Disabling encryption
+^^^^^^^^^^^^^^^^^^^^
+
+For easier development/testing,
+both OpenUru and H'uru clients support disabling encryption for all connections.
+When a client with encryption disabled connects to a server that would normally use encryption,
+it still exchanges encryption setup packets with the server,
+but the contained data is ignored and both sides communicate unencrypted afterwards.
+This is different from the always-unencrypted file server connection,
+where the encryption setup step is skipped completely.
+
+The exact process for disabling encryption varies between OpenUru and H'uru clients.
+These differences also affect how the server must respond.
+
+For OpenUru clients,
+encryption can be disabled at compile time by defining the macro ``NO_ENCRYPTION`` in the file NucleusLib/pnNetCli/pnNcCli.cpp.
+Doing so disables the network data encryption/decryption code and nothing else.
+In particular,
+client and server still perform key exchange as normal,
+but the client ignores the resulting *key* and expects the server to do the same.
+The server has no way of knowing that a client has been built with ``NO_ENCRYPTION``,
+so this mode can only be handled correctly
+by manually disabling encryption on the server side in a similar manner.
+MOSS supports a ``NO_ENCRYPTION`` macro for this purpose,
+but DIRTSAND does not.
+
+For H'uru clients,
+encryption can be disabled for any server type by omitting the respective keys from the server.ini.
+In this case,
+the client sends a Connect message with a 0-byte *y* value.
+The server side must recognize this unencrypted connection request
+and must reply accordingly with an Encrypt message with a 0-byte *seed* value.
+This is supported by DIRTSAND,
+but not MOSS or Cyan's server software.
