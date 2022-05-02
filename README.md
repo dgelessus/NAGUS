@@ -3,6 +3,11 @@
 This is (one day supposed to be) an Uru Live/Myst Online server.
 It is (probably) not very good.
 
+You should not be using this code - it does nothing useful
+(though [the docs](./docs/) about Uru's network protocols may be interesting).
+For a proper MOULa server implementation,
+check out OpenUru's [MOSS](https://wiki.openuru.org/index.php/MOSS) and H'uru's [DIRTSAND](https://guildofwriters.org/wiki/DIRTSAND).
+
 ## Requirements
 
 This pile of code has been developed using Python 3.10 on Windows.
