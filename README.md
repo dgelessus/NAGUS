@@ -3,10 +3,14 @@
 This is (one day supposed to be) an Uru Live/Myst Online server.
 It is (probably) not very good.
 
-You should not be using this code - it does nothing useful
-(though [the docs](./docs/) about Uru's network protocols may be interesting).
 For a proper MOULa server implementation,
 check out OpenUru's [MOSS](https://wiki.openuru.org/index.php/MOSS) and H'uru's [DIRTSAND](https://guildofwriters.org/wiki/DIRTSAND).
+
+I started writing this while trying to understand how MOULa's networking works.
+The code does nothing useful at this point,
+but [the docs](./docs/) contain some assorted information about MOULa's networking,
+most of which isn't properly documented elsewhere
+(though I'm hoping to change that soon-ish).
 
 ## Requirements
 

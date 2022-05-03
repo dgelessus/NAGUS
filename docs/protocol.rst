@@ -94,6 +94,16 @@ one for each server type that the client communicates with:
 * CliToFile = 16
 * CliToGateKeeper = 22
 
+The following connection types are present in the original open-source code
+and their protocol format is at least partially known.
+However,
+the code is incomplete,
+not useful in practice,
+and has been removed entirely from the H'uru codebase:
+
+* CliToCsr = 20
+* SimpleNet = 21
+
 Additionally,
 the following connection types are defined,
 but not used in any of the open-source code:
@@ -107,8 +117,6 @@ but not used in any of the open-source code:
 * SrvToState = 17
 * SrvToLog = 18
 * SrvToScore = 19
-* CliToCsr = 20 (only used in CsrSrv communication code, which is unused)
-* SimpleNet = 21 (only used in SimpleNet protocol code, which is unused)
 * AdminInterface = 97 (ASCII code for the letter ``a``)
 
 .. _connection_encryption:

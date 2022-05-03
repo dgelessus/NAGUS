@@ -47,8 +47,9 @@ These are all the server types used by the open-sourced MOULa client code:
   
   **Gatekeeper server (GateKeeperSrv):**
   Used by the patcher and game to get the address of the file server.
-  If the file server address was overridden on the command line,
-  the gatekeeper server is not contacted.
+  This enables limited load balancing and allows changing the file server address without breaking self-updates for older installations.
+  If a file server address was explicitly set in server.ini (for H'uru clients) or on the command line,
+  that file server is always used and the gatekeeper server is not contacted.
 
 * .. index:: file server
      single: server; file
@@ -58,7 +59,7 @@ These are all the server types used by the open-sourced MOULa client code:
   Used by the patcher and game to update the data files.
   This is the only server that uses unencrypted communication during normal operation.
   Some files are considered "secure" and are served via the auth server instead,
-  although especially H'uru/DIRTSAND-based servers serve everything via the file server.
+  although especially H'uru/DIRTSAND-based shards serve everything via the file server.
 
 * .. index:: auth server
      single: server; auth
@@ -87,7 +88,7 @@ These are all the server types used by the open-sourced MOULa client code:
   It also provides the "game manager" (GameMgr),
   a different mechanism used for some multiplayer activities,
   like Ayoheek, marker games, and the hood garden age puzzle.
-  For reasons that are not written down anywhere,
+  To reduce complexity of the server side,
   the H'uru client no longer uses the game manager
   and the DIRTSAND server has never implemented it.
   There can theoretically be multiple game server instances,
@@ -97,13 +98,32 @@ These are all the server types used by the open-sourced MOULa client code:
      single: server; CSR
   
   **CsrSrv:**
-  Not clear what this stands for --- "customer service representative"?
-  Included in the open-sourced client code,
-  but not actually used anywhere.
-  No fan server software implements it.
+  It's not clear what "CSR" stands for --- "customer support representative" (or "remote")?
+  Apparently it provided some way for Cyan support or developers to remotely control other clients.
+  The open-sourced client codebase contains code to communicate with a CSR server,
+  but it is incomplete and unused in the open-source codebase,
+  as it was apparently intended for the Cyan side of things.
+  No fan server software implements the CsrSrv
+  and H'uru has dropped all CSR-related code.
+
+* .. index:: SimpleNet
+  
+  **SimpleNet:**
+  A generic unencrypted network protocol meant for remote connections *to* a client.
+  In the open-sourced client code,
+  SimpleNet is only used by some CSR-related code that is ``#ifdef``\ed out by default.
+  Default client builds do not use SimpleNet in any way
+  and H'uru has dropped it entirely.
 
 The open-sourced client code also mentions a number of backend servers:
-Mcp, Vault, Db, State, Log, Score.
+
+* **McpSrv**: master control process
+* **VaultSrv**
+* **DbSrv**: database
+* **StateSrv**
+* **LogSrv**
+* **ScoreSrv**
+
 These are apparently used internally by Cyan's MOUL(a) server software,
 but because that has not been open-sourced,
 very little is publicly known about them.
