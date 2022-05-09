@@ -127,11 +127,14 @@ for obvious reasons.
 
 .. note::
    
-   The *n* and *x* values are written below as a single hex integer
-   (ignore the spaces/line breaks, they are only for layout).
-   In the OpenUru codebase,
-   they are instead written as a sequence of bytes in *little-endian* byte order,
-   so all the bytes will be in reverse order compared to this table.
+   Each *n* and *x* value below is a single hex integer
+   (i. e. in big-endian order).
+   Ignore the spaces/line breaks, they are only for layout.
+   The *g* values are given in decimal.
+
+.. seealso::
+   
+   :doc:`server_config` for details on the different key formats used by OpenUru and H'uru clients.
 
 ===========  ===  ====================  ==
 Server type  *g*  *n* (MOULa shard)     *x* (MOULa shard)
@@ -174,3 +177,51 @@ Connections to the file server are never encrypted (see :ref:`connection_encrypt
 so it has no corresponding Diffie-Hellman values.
 The CSR server is practically unused and not implemented by open-source server software,
 so fan shards don't generate any Diffie-Hellman values for it.
+
+.. _generating_dh_keys:
+
+Generating connection encryption keys
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When setting up your own shard,
+you need to generate your own connection keys.
+Both OpenUru's MOSS and H'uru's DIRTSAND have included tools for this purpose.
+
+MOSS comes with a standalone tool :program:`make_cyan_dh`
+that generates a single server key pair.
+The tool needs to be run once for each server type,
+using the ``-g``/``--generator`` option to specify the correct *g* value for each type. 
+The server key is written in ASN.1 DER format,
+as expected by MOSS itself.
+The corresponding values for the client may be output as either C++ source code
+(for :ref:`compiling into an OpenUru client <compiled_server_config>`)
+or packed little-endian binary data
+(for patching into an existing client executable).
+Additionally,
+there is an option ``-t``/``-text`` to display all values (for both client and server) as big-endian hex.
+
+DIRTSAND has key generation built-in,
+invoked using :program:`dirtsand --generate-keys` or the server console command ``keygen new``.
+The console command ``keygen show`` re-calculates and displays the client values for an existing set of server keys.
+The keys for all server types (gatekeeper, auth, game) are generated at once,
+automatically using the standard *g* values for each type.
+There is no support for other server types (CSR) or non-standard *g* values,
+except by modifying the code.
+Server and client keys are output as base-64 in big-endian byte order,
+in an appropriate format for the dirtsand.ini and :ref:`server.ini <server_ini>` files.
+
+MOSS cannot output client keys in the H'uru server.ini format,
+and similarly DIRTSAND cannot output C++ source code for OpenUru client builds.
+If necessary,
+you can manually convert between the two formats:
+for each key,
+convert the base-64 data from/to hex
+and change the endianness by reversing all bytes.
+
+OpenSSL's standard :program:`openssl dhparam` command *cannot* be used here,
+because it only supports generator values 2 and 5,
+and not the custom *g* values that MOULa uses by default.
+
+According to comments in the open-sourced client code,
+Cyan generated their Diffie-Hellman values using a tool called :program:`plDhKeyGen`,
+but it is not publicly available.

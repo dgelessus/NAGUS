@@ -21,6 +21,7 @@ Contents
    architecture
    product_id
    encryption_keys
+   server_config
    protocol
 
 Indices and tables
