@@ -24,10 +24,10 @@ See the docs directory for some general documentation about Uru's network protoc
 """
 
 
+import asyncio
 import enum
 import logging
 import socket
-import socketserver
 import struct
 import sys
 import typing
@@ -88,9 +88,10 @@ class ProtocolError(Exception):
 	pass
 
 
-class NAGUSConnection(socketserver.StreamRequestHandler):
-	# Try to ensure that every send call goes out as an actual TCP packet right away - see docstring of _write below.
-	disable_nagle_algorithm = True
+class NAGUSConnection(object):
+	reader: asyncio.StreamReader
+	writer: asyncio.StreamWriter
+	client_address: typing.Tuple[str, int]
 	
 	type: ConnectionType
 	build_id: int
@@ -98,43 +99,47 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 	branch_id: int
 	product_id: uuid.UUID
 	
-	def _read(self, byte_count: int) -> bytes:
-		"""Read ``byte_count`` bytes from the socket and raise :class:`ProtocolError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""
+	def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+		super().__init__()
 		
-		data = self.rfile.read(byte_count)
-		if len(data) != byte_count:
-			raise ProtocolError(f"Attempted to read {byte_count} bytes of data, but only got {len(data)} bytes")
-		return data
+		self.reader = reader
+		self.writer = writer
+		self.client_address = self.writer.get_extra_info("peername")
 	
-	def _write(self, data: bytes) -> None:
+	async def _read(self, byte_count: int) -> bytes:
+		"""Read ``byte_count`` bytes from the socket and raise :class:`~asyncio.IncompleteReadError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""
+		
+		return await self.reader.readexactly(byte_count)
+	
+	async def _write(self, data: bytes) -> None:
 		"""Write ``data`` to the socket.
 		
-		Currently this uses :func:`socket.socket.sendall`,
-		but this might change in the future ---
+		The exact implementation might change in the future ---
 		it seems that Uru expects certain data to arrive as a single packet,
 		even though TCP doesn't guarantee that packet boundaries are preserved in transmission.
 		"""
 		
-		self.request.sendall(data)
+		self.writer.write(data)
+		await self.writer.drain()
 	
-	def _read_unpack(self, st: struct.Struct) -> tuple:
+	async def _read_unpack(self, st: struct.Struct) -> tuple:
 		"""Read and unpack data from the socket according to the struct ``st``.
 		
 		The number of bytes to read is determined using :field:`struct.Struct.size`,
 		so variable-sized structs cannot be used with this method.
 		"""
 		
-		return st.unpack(self._read(st.size))
+		return st.unpack(await self._read(st.size))
 	
-	def handle(self) -> None:
+	async def handle(self) -> None:
 		logger.info("Connection from %s", self.client_address)
 		
-		conn_type, header_length = self._read_unpack(CONNECT_HEADER_1)
+		conn_type, header_length = await self._read_unpack(CONNECT_HEADER_1)
 		if header_length != CONNECT_HEADER_LENGTH:
 			raise ProtocolError(f"Client sent connect header with unexpected length {header_length} (should be {CONNECT_HEADER_LENGTH})")
 		
 		self.type = ConnectionType(conn_type)
-		build_id, build_type, branch_id, product_id = self._read_unpack(CONNECT_HEADER_2)
+		build_id, build_type, branch_id, product_id = await self._read_unpack(CONNECT_HEADER_2)
 		self.build_id = build_id
 		self.build_type = BuildType(build_type)
 		self.branch_id = branch_id
@@ -142,7 +147,7 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 		logger.debug("Received connect packet header: connection type %s, build ID %d, build type %s, branch ID %d, product ID %s", self.type, self.build_id, self.build_type, self.branch_id, self.product_id)
 		
 		if self.type == ConnectionType.cli2auth:
-			data_length, token = self._read_unpack(CLI2AUTH_CONNECT_DATA)
+			data_length, token = await self._read_unpack(CLI2AUTH_CONNECT_DATA)
 			if data_length != CLI2AUTH_CONNECT_DATA.size:
 				raise ProtocolError(f"Client sent client-to-auth connect data with unexpected length {data_length} (should be {CLI2AUTH_CONNECT_DATA.size})")
 			
@@ -152,11 +157,11 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 		else:
 			raise ProtocolError(f"Unsupported connection type {self.type}")
 		
-		message_type, length = self._read_unpack(SETUP_MESSAGE_HEADER)
+		message_type, length = await self._read_unpack(SETUP_MESSAGE_HEADER)
 		message_type = SetupMessageType(message_type)
 		logger.debug("Received setup message: type %s, %d bytes", message_type, length)
 		
-		data = self._read(length - SETUP_MESSAGE_HEADER.size)
+		data = await self._read(length - SETUP_MESSAGE_HEADER.size)
 		logger.debug("Setup message data: %s", data)
 		
 		if data:
@@ -168,60 +173,73 @@ class NAGUSConnection(socketserver.StreamRequestHandler):
 			# we have to send back a seed of the correct length,
 			# but the client will not use it and the connection will be unencrypted.
 			logger.debug("Received a server seed, but encryption not supported yet! Assuming NO_ENCRYPTION and replying with a dummy client seed.")
-			self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
+			await self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
 		else:
 			# H'uru internal client sent an empty server seed to explicitly request no encryption.
 			# We have to reply with an empty client seed,
 			# or else the client will abort the connection.
 			logger.debug("Received empty server seed - setting up unencrypted connection.")
-			self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
+			await self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
 		
 		logger.debug("Auth server connection set up")
 		
-		message_type = int.from_bytes(self._read(2), "little")
+		message_type = int.from_bytes(await self._read(2), "little")
 		logger.debug("Received message: type %d", message_type)
 		
 		if self.type == ConnectionType.cli2auth and message_type == 1:
-			build_id = int.from_bytes(self._read(4), "little")
+			build_id = int.from_bytes(await self._read(4), "little")
 			logger.debug("Build ID: %d", build_id)
 			
 			# Reply to client register request
-			self._write(b"\x03\x00\xde\xad\xbe\xef")
+			await self._write(b"\x03\x00\xde\xad\xbe\xef")
 			
-			data = self._read(14)
+			data = await self._read(14)
 			logger.debug("Received stuff: %s", data)
 			if data[:2] == "\x00\x00":
 				# Reply to ping
-				self._write(data)
+				await self._write(data)
 			
-			logger.debug("Received stuff: %s", self._read(50))
-	
-	def finish(self) -> None:
-		super().finish()
-		logger.info("Disconnecting %s", self.client_address)
+			logger.debug("Received stuff: %s", await self._read(50))
+		
+		logger.debug("Haven't implemented anything beyond this point yet - closing connection.")
+		self.writer.close()
+		await self.writer.wait_closed()
+		logger.info("Connection with %s closed.", self.client_address)
 
 
-class NAGUS(socketserver.TCPServer):
-	def __init__(self, server_address: typing.Tuple[str, int]) -> None:
-		super().__init__(server_address, NAGUSConnection)
-		logger.info("NAGUS listening on address %s...", server_address)
+async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+	sock = writer.transport.get_extra_info("socket")
+	if sock is not None:
+		# Disable Nagle's algorithm
+		# (if this is a TCP-based transport, which it should always be)
+		# to try to ensure that every write call goes out as an actual TCP packet right away.
+		sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 	
-	def handle_error(self, request: socket.socket, client_address: typing.Tuple[str, int]) -> None:
-		exc = sys.exc_info()[1]
-		if isinstance(exc, ProtocolError):
-			logger.error("Error in data sent by %s: %s", client_address, exc)
-		else:
-			logger.error("Uncaught exception while handling request from %s:", client_address, exc_info=True)
+	conn = NAGUSConnection(reader, writer)
+	try:
+		await conn.handle()
+	except (ConnectionResetError, asyncio.IncompleteReadError) as exc:
+		logger.error("Client %s disconnected: %s.%s: %s", conn.client_address, type(exc).__module__, type(exc).__qualname__, exc)
+	except ProtocolError as exc:
+		logger.error("Error in data sent by %s: %s", conn.client_address, exc)
+	except Exception as exc:
+		logger.error("Uncaught exception while handling request from %s:", conn.client_address, exc_info=exc)
+	except BaseException as exc:
+		logger.error("Uncaught BaseException while handling request from %s - something has gone quite wrong:", conn.client_address, exc_info=exc)
+		raise
+
+
+async def server_main(host: str, port: int) -> None:
+	async with await asyncio.start_server(client_connected, host, port) as server:
+		logger.info("NAGUS listening on address %r:%d...", host, port)
+		await server.serve_forever()
 
 
 def main() -> typing.NoReturn:
 	logging.basicConfig(level=logging.DEBUG)
 	
-	address = ("", 14617)
-	
 	try:
-		with NAGUS(address) as server:
-			server.serve_forever()
+		asyncio.run(server_main("", 14617))
 	except KeyboardInterrupt:
 		logger.info("KeyboardInterrupt received, stopping server.")
 	
