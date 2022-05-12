@@ -264,9 +264,8 @@ CONNECTION_CLASSES: typing.Mapping[ConnectionType, typing.Type[BaseMOULConnectio
 }
 
 
-async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+async def client_connected_inner(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
 	client_address = writer.get_extra_info("peername")
-	logger.info("Connection from %s", client_address)
 	
 	sock = writer.transport.get_extra_info("socket")
 	if sock is not None:
@@ -275,22 +274,31 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 		# to try to ensure that every write call goes out as an actual TCP packet right away.
 		sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 	
+	(conn_type,) = await reader.readexactly(1)
 	try:
-		(conn_type,) = await reader.readexactly(1)
-		try:
-			conn_type = ConnectionType(conn_type)
-		except ValueError:
-			raise ProtocolError(f"Unknown connection type {conn_type}")
-		
-		logger.info("Client %s requests connection type %s", client_address, conn_type)
-		
-		try:
-			conn_class = CONNECTION_CLASSES[conn_type]
-		except KeyError:
-			raise ProtocolError(f"Unsupported connection type {conn_type}")
-		
-		conn = conn_class(reader, writer)
-		await conn.handle()
+		conn_type = ConnectionType(conn_type)
+	except ValueError:
+		raise ProtocolError(f"Unknown connection type {conn_type}")
+	
+	logger.info("Client %s requests connection type %s", client_address, conn_type)
+	
+	try:
+		conn_class = CONNECTION_CLASSES[conn_type]
+	except KeyError:
+		raise ProtocolError(f"Unsupported connection type {conn_type}")
+	
+	conn = conn_class(reader, writer)
+	await conn.handle()
+
+
+async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+	# Avoid UnboundLocalError in case get_extra_info throws an exception somehow
+	client_address = None
+	
+	try:
+		client_address = writer.get_extra_info("peername")
+		logger.info("Connection from %s", client_address)
+		await client_connected_inner(reader, writer)
 	except (ConnectionResetError, asyncio.IncompleteReadError) as exc:
 		logger.error("Client %s disconnected: %s.%s: %s", client_address, type(exc).__module__, type(exc).__qualname__, exc)
 	except ProtocolError as exc:
