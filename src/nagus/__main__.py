@@ -106,12 +106,12 @@ class NAGUSConnection(object):
 		self.writer = writer
 		self.client_address = self.writer.get_extra_info("peername")
 	
-	async def _read(self, byte_count: int) -> bytes:
+	async def read(self, byte_count: int) -> bytes:
 		"""Read ``byte_count`` bytes from the socket and raise :class:`~asyncio.IncompleteReadError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""
 		
 		return await self.reader.readexactly(byte_count)
 	
-	async def _write(self, data: bytes) -> None:
+	async def write(self, data: bytes) -> None:
 		"""Write ``data`` to the socket.
 		
 		The exact implementation might change in the future ---
@@ -122,38 +122,38 @@ class NAGUSConnection(object):
 		self.writer.write(data)
 		await self.writer.drain()
 	
-	async def _read_unpack(self, st: struct.Struct) -> tuple:
+	async def read_unpack(self, st: struct.Struct) -> tuple:
 		"""Read and unpack data from the socket according to the struct ``st``.
 		
 		The number of bytes to read is determined using :field:`struct.Struct.size`,
 		so variable-sized structs cannot be used with this method.
 		"""
 		
-		return st.unpack(await self._read(st.size))
+		return st.unpack(await self.read(st.size))
 	
-	async def _read_connect_packet_header(self) -> None:
+	async def read_connect_packet_header(self) -> None:
 		"""Read and unpack the generic connect packet header and store the unpacked information."""
 		
-		conn_type, header_length = await self._read_unpack(CONNECT_HEADER_1)
+		conn_type, header_length = await self.read_unpack(CONNECT_HEADER_1)
 		if header_length != CONNECT_HEADER_LENGTH:
 			raise ProtocolError(f"Client sent connect header with unexpected length {header_length} (should be {CONNECT_HEADER_LENGTH})")
 		
 		self.type = ConnectionType(conn_type)
-		build_id, build_type, branch_id, product_id = await self._read_unpack(CONNECT_HEADER_2)
+		build_id, build_type, branch_id, product_id = await self.read_unpack(CONNECT_HEADER_2)
 		self.build_id = build_id
 		self.build_type = BuildType(build_type)
 		self.branch_id = branch_id
 		self.product_id = uuid.UUID(bytes_le=product_id)
 		logger.debug("Received connect packet header: connection type %s, build ID %d, build type %s, branch ID %d, product ID %s", self.type, self.build_id, self.build_type, self.branch_id, self.product_id)
 	
-	async def _read_connect_packet_data(self) -> None:
+	async def read_connect_packet_data(self) -> None:
 		"""Read and unpack the type-specific connect packet data.
 		
 		The unpacked information is currently discarded.
 		"""
 		
 		if self.type == ConnectionType.cli2auth:
-			data_length, token = await self._read_unpack(CLI2AUTH_CONNECT_DATA)
+			data_length, token = await self.read_unpack(CLI2AUTH_CONNECT_DATA)
 			if data_length != CLI2AUTH_CONNECT_DATA.size:
 				raise ProtocolError(f"Client sent client-to-auth connect data with unexpected length {data_length} (should be {CLI2AUTH_CONNECT_DATA.size})")
 			
@@ -163,7 +163,7 @@ class NAGUSConnection(object):
 		else:
 			raise ProtocolError(f"Unsupported connection type {self.type}")
 	
-	async def _setup_encryption(self) -> None:
+	async def setup_encryption(self) -> None:
 		"""Handle an encryption setup packet from the client and set up encryption accordingly.
 		
 		Currently doesn't actually support encryption yet!
@@ -171,11 +171,11 @@ class NAGUSConnection(object):
 		Anything that looks like an encrypted connection is assumed to be an OpenUru client with encryption disabled.
 		"""
 		
-		message_type, length = await self._read_unpack(SETUP_MESSAGE_HEADER)
+		message_type, length = await self.read_unpack(SETUP_MESSAGE_HEADER)
 		message_type = SetupMessageType(message_type)
 		logger.debug("Received setup message: type %s, %d bytes", message_type, length)
 		
-		data = await self._read(length - SETUP_MESSAGE_HEADER.size)
+		data = await self.read(length - SETUP_MESSAGE_HEADER.size)
 		logger.debug("Setup message data: %s", data)
 		
 		if data:
@@ -187,45 +187,45 @@ class NAGUSConnection(object):
 			# we have to send back a seed of the correct length,
 			# but the client will not use it and the connection will be unencrypted.
 			logger.debug("Received a server seed, but encryption not supported yet! Assuming NO_ENCRYPTION and replying with a dummy client seed.")
-			await self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
+			await self.write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
 		else:
 			# H'uru internal client sent an empty server seed to explicitly request no encryption.
 			# We have to reply with an empty client seed,
 			# or else the client will abort the connection.
 			logger.debug("Received empty server seed - setting up unencrypted connection.")
-			await self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
+			await self.write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
 		
 		logger.debug("Done setting up encryption")
 	
-	async def _read_and_handle_single_message(self) -> None:
+	async def read_and_handle_single_message(self) -> None:
 		"""Read and handle one normal message according to the connection type."""
 		
-		message_type = int.from_bytes(await self._read(2), "little")
+		message_type = int.from_bytes(await self.read(2), "little")
 		logger.debug("Received message: type %d", message_type)
 		
 		if self.type == ConnectionType.cli2auth and message_type == 1:
-			build_id = int.from_bytes(await self._read(4), "little")
+			build_id = int.from_bytes(await self.read(4), "little")
 			logger.debug("Build ID: %d", build_id)
 			
 			# Reply to client register request
-			await self._write(b"\x03\x00\xde\xad\xbe\xef")
+			await self.write(b"\x03\x00\xde\xad\xbe\xef")
 			
-			data = await self._read(14)
+			data = await self.read(14)
 			logger.debug("Received stuff: %s", data)
 			if data[:2] == "\x00\x00":
 				# Reply to ping
-				await self._write(data)
+				await self.write(data)
 			
-			logger.debug("Received stuff: %s", await self._read(50))
+			logger.debug("Received stuff: %s", await self.read(50))
 	
 	async def handle(self) -> None:
 		logger.info("Connection from %s", self.client_address)
 		
-		await self._read_connect_packet_header()
-		await self._read_connect_packet_data()
-		await self._setup_encryption()
+		await self.read_connect_packet_header()
+		await self.read_connect_packet_data()
+		await self.setup_encryption()
 		
-		await self._read_and_handle_single_message()
+		await self.read_and_handle_single_message()
 		
 		logger.debug("Haven't implemented anything beyond this point yet - closing connection.")
 		self.writer.close()
