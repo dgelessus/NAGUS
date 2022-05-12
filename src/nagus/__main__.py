@@ -296,9 +296,15 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 	client_address = None
 	
 	try:
-		client_address = writer.get_extra_info("peername")
-		logger.info("Connection from %s", client_address)
-		await client_connected_inner(reader, writer)
+		try:
+			client_address = writer.get_extra_info("peername")
+			logger.info("Connection from %s", client_address)
+			await client_connected_inner(reader, writer)
+		finally:
+			writer.close()
+			logger.info("Closing connection with %s", client_address)
+			# No need to await writer.wait_closed(),
+			# because we don't do anything else with the writer anymore.
 	except (ConnectionResetError, asyncio.IncompleteReadError) as exc:
 		logger.error("Client %s disconnected: %s.%s: %s", client_address, type(exc).__module__, type(exc).__qualname__, exc)
 	except ProtocolError as exc:
