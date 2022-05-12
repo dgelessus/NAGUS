@@ -131,8 +131,8 @@ class NAGUSConnection(object):
 		
 		return st.unpack(await self._read(st.size))
 	
-	async def handle(self) -> None:
-		logger.info("Connection from %s", self.client_address)
+	async def _read_connect_packet_header(self) -> None:
+		"""Read and unpack the generic connect packet header and store the unpacked information."""
 		
 		conn_type, header_length = await self._read_unpack(CONNECT_HEADER_1)
 		if header_length != CONNECT_HEADER_LENGTH:
@@ -145,6 +145,12 @@ class NAGUSConnection(object):
 		self.branch_id = branch_id
 		self.product_id = uuid.UUID(bytes_le=product_id)
 		logger.debug("Received connect packet header: connection type %s, build ID %d, build type %s, branch ID %d, product ID %s", self.type, self.build_id, self.build_type, self.branch_id, self.product_id)
+	
+	async def _read_connect_packet_data(self) -> None:
+		"""Read and unpack the type-specific connect packet data.
+		
+		The unpacked information is currently discarded.
+		"""
 		
 		if self.type == ConnectionType.cli2auth:
 			data_length, token = await self._read_unpack(CLI2AUTH_CONNECT_DATA)
@@ -156,6 +162,14 @@ class NAGUSConnection(object):
 				raise ProtocolError(f"Client sent client-to-auth connect data with unexpected token {token} (should be {ZERO_UUID})")
 		else:
 			raise ProtocolError(f"Unsupported connection type {self.type}")
+	
+	async def _setup_encryption(self) -> None:
+		"""Handle an encryption setup packet from the client and set up encryption accordingly.
+		
+		Currently doesn't actually support encryption yet!
+		Unencrypted H'uru connections are accepted.
+		Anything that looks like an encrypted connection is assumed to be an OpenUru client with encryption disabled.
+		"""
 		
 		message_type, length = await self._read_unpack(SETUP_MESSAGE_HEADER)
 		message_type = SetupMessageType(message_type)
@@ -181,7 +195,10 @@ class NAGUSConnection(object):
 			logger.debug("Received empty server seed - setting up unencrypted connection.")
 			await self._write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
 		
-		logger.debug("Auth server connection set up")
+		logger.debug("Done setting up encryption")
+	
+	async def _read_and_handle_single_message(self) -> None:
+		"""Read and handle one normal message according to the connection type."""
 		
 		message_type = int.from_bytes(await self._read(2), "little")
 		logger.debug("Received message: type %d", message_type)
@@ -200,6 +217,15 @@ class NAGUSConnection(object):
 				await self._write(data)
 			
 			logger.debug("Received stuff: %s", await self._read(50))
+	
+	async def handle(self) -> None:
+		logger.info("Connection from %s", self.client_address)
+		
+		await self._read_connect_packet_header()
+		await self._read_connect_packet_data()
+		await self._setup_encryption()
+		
+		await self._read_and_handle_single_message()
 		
 		logger.debug("Haven't implemented anything beyond this point yet - closing connection.")
 		self.writer.close()
