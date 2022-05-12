@@ -119,6 +119,72 @@ but not used in any of the open-source code:
 * SrvToScore = 19
 * AdminInterface = 97 (ASCII code for the letter ``a``)
 
+Connect packet data
+^^^^^^^^^^^^^^^^^^^
+
+Although the format of the connect packet data is completely type-specific,
+in practice all connection types
+(except for the mostly dead SimpleNet)
+start the connect packet data with a 4-byte length field.
+Here are the exact formats for all types
+(where we know the protocol format at least):
+
+* **CliToGatekeeper, CliToAuth:**
+  
+  * **Data byte count:** 4-byte unsigned int.
+    Always 20.
+  * **Token:** 16-byte UUID.
+    Set to all zeroes by default.
+    
+    For auth server connections,
+    the server may send the client a ``ServerAddr`` message containing a different token,
+    which the client will send back to the server if it has to reconnect.
+    Not sure if this is actually used in practice.
+    
+    For gatekeeper connections,
+    there is no way to change the token,
+    so the client always sends all zeroes.
+
+* **CliToFile:**
+  
+  * **Data byte count:** 4-byte unsigned int.
+    Always 12.
+  * **Real build ID:** 4-byte unsigned int.
+    Set to the client's :ref:`build ID <build_id>`.
+    For file server connections,
+    the generic header's build ID field is always set to 0,
+    so this field is used as an alternative.
+    The main client sends its real build ID here,
+    but the patcher sets it to 0 (again).
+  * **Server type:** 4-byte unsigned int.
+    Always set to 0 by clients.
+    Based on the open-sourced client code,
+    it looks like other values might be used when a *server* is connecting to a file server (?).
+
+* **CliToGame:**
+  
+  * **Data byte count:** 4-byte unsigned int.
+    Always 36.
+  * **Account UUID:** 16-byte UUID.
+    Apparently unused and never initialized by the client.
+  * **Age UUID:** 16-byte UUID.
+    Apparently unused and never initialized by the client.
+
+* **CliToCsr:**
+  
+  * **Data byte count:** 4-byte unsigned int.
+    Always 4.
+
+* **SimpleNet:**
+  
+  * **Channel ID:** 4-byte unsigned int.
+    Apparently identifies the type of connection.
+    The open-sourced client code defines the following SimpleNet channel IDs:
+    
+    * Nil = 0 (apparently not a valid channel ID)
+    * Csr = 1
+    * Max = 2 (based on comments, this probably stands for 3DS Max, not "maximum" --- although this is also the highest defined channel ID!)
+
 .. _connection_encryption:
 
 Encryption
