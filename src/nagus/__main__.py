@@ -24,6 +24,7 @@ See the docs directory for some general documentation about Uru's network protoc
 """
 
 
+import abc
 import asyncio
 import enum
 import logging
@@ -37,11 +38,8 @@ import uuid
 logger = logging.getLogger(__name__)
 
 
-CONNECT_HEADER_1 = struct.Struct("<BH")
-CONNECT_HEADER_2 = struct.Struct("<III16s") 
-CONNECT_HEADER_LENGTH = CONNECT_HEADER_1.size + CONNECT_HEADER_2.size
-
-CLI2AUTH_CONNECT_DATA = struct.Struct("<I16s")
+CONNECT_HEADER_TAIL = struct.Struct("<III16s") 
+CONNECT_HEADER_LENGTH = struct.calcsize("<BH") + CONNECT_HEADER_TAIL.size
 
 SETUP_MESSAGE_HEADER = struct.Struct("<BB")
 
@@ -88,12 +86,10 @@ class ProtocolError(Exception):
 	pass
 
 
-class NAGUSConnection(object):
+class BaseMOULConnection(object):
 	reader: asyncio.StreamReader
 	writer: asyncio.StreamWriter
-	client_address: typing.Tuple[str, int]
 	
-	type: ConnectionType
 	build_id: int
 	build_type: BuildType
 	branch_id: int
@@ -104,7 +100,6 @@ class NAGUSConnection(object):
 		
 		self.reader = reader
 		self.writer = writer
-		self.client_address = self.writer.get_extra_info("peername")
 	
 	async def read(self, byte_count: int) -> bytes:
 		"""Read ``byte_count`` bytes from the socket and raise :class:`~asyncio.IncompleteReadError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""
@@ -132,36 +127,29 @@ class NAGUSConnection(object):
 		return st.unpack(await self.read(st.size))
 	
 	async def read_connect_packet_header(self) -> None:
-		"""Read and unpack the generic connect packet header and store the unpacked information."""
+		"""Read and unpack the remaining connect packet header and store the unpacked information.
 		
-		conn_type, header_length = await self.read_unpack(CONNECT_HEADER_1)
+		When this method is called,
+		the connection type has already been read ---
+		it was used to select the subclass of :class:`BaseMOULConnection` to be used.
+		"""
+		
+		header_length = int.from_bytes(await self.read(2), "little")
 		if header_length != CONNECT_HEADER_LENGTH:
 			raise ProtocolError(f"Client sent connect header with unexpected length {header_length} (should be {CONNECT_HEADER_LENGTH})")
 		
-		self.type = ConnectionType(conn_type)
-		build_id, build_type, branch_id, product_id = await self.read_unpack(CONNECT_HEADER_2)
+		build_id, build_type, branch_id, product_id = await self.read_unpack(CONNECT_HEADER_TAIL)
 		self.build_id = build_id
 		self.build_type = BuildType(build_type)
 		self.branch_id = branch_id
 		self.product_id = uuid.UUID(bytes_le=product_id)
-		logger.debug("Received connect packet header: connection type %s, build ID %d, build type %s, branch ID %d, product ID %s", self.type, self.build_id, self.build_type, self.branch_id, self.product_id)
+		logger.debug("Received rest of connect packet header: build ID %d, build type %s, branch ID %d, product ID %s", self.build_id, self.build_type, self.branch_id, self.product_id)
 	
+	@abc.abstractmethod
 	async def read_connect_packet_data(self) -> None:
-		"""Read and unpack the type-specific connect packet data.
+		"""Read and unpack the type-specific connect packet data."""
 		
-		The unpacked information is currently discarded.
-		"""
-		
-		if self.type == ConnectionType.cli2auth:
-			data_length, token = await self.read_unpack(CLI2AUTH_CONNECT_DATA)
-			if data_length != CLI2AUTH_CONNECT_DATA.size:
-				raise ProtocolError(f"Client sent client-to-auth connect data with unexpected length {data_length} (should be {CLI2AUTH_CONNECT_DATA.size})")
-			
-			token = uuid.UUID(bytes_le=token)
-			if token != ZERO_UUID:
-				raise ProtocolError(f"Client sent client-to-auth connect data with unexpected token {token} (should be {ZERO_UUID})")
-		else:
-			raise ProtocolError(f"Unsupported connection type {self.type}")
+		raise NotImplementedError()
 	
 	async def setup_encryption(self) -> None:
 		"""Handle an encryption setup packet from the client and set up encryption accordingly.
@@ -197,43 +185,89 @@ class NAGUSConnection(object):
 		
 		logger.debug("Done setting up encryption")
 	
-	async def read_and_handle_single_message(self) -> None:
-		"""Read and handle one normal message according to the connection type."""
+	async def handle_message(self, message_type: int) -> None:
+		"""Read and handle a single message of the given type.
 		
-		message_type = int.from_bytes(await self.read(2), "little")
-		logger.debug("Received message: type %d", message_type)
+		When this method is called,
+		the message type has already been read,
+		but nothing else.
+		The implementation is responsible for reading the message body.
+		This can't be done generically,
+		because messages don't have an overall byte length field.
+		"""
 		
-		if self.type == ConnectionType.cli2auth and message_type == 1:
+		if message_type == 0:
+			# Reply to ping request.
+			# Pings are supported by all connection types (gatekeeper, auth, game, CSR)
+			# and always use message type 0 in both directions.
+			# FIXME This assumes an empty ping payload!
+			data = await self.read(12)
+			# Send ping time and payload back unmodified
+			await self.write(b"\x00\x00" + data)
+		else:
+			# Unknown/unsupported message.
+			# Because the message protocol doesn't have a generic length field,
+			# it's impossible to continue reading correctly after an unknown message,
+			# so we have to abort the connection.
+			try:
+				# For debugging,
+				# try to read a bit of data after it without waiting too long.
+				data = await asyncio.wait_for(self.reader.read(64), 0.1)
+			except asyncio.TimeoutError as exc:
+				raise ProtocolError(f"Client sent unsupported message type {message_type} and no data quickly following it")
+			else:
+				raise ProtocolError(f"Client sent unsupported message type {message_type} - next few bytes: {data}")
+	
+	async def handle(self) -> None:
+		await self.read_connect_packet_header()
+		await self.read_connect_packet_data()
+		await self.setup_encryption()
+		
+		# TODO Is there any way for clients to disconnect cleanly without unceremoniously closing the socket?
+		while True:
+			message_type = int.from_bytes(await self.read(2), "little")
+			logger.debug("Received message: type %d", message_type)
+			# TODO Replace this with a proper dispatch mechanism where each message type has its own method
+			await self.handle_message(message_type)
+
+
+class AuthConnection(BaseMOULConnection):
+	CONNECT_DATA = struct.Struct("<I16s")
+	
+	async def read_connect_packet_data(self) -> None:
+		"""Read and unpack the type-specific connect packet data.
+		
+		The unpacked information is currently discarded.
+		"""
+		
+		data_length, token = await self.read_unpack(type(self).CONNECT_DATA)
+		if data_length != type(self).CONNECT_DATA.size:
+			raise ProtocolError(f"Client sent client-to-auth connect data with unexpected length {data_length} (should be {CLI2AUTH_CONNECT_DATA.size})")
+		
+		token = uuid.UUID(bytes_le=token)
+		if token != ZERO_UUID:
+			raise ProtocolError(f"Client sent client-to-auth connect data with unexpected token {token} (should be {ZERO_UUID})")
+	
+	async def handle_message(self, message_type: int) -> None:
+		if message_type == 1:
 			build_id = int.from_bytes(await self.read(4), "little")
 			logger.debug("Build ID: %d", build_id)
 			
 			# Reply to client register request
 			await self.write(b"\x03\x00\xde\xad\xbe\xef")
-			
-			data = await self.read(14)
-			logger.debug("Received stuff: %s", data)
-			if data[:2] == "\x00\x00":
-				# Reply to ping
-				await self.write(data)
-			
-			logger.debug("Received stuff: %s", await self.read(50))
-	
-	async def handle(self) -> None:
-		logger.info("Connection from %s", self.client_address)
-		
-		await self.read_connect_packet_header()
-		await self.read_connect_packet_data()
-		await self.setup_encryption()
-		
-		await self.read_and_handle_single_message()
-		
-		logger.debug("Haven't implemented anything beyond this point yet - closing connection.")
-		self.writer.close()
-		await self.writer.wait_closed()
-		logger.info("Connection with %s closed.", self.client_address)
+		else:
+			await super().handle_message(message_type)
+
+
+CONNECTION_CLASSES: typing.Mapping[ConnectionType, typing.Type[BaseMOULConnection]] = {
+	ConnectionType.cli2auth: AuthConnection,
+}
 
 
 async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+	client_address = writer.get_extra_info("peername")
+	logger.info("Connection from %s", client_address)
+	
 	sock = writer.transport.get_extra_info("socket")
 	if sock is not None:
 		# Disable Nagle's algorithm
@@ -241,17 +275,30 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 		# to try to ensure that every write call goes out as an actual TCP packet right away.
 		sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 	
-	conn = NAGUSConnection(reader, writer)
 	try:
+		(conn_type,) = await reader.readexactly(1)
+		try:
+			conn_type = ConnectionType(conn_type)
+		except ValueError:
+			raise ProtocolError(f"Unknown connection type {conn_type}")
+		
+		logger.info("Client %s requests connection type %s", client_address, conn_type)
+		
+		try:
+			conn_class = CONNECTION_CLASSES[conn_type]
+		except KeyError:
+			raise ProtocolError(f"Unsupported connection type {conn_type}")
+		
+		conn = conn_class(reader, writer)
 		await conn.handle()
 	except (ConnectionResetError, asyncio.IncompleteReadError) as exc:
-		logger.error("Client %s disconnected: %s.%s: %s", conn.client_address, type(exc).__module__, type(exc).__qualname__, exc)
+		logger.error("Client %s disconnected: %s.%s: %s", client_address, type(exc).__module__, type(exc).__qualname__, exc)
 	except ProtocolError as exc:
-		logger.error("Error in data sent by %s: %s", conn.client_address, exc)
+		logger.error("Error in data sent by %s: %s", client_address, exc)
 	except Exception as exc:
-		logger.error("Uncaught exception while handling request from %s:", conn.client_address, exc_info=exc)
+		logger.error("Uncaught exception while handling request from %s:", client_address, exc_info=exc)
 	except BaseException as exc:
-		logger.error("Uncaught BaseException while handling request from %s - something has gone quite wrong:", conn.client_address, exc_info=exc)
+		logger.error("Uncaught BaseException while handling request from %s - something has gone quite wrong:", client_address, exc_info=exc)
 		raise
 
 
