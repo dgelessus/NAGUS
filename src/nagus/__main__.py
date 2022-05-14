@@ -86,7 +86,47 @@ class ProtocolError(Exception):
 	pass
 
 
+ConnT = typing.TypeVar("ConnT", bound="BaseMOULConnection")
+MessageHandler = typing.Callable[[ConnT], typing.Awaitable[None]]
+MessageHandlerT = typing.TypeVar("MessageHandlerT", bound=MessageHandler)
+
+
+def message_handler(message_type: int) -> typing.Callable[[MessageHandlerT], MessageHandlerT]:
+	"""Register the decorated method as a handler for the given message type.
+	
+	When the message handler method is called,
+	the message type has already been read,
+	but nothing else.
+	The message handler is responsible for reading the message body.
+	This can't be done generically,
+	because messages don't have an overall byte length field.
+	
+	This decorator should only be used inside :class:`BaseMOULConnection` and subclasses.
+	The decorated method must be ``async``,
+	should take no arguments,
+	and should return nothing.
+	The name of the message handler method should be the name of the message type
+	(adjusted for Python's naming conventions) ---
+	I might use this as debug information in the future.
+	"""
+	
+	def _message_handler_decorator(method: MessageHandlerT) -> MessageHandlerT:
+		method.message_type = message_type
+		return method
+	
+	return _message_handler_decorator
+
+
 class BaseMOULConnection(object):
+	"""Base implementation of the MOUL network protocol (spoken over port 14617).
+	
+	Subclasses are expected to implement :meth:`read_connect_packet_data`
+	as well as message handlers for all supported message types
+	(see :func:`message_handler`).
+	"""
+	
+	MESSAGE_HANDLERS: typing.ClassVar[typing.Dict[int, MessageHandler]]
+	
 	reader: asyncio.StreamReader
 	writer: asyncio.StreamWriter
 	
@@ -94,6 +134,30 @@ class BaseMOULConnection(object):
 	build_type: BuildType
 	branch_id: int
 	product_id: uuid.UUID
+	
+	@classmethod
+	def __init_subclass__(cls) -> None:
+		"""Collect all message handler methods
+		(decorated with :func:`message_handler`)
+		into the :attr:`MESSAGE_HANDLERS` dictionary
+		so that :meth:`handle_message` can efficiently look them up.
+		"""
+		
+		cls.MESSAGE_HANDLERS = {}
+		
+		for name in dir(cls):
+			try:
+				attr = getattr(cls, name)
+			except AttributeError:
+				pass
+			
+			if callable(attr):
+				try:
+					message_type = attr.message_type
+				except AttributeError:
+					continue
+				
+				cls.MESSAGE_HANDLERS[message_type] = typing.cast(MessageHandler, attr)
 	
 	def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
 		super().__init__()
@@ -185,38 +249,45 @@ class BaseMOULConnection(object):
 		
 		logger.debug("Done setting up encryption")
 	
-	async def handle_message(self, message_type: int) -> None:
-		"""Read and handle a single message of the given type.
+	async def handle_unknown_message(self, message_type: int) -> None:
+		"""Read and handle an unknown message of the given type.
 		
-		When this method is called,
-		the message type has already been read,
-		but nothing else.
-		The implementation is responsible for reading the message body.
-		This can't be done generically,
-		because messages don't have an overall byte length field.
+		Because the message protocol doesn't have a generic length field,
+		it's impossible to continue reading correctly after an unknown message,
+		so we have to abort the connection.
 		"""
 		
-		if message_type == 0:
-			# Reply to ping request.
-			# Pings are supported by all connection types (gatekeeper, auth, game, CSR)
-			# and always use message type 0 in both directions.
-			# FIXME This assumes an empty ping payload!
-			data = await self.read(12)
-			# Send ping time and payload back unmodified
-			await self.write(b"\x00\x00" + data)
+		try:
+			# For debugging,
+			# try to read a bit of data after it without waiting too long.
+			data = await asyncio.wait_for(self.reader.read(64), 0.1)
+		except asyncio.TimeoutError as exc:
+			raise ProtocolError(f"Client sent unsupported message type {message_type} and no data quickly following it")
 		else:
-			# Unknown/unsupported message.
-			# Because the message protocol doesn't have a generic length field,
-			# it's impossible to continue reading correctly after an unknown message,
-			# so we have to abort the connection.
-			try:
-				# For debugging,
-				# try to read a bit of data after it without waiting too long.
-				data = await asyncio.wait_for(self.reader.read(64), 0.1)
-			except asyncio.TimeoutError as exc:
-				raise ProtocolError(f"Client sent unsupported message type {message_type} and no data quickly following it")
-			else:
-				raise ProtocolError(f"Client sent unsupported message type {message_type} - next few bytes: {data}")
+			raise ProtocolError(f"Client sent unsupported message type {message_type} - next few bytes: {data}")
+	
+	@message_handler(0)
+	async def ping_request(self) -> None:
+		"""Reply to ping request.
+		
+		Pings are supported by all connection types (gatekeeper, auth, game, CSR)
+		and always use message type 0 in both directions.
+		"""
+		
+		# FIXME This assumes an empty ping payload!
+		data = await self.read(12)
+		# Send ping time and payload back unmodified
+		await self.write(b"\x00\x00" + data)
+	
+	async def handle_message(self, message_type: int) -> None:
+		"""Dispatch a message to the appropriate handler based on its type."""
+		
+		try:
+			handler = type(self).MESSAGE_HANDLERS[message_type]
+		except KeyError:
+			await self.handle_unknown_message(message_type)
+		else:
+			await handler(self)
 	
 	async def handle(self) -> None:
 		await self.read_connect_packet_header()
@@ -227,7 +298,6 @@ class BaseMOULConnection(object):
 		while True:
 			message_type = int.from_bytes(await self.read(2), "little")
 			logger.debug("Received message: type %d", message_type)
-			# TODO Replace this with a proper dispatch mechanism where each message type has its own method
 			await self.handle_message(message_type)
 
 
@@ -248,15 +318,13 @@ class AuthConnection(BaseMOULConnection):
 		if token != ZERO_UUID:
 			raise ProtocolError(f"Client sent client-to-auth connect data with unexpected token {token} (should be {ZERO_UUID})")
 	
-	async def handle_message(self, message_type: int) -> None:
-		if message_type == 1:
-			build_id = int.from_bytes(await self.read(4), "little")
-			logger.debug("Build ID: %d", build_id)
-			
-			# Reply to client register request
-			await self.write(b"\x03\x00\xde\xad\xbe\xef")
-		else:
-			await super().handle_message(message_type)
+	@message_handler(1)
+	async def client_register_request(self) -> None:
+		build_id = int.from_bytes(await self.read(4), "little")
+		logger.debug("Build ID: %d", build_id)
+		
+		# Reply to client register request
+		await self.write(b"\x03\x00\xde\xad\xbe\xef")
 
 
 CONNECTION_CLASSES: typing.Mapping[ConnectionType, typing.Type[BaseMOULConnection]] = {
