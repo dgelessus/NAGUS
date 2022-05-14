@@ -337,6 +337,8 @@ class AuthConnection(BaseMOULConnection):
 	async def client_register_request(self) -> None:
 		build_id = int.from_bytes(await self.read(4), "little")
 		logger.debug("Build ID: %d", build_id)
+		if build_id != self.build_id:
+			raise ProtocolError(f"Client register request build ID ({build_id}) differs from connect packet ({self.build_id})")
 		
 		# Reply to client register request
 		await self.write(b"\x03\x00\xde\xad\xbe\xef")
