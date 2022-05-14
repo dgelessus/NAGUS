@@ -117,6 +117,9 @@ def message_handler(message_type: int) -> typing.Callable[[MessageHandlerT], Mes
 	return _message_handler_decorator
 
 
+CONNECTION_CLASSES: typing.Mapping[ConnectionType, typing.Type["BaseMOULConnection"]] = {}
+
+
 class BaseMOULConnection(object):
 	"""Base implementation of the MOUL network protocol (spoken over port 14617).
 	
@@ -126,6 +129,7 @@ class BaseMOULConnection(object):
 	"""
 	
 	MESSAGE_HANDLERS: typing.ClassVar[typing.Dict[int, MessageHandler]]
+	CONNECTION_TYPE: ConnectionType # to be set in each subclass
 	
 	reader: asyncio.StreamReader
 	writer: asyncio.StreamWriter
@@ -137,11 +141,19 @@ class BaseMOULConnection(object):
 	
 	@classmethod
 	def __init_subclass__(cls) -> None:
-		"""Collect all message handler methods
+		"""Register a new connection class and its message handlers.
+		
+		Every subclass of :class:`BaseMOULConnection` must set the class attribute :attr:`CONNECTION_TYPE`.
+		The subclass is automatically inserted into the :data:`CONNECTION_CLASSES` dictionary,
+		which is used by the top-level :func:`client_connected` handler to dispatch incoming connections to the correct classes.
+		
+		All message handler methods
 		(decorated with :func:`message_handler`)
-		into the :attr:`MESSAGE_HANDLERS` dictionary
-		so that :meth:`handle_message` can efficiently look them up.
+		inside the subclass are collected into the :attr:`MESSAGE_HANDLERS` dictionary,
+		which is used by :meth:`handle_message` to efficiently dispatch messages by type.
 		"""
+		
+		CONNECTION_CLASSES[cls.CONNECTION_TYPE] = cls
 		
 		cls.MESSAGE_HANDLERS = {}
 		
@@ -302,6 +314,8 @@ class BaseMOULConnection(object):
 
 
 class AuthConnection(BaseMOULConnection):
+	CONNECTION_TYPE = ConnectionType.cli2auth
+	
 	CONNECT_DATA = struct.Struct("<I16s")
 	
 	async def read_connect_packet_data(self) -> None:
@@ -325,11 +339,6 @@ class AuthConnection(BaseMOULConnection):
 		
 		# Reply to client register request
 		await self.write(b"\x03\x00\xde\xad\xbe\xef")
-
-
-CONNECTION_CLASSES: typing.Mapping[ConnectionType, typing.Type[BaseMOULConnection]] = {
-	ConnectionType.cli2auth: AuthConnection,
-}
 
 
 async def client_connected_inner(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
