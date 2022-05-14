@@ -44,9 +44,11 @@ OpenUru-based :ref:`internal clients <internal_external_client>` and all H'uru c
    single: encryption; secure file
    single: encryption; notthedroids
    single: encryption; droid
+   single: encryption; NTD
    single: encryption; XXTEA
    single: notthedroids
    single: droid
+   single: NTD
    single: XXTEA
    :name: notthedroids
 
