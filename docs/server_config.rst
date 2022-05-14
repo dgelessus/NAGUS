@@ -142,12 +142,11 @@ They are mainly useful for playing on alternative/testing servers operated by th
 e. g. Cyan's MOULa and MOULa Staging,
 or OpenUru's Minkata and Minkata-alpha.
 
-.. _server_ini:
+.. index:: server.ini
+   :name: server_ini
 
 server.ini (H'uru)
 ------------------
-
-.. index:: server.ini
 
 H'uru clients load all server information at runtime from a configuration file.
 This allows changing all server information without having to recompile the client.

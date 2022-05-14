@@ -45,6 +45,7 @@ assume that I mean "that version or later".
 
 .. index:: Plasma
    single: CWE
+   :name: plasma
 
 Confusingly,
 the MOULa game engine is also known under two names:

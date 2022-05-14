@@ -21,15 +21,14 @@ The product string consists of the following parts:
 Below is a list of *all* different kinds of version/build/product metadata,
 including some bits that *aren't* displayed in the product string.
 
-.. _core_name:
-
-Core name, short name, long name
---------------------------------
-
 .. index::
    single: core name
    single: short name
    single: long name
+   :name: core_name
+
+Core name, short name, long name
+--------------------------------
 
 The name of the game is stored three times,
 in slightly different formats.
@@ -51,24 +50,22 @@ for example,
 Gehn uses core name "UruGehn" and long name "Uru - Gehn Shard",
 and TOC-Moul uses core name "TOC" and long name "The Open Cave".
 
-.. _product_uuid:
+.. index:: product UUID
+   :name: product_uuid
 
 Product ID (UUID/GUID)
 ----------------------
-
-.. index:: product UUID
 
 A UUID/GUID identifying the game.
 All MOUL shards that I know of use the UUID ``ea489821-6c35-4bd0-9dae-bb17c585e680``.
 This value is sent to the server during :ref:`connection setup <connect_packet>`.
 It has no other effect on the client.
 
-.. _build_type:
+.. index:: build type
+   :name: build_type
 
 Build type
 ----------
-
-.. index:: build type
 
 Indicates the stage in the release cycle for which the client was built.
 The open-sourced client code defines the following build types:
@@ -91,12 +88,11 @@ and build type Dev enables a few extra assertions.
 For H'uru clients,
 the build type has no functional effect on the client.
 
-.. _branch_id:
+.. index:: branch ID
+   :name: branch_id
 
 Branch ID
 ---------
-
-.. index:: branch ID
 
 Has always been 1 for most shards,
 including GameTap MOUL, Cyan's MOULa, Minkata, and Gehn.
@@ -106,12 +102,11 @@ TOC-Moul currently uses branch ID 2.
 This value is sent to the server during :ref:`connection setup <connect_packet>`.
 It has no other effect on the client.
 
-.. _build_id:
+.. index:: build ID
+   :name: build_id
 
 Build ID
 --------
-
-.. index:: build ID
 
 This is meant to be a build number that is increased with every update.
 This value is sent to the server during :ref:`connection setup <connect_packet>`.
@@ -162,12 +157,11 @@ Cyan MOULa build IDs
   CWE Git commit `46a0cf62 <https://foundry.openuru.org/gitblit/commit/?r=CWE.git&h=46a0cf6206211366c43d5132b6190b3f4ca35c62>`__ (2013-07-05).
   All later client updates (as of 2022) also use this build number.
 
-.. _factory_id:
+.. index:: factory ID
+   :name: factory_id
 
 Factory ID
 ----------
-
-.. index:: factory ID
 
 Contains the real build number of OpenUru-built clients
 (for Cyan's MOULa shard and Minkata),
@@ -183,16 +177,15 @@ which serves a similar purpose.
 
 This value is not sent over the network and has no other effect on the client.
 
-.. _internal_external_client:
-
-Internal/external client
-------------------------
-
 .. index::
    single: internal client
    single: client; internal
    single: external client
    single: client; external
+   :name: internal_external_client
+
+Internal/external client
+------------------------
 
 MOUL clients can be built as either "Internal" or "External".
 Internal clients have a number of extra features over external clients
@@ -211,14 +204,13 @@ internal clients behave like external ones and don't explicitly tell the server 
 The main exception is when updating through the file server,
 where internal clients will request different manifests than external clients.
 
-.. _debug_release_build:
-
-Debug/release build
--------------------
-
 .. index::
    single: debug build
    single: release build
+   :name: debug_release_build
+
+Debug/release build
+-------------------
 
 This corresponds to the standard debug/release setting in Visual Studio and CMake.
 Clients built in debug mode have many additional assertions and some extra logging enabled

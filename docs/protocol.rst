@@ -41,12 +41,11 @@ you should disable `Nagle's algorithm <https://en.wikipedia.org/wiki/Nagle%27s_a
 by setting ``TCP_NODELAY``
 (this also reduces latency).
 
-.. _connect_packet:
+.. index:: connect packet
+   :name: connect_packet
 
 Connect packet
 --------------
-
-.. index:: connect packet
 
 When a client connects to a server,
 it immediately sends a *connect packet* with some information about the client and the requested connection type.

@@ -6,11 +6,6 @@ I'm explaining this here,
 because some of these are used during network communication
 and some of the keys vary between shards.
 
-.. _whatdoyousee:
-
-Data file encryption: whatdoyousee (XTEA)
------------------------------------------
-
 .. index::
    single: encryption; data file
    single: encryption; whatdoyousee
@@ -19,6 +14,10 @@ Data file encryption: whatdoyousee (XTEA)
    single: whatdoyousee
    single: WDYS
    single: XTEA
+   :name: whatdoyousee
+
+Data file encryption: whatdoyousee (XTEA)
+-----------------------------------------
 
 Most plain-text data files (.age, .csv, .fni, sometimes server.ini)
 and config files (.ini and login.dat in user data folder)
@@ -41,11 +40,6 @@ OpenUru-based :ref:`external clients <internal_external_client>` *require* all o
 and will not read them if unencrypted.
 OpenUru-based :ref:`internal clients <internal_external_client>` and all H'uru clients accept both encrypted and unencrypted files.
 
-.. _notthedroids:
-
-"Secure" file encryption: notthedroids (XXTEA)
-----------------------------------------------
-
 .. index::
    single: encryption; secure file
    single: encryption; notthedroids
@@ -54,6 +48,10 @@ OpenUru-based :ref:`internal clients <internal_external_client>` and all H'uru c
    single: notthedroids
    single: droid
    single: XXTEA
+   :name: notthedroids
+
+"Secure" file encryption: notthedroids (XXTEA)
+----------------------------------------------
 
 Some script files (.sdl, Python.pak)
 are encrypted using `XXTEA <https://en.wikipedia.org/wiki/XXTEA>`__ instead.
@@ -71,17 +69,16 @@ As with whatdoyousee-encrypted files,
 OpenUru-based external clients *require* the file types listed above to be encrypted,
 whereas OpenUru internal clients and all H'uru clients also accept them unencrypted.
 
-.. _dh_keys:
-
-Connection encryption (Diffie-Hellman, RC4)
--------------------------------------------
-
 .. index::
    single: encryption; connection
    single: encryption; RC4
    single: RC4
    single: Diffie-Hellman
    single: server keys
+   :name: dh_keys
+
+Connection encryption (Diffie-Hellman, RC4)
+-------------------------------------------
 
 .. warning::
    

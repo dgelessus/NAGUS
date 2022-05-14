@@ -8,6 +8,7 @@ but most aspects of gameplay are managed by the clients,
 without much logic and checks on the server side.
 
 .. index:: server
+   :name: server
 
 The server side of MOUL actually consists of multiple servers that are mostly independent from each other.
 Each of these servers may be hosted at a different address or port,
@@ -30,6 +31,7 @@ These are all the server types used by the open-sourced MOULa client code:
 
 * .. index:: status server
      single: server; status
+     :name: status_server
   
   **Status server:**
   Serves the status message (unsurprisingly)
@@ -44,6 +46,7 @@ These are all the server types used by the open-sourced MOULa client code:
 * .. index:: gatekeeper server
      single: server; gatekeeper
      single: GateKeeperSrv
+     :name: gatekeeper_server
   
   **Gatekeeper server (GateKeeperSrv):**
   Used by the patcher and game to get the address of the file server.
@@ -54,6 +57,7 @@ These are all the server types used by the open-sourced MOULa client code:
 * .. index:: file server
      single: server; file
      single: FileSrv
+     :name: file_server
   
   **File server (FileSrv):**
   Used by the patcher and game to update the data files.
@@ -64,6 +68,7 @@ These are all the server types used by the open-sourced MOULa client code:
 * .. index:: auth server
      single: server; auth
      single: AuthSrv
+     :name: auth_server
   
   **Auth server (AuthSrv):**
   Handles not just the login process,
@@ -81,6 +86,7 @@ These are all the server types used by the open-sourced MOULa client code:
      single: GameSrv
      single: game manager
      single: GameMgr
+     :name: game_server
   
   **Game server (GameSrv):**
   Provides communication within a single age instance
@@ -96,6 +102,7 @@ These are all the server types used by the open-sourced MOULa client code:
 
 * .. index:: CsrSrv
      single: server; CSR
+     :name: csr_server
   
   **CsrSrv:**
   It's not clear what "CSR" stands for --- "customer support representative" (or "remote")?
@@ -107,6 +114,7 @@ These are all the server types used by the open-sourced MOULa client code:
   and H'uru has dropped all CSR-related code.
 
 * .. index:: SimpleNet
+     :name: simplenet
   
   **SimpleNet:**
   A generic unencrypted network protocol meant for remote connections *to* a client.
