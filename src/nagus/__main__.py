@@ -107,7 +107,7 @@ def message_handler(message_type: int) -> typing.Callable[[MessageHandlerT], Mes
 	and should return nothing.
 	The name of the message handler method should be the name of the message type
 	(adjusted for Python's naming conventions) ---
-	I might use this as debug information in the future.
+	this is displayed in debug log messages.
 	"""
 	
 	def _message_handler_decorator(method: MessageHandlerT) -> MessageHandlerT:
@@ -297,8 +297,10 @@ class BaseMOULConnection(object):
 		try:
 			handler = type(self).MESSAGE_HANDLERS[message_type]
 		except KeyError:
+			logger.debug("Received message of unsupported type %d", message_type)
 			await self.handle_unknown_message(message_type)
 		else:
+			logger.debug("Received message of type %d (%s)", message_type, getattr(handler, "__name__", "name missing"))
 			await handler(self)
 	
 	async def handle(self) -> None:
@@ -309,7 +311,6 @@ class BaseMOULConnection(object):
 		# TODO Is there any way for clients to disconnect cleanly without unceremoniously closing the socket?
 		while True:
 			message_type = int.from_bytes(await self.read(2), "little")
-			logger.debug("Received message: type %d", message_type)
 			await self.handle_message(message_type)
 
 
