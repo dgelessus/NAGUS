@@ -314,7 +314,7 @@ class AuthConnection(BaseMOULConnection):
 		
 		data_length, token = await self.read_unpack(type(self).CONNECT_DATA)
 		if data_length != type(self).CONNECT_DATA.size:
-			raise ProtocolError(f"Client sent client-to-auth connect data with unexpected length {data_length} (should be {CLI2AUTH_CONNECT_DATA.size})")
+			raise ProtocolError(f"Client sent client-to-auth connect data with unexpected length {data_length} (should be {type(self).CONNECT_DATA.size})")
 		
 		token = uuid.UUID(bytes_le=token)
 		if token != ZERO_UUID:
