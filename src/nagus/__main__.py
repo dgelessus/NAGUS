@@ -336,6 +336,31 @@ class AuthConnection(BaseMOULConnection):
 		if build_id != self.build_id:
 			raise ProtocolError(f"Client register request build ID ({build_id}) differs from connect packet ({self.build_id})")
 		
+		# Send ServerCaps message for H'uru clients in a way that doesn't break OpenUru clients.
+		# This is barely tested and does some wacky stuff,
+		# so I'm commenting it out for now.
+		# H'uru clients generally work fine without the ServerCaps message.
+		r"""
+		await self.write(
+			# ServerCaps message type number - recognized by H'uru, but ignored by OpenUru.
+			b"\x02\x10"
+			# ServerCaps message data for H'uru.
+			# OpenUru parses this as the start of a FileDownloadChunk message,
+			# which will be ignored,
+			# because no file download transaction is active.
+			# H'uru sees: 0x25 bytes of data, bit vector is 1 dword long, value is 0
+			# OpenUru sees: message type 0x25 (FileDownloadChunk), transaction ID 0x10000, error code 0, file size 0 (continued below)
+			b"\x25\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00"
+			# ServerCaps message extra data,
+			# which is ignored by H'uru,
+			# because the bit vector doesn't have this many dwords.
+			# OpenUru parses this as the rest of FileDownloadChunk message:
+			b"\x00\x00" # file size 0 (continued)
+			b"\x00\x00\x00\x00\x13\x00\x00\x00" # chunk offset 0, chunk size 0x13
+			b"[ServerCaps compat]" # 0x13 bytes of chunk data
+		)
+		#"""
+		
 		# Reply to client register request
 		await self.write(b"\x03\x00\xde\xad\xbe\xef")
 
