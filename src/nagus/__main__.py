@@ -278,19 +278,6 @@ class BaseMOULConnection(object):
 		else:
 			raise ProtocolError(f"Client sent unsupported message type {message_type} - next few bytes: {data}")
 	
-	@message_handler(0)
-	async def ping_request(self) -> None:
-		"""Reply to ping request.
-		
-		Pings are supported by all connection types (gatekeeper, auth, game, CSR)
-		and always use message type 0 in both directions.
-		"""
-		
-		# FIXME This assumes an empty ping payload!
-		data = await self.read(12)
-		# Send ping time and payload back unmodified
-		await self.write(b"\x00\x00" + data)
-	
 	async def handle_message(self, message_type: int) -> None:
 		"""Dispatch a message to the appropriate handler based on its type."""
 		
@@ -332,6 +319,15 @@ class AuthConnection(BaseMOULConnection):
 		token = uuid.UUID(bytes_le=token)
 		if token != ZERO_UUID:
 			raise ProtocolError(f"Client sent client-to-auth connect data with unexpected token {token} (should be {ZERO_UUID})")
+	
+	@message_handler(0)
+	async def ping_request(self) -> None:
+		"""Reply to ping request."""
+		
+		# FIXME This assumes an empty ping payload!
+		data = await self.read(12)
+		# Send ping time and payload back unmodified
+		await self.write(b"\x00\x00" + data)
 	
 	@message_handler(1)
 	async def client_register_request(self) -> None:
