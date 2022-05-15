@@ -184,6 +184,13 @@ Here are the exact formats for all types
     * Csr = 1
     * Max = 2 (based on comments, this probably stands for 3DS Max, not "maximum" --- although this is also the highest defined channel ID!)
 
+.. note::
+   
+   After the connect packet,
+   SimpleNet connections use a different protocol than all other connection types.
+   I won't cover SimpleNet further here,
+   because it's practically unused.
+
 .. _connection_encryption:
 
 Encryption
@@ -298,3 +305,73 @@ The server side must recognize this unencrypted connection request
 and must reply accordingly with an Encrypt message with a 0-byte *seed* value.
 This is supported by DIRTSAND,
 but not MOSS or Cyan's server software.
+
+.. _messages:
+
+Messages
+--------
+
+Once the connection is fully set up,
+client and server communicate using messages in the following format:
+
+* **Message type:** 2-byte unsigned int.
+* **Message data:** Varies depending on message type.
+
+The meaning of the message type number depends on the connection type and communication direction
+(client -> server or server -> client).
+For each connection type,
+client-to-server and server-to-client messages with the same type numbers often have related meanings ---
+e. g. file server message type 20 is a manifest *request* when sent by the client and a manifest *reply* when sent by the server.
+This is not required though ---
+e. g. the auth server protocol uses different message type numbers for request and reply messages,
+and some messages don't have any counterpart in the opposite direction.
+
+Each connection type uses entirely different message type numbers.
+The only exception is message type 0,
+which stands for a ping request/reply for all known connection types
+(gatekeeper, file, auth, game, CSR),
+although the data format differs between connection types.
+
+The format of the message data is completely different for each message type
+(which in turn depends on the connection type and communication direction).
+The overall message format doesn't contain any generic information about the structure of the message,
+not even its length.
+This means that if a message with an unknown type is received,
+it's impossible to safely process that message and any further ones after it.
+
+.. note::
+   
+   In the rest of this documentation,
+   if I say "message type",
+   assume that I mean the *logical* message type,
+   i. e. the combination of message type number, communication direction, and connection type.
+
+Handling of unknown message types
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In the open-sourced client code,
+when an unknown message type is received,
+the client logs an error,
+but it doesn't abort the connection and doesn't try to recover from the error in any way.
+Instead,
+the data following the unknown message type is treated as the start of the next message,
+which is almost guaranteed to result in nonsense and unlikely to resynchronize the message stream correctly.
+
+This (lack of) error handling is still present in both the OpenUru and H'uru codebases.
+Cyan's MOULa server software probably behaves similarly.
+The open-source MOSS and DIRTSAND servers handle this more safely
+by closing the connection when an unknown message is received.
+
+To avoid unpredictable behavior,
+both client and server must be careful to only send message types that the other side understands.
+
+H'uru clients and DIRTSAND implement a few new message types
+that are not supported by OpenUru clients, MOSS, or Cyan's server software.
+To avoid issues with non-DIRTSAND servers,
+a H'uru client will never send any of these extended messages
+unless the server has indicated that it supports them.
+Unfortunately,
+to inform clients about its features,
+DIRTSAND sends a new message type (Auth2Cli_ServerCaps) to every client as soon as it connects to the auth server.
+This makes current DIRTSAND versions (since 2018) incompatible with OpenUru clients (and old H'uru clients from before 2017),
+because they don't understand the new message type sent by the server.
