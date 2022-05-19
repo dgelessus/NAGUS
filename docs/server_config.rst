@@ -41,7 +41,7 @@ Below is a list of the exact files, macros, variables, and functions containing 
    When configuring your own server addresses,
    you can safely remove all the build type conditionals and set a single fixed value instead.
 
-.. c:macro:: SERVER_PATH
+.. c:macro:: STATUS_PATH
    
    (in files :file:`Plasma/Apps/plClient/winmain.cpp`, :file:`Plasma/Apps/plUruLauncher/Main.cpp`)
    
@@ -54,7 +54,7 @@ Below is a list of the exact files, macros, variables, and functions containing 
    The status server port number is hardcoded to 80.
    To change it,
    locate the ``WinHttpConnect`` calls in the ``StatusCallback`` functions
-   (in the same source files as :c:macro:`SERVER_PATH`)
+   (in the same source files as :c:macro:`STATUS_PATH`)
    and replace ``INTERNET_DEFAULT_HTTP_PORT`` with the desired port number.
 
 .. cpp:function:: const wchar *BuildTypeServerStatusPath()
