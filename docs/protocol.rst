@@ -375,3 +375,148 @@ to inform clients about its features,
 DIRTSAND sends a new message type (Auth2Cli_ServerCaps) to every client as soon as it connects to the auth server.
 This makes current DIRTSAND versions (since 2018) incompatible with OpenUru clients (and old H'uru clients from before 2017),
 because they don't understand the new message type sent by the server.
+
+Message descriptions in the client code
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For all connection types except the file server,
+the structure of each message type is declaratively specified in global variables,
+which are used by the client code to convert between network and in-memory representations of the message data.
+The file server client code doesn't use this mechanism
+and instead directly reads/writes structs in memory,
+so all information below *doesn't* apply there.
+
+The infrastructure for declaring message structures is found in :file:`Plasma/NucleusLib/pnNetCli/pnNetCli.h`.
+The actual message definitions are found under :file:`Plasma/NucleusLib/pnNetProtocol/Private/Protocols`,
+with each connection type having its own subdirectory.
+Message types are declared with the following macro:
+
+.. c:macro:: NET_MSG(msgId, msgFields)
+   
+   Initializer for a ``NetMsg`` struct.
+   
+   :param msgId: Name of the integer constant for the message type number.
+       By convention,
+       this constant should be named :samp:`k{Sender}2{Receiver}_{MessageName}`,
+       e.g. ``kCli2Auth_PingRequest`` or ``kAuth2Cli_PingReply``.
+   :param msgFields: Name of a ``NetMsgField []`` variable describing the types of all fields in the message.
+
+A simple message type declaration might look like this:
+
+.. code-block:: cpp
+   
+   // header file
+   enum {
+       kCli2Whatever_SomeMessage,
+   };
+   extern const NetMsg kNetMsg_Cli2Whatever_SomeMessage;
+   
+   // source file
+   static const NetMsgField kSomeMessageFields[] = {
+       NET_MSG_FIELD_DWORD(),
+       NET_MSG_FIELD_STRING(64),
+   };
+   const NetMsg kNetMsg_Cli2Whatever_SomeMessage =
+       NET_MSG(kCli2Whatever_SomeMessage, kSomeMessageFields);
+
+The following basic message field types are defined:
+
+.. c:macro::
+   NET_MSG_FIELD_BYTE()
+   NET_MSG_FIELD_WORD()
+   NET_MSG_FIELD_DWORD()
+   NET_MSG_FIELD_QWORD()
+   
+   A single integer,
+   1, 2, 4, or 8 bytes large,
+   respectively.
+   Only :c:macro:`NET_MSG_FIELD_BYTE` and :c:macro:`NET_MSG_FIELD_DWORD` are actively used.
+
+.. c:macro::
+   NET_MSG_FIELD_FLOAT()
+   NET_MSG_FIELD_DOUBLE()
+   
+   A single floating-point number,
+   4 or 8 bytes large,
+   respectively.
+   Not actively used.
+
+.. c:macro::
+   NET_MSG_FIELD_BYTE_ARRAY(maxCount)
+   NET_MSG_FIELD_WORD_ARRAY(maxCount)
+   NET_MSG_FIELD_DWORD_ARRAY(maxCount)
+   NET_MSG_FIELD_QWORD_ARRAY(maxCount)
+   NET_MSG_FIELD_FLOAT_ARRAY(maxCount)
+   NET_MSG_FIELD_DOUBLE_ARRAY(maxCount)
+   
+   A fixed-length array of any of the above types.
+   Only :c:macro:`NET_MSG_FIELD_DWORD_ARRAY` is actively used.
+   
+   :param maxCount: Number of elements in the array.
+       Contrary to the *max* in the name,
+       the array must always have *exactly* this many elements and not fewer.
+
+.. c:macro:: NET_MSG_FIELD_STRING(maxLength)
+   
+   A little-endian UTF-16 string,
+   prefixed with a 16-bit unsigned int length field
+   (counted in 16-bit code units, not bytes).
+   
+   :param maxCount: Maximum length of the string in code units **plus one**.
+       The extra code unit is reserved for the zero terminator,
+       which is not transmitted over the network,
+       but is implicitly added by the client when it receives the string.
+
+.. c:macro::
+   NET_MSG_FIELD_DATA(maxBytes)    
+   NET_MSG_FIELD_PTR(maxBytes)     
+   NET_MSG_FIELD_RAW_DATA(maxBytes)
+   NET_MSG_FIELD_RAW_PTR(maxBytes)
+   
+   A fixed-length field of bytes with no declared structure.
+   There is no functional difference between these four types.
+   Only :c:macro:`NET_MSG_FIELD_DATA` and :c:macro:`NET_MSG_FIELD_RAW_DATA` are actively used ---
+   in fact,
+   the open-sourced client code doesn't implement reading for :c:macro:`NET_MSG_FIELD_PTR` and :c:macro:`NET_MSG_FIELD_RAW_PTR`,
+   only writing.
+   
+   :param maxCount: Size in bytes of the field.
+       Contrary to the *max* in the name,
+       the data must be *exactly* this long and not shorter.
+
+.. c:macro:: NET_MSG_FIELD_VAR_COUNT(elemSize, maxCount)
+   
+   A 4-byte unsigned integer indicating the number of elements in the following variable-length array field
+   (:c:macro:`NET_MSG_FIELD_VAR_PTR` or :c:macro:`NET_MSG_FIELD_RAW_VAR_PTR`).
+   
+   :param elemSize: Size in bytes of each array element.
+   :param maxCount: Maximum number of elements in the array.
+
+.. c:macro::
+   NET_MSG_FIELD_VAR_PTR()    
+   NET_MSG_FIELD_RAW_VAR_PTR()
+   
+   A variable-length array of fixed-size elements.
+   The structure of the individual elements isn't declared further.
+   There is no functional difference between these two types.
+   
+   There can be at most one variable-length array field per message.
+   If there is one,
+   it must be the last field in the message
+   and it must be directly preceded by a :c:macro:`NET_MSG_FIELD_VAR_COUNT` field.
+
+A few higher-level aliases for some field types are defined in :file:`Plasma/NucleusLib/pnNetProtocol/Private/pnNpCommon.h`.
+They are not always used consistently ---
+e.g. some ``transId`` fields are declared as :c:macro:`NET_MSG_FIELD_DWORD` instead of :cpp:var:`kNetMsgFieldTransId`.
+
+.. cpp:var::
+   const NetMsgField kNetMsgFieldAccountName = NET_MSG_FIELD_STRING(64)
+   const NetMsgField kNetMsgFieldPlayerName = NET_MSG_FIELD_STRING(40)
+   const NetMsgField kNetMsgFieldShaDigest = NET_MSG_FIELD_RAW_DATA(20)
+   const NetMsgField kNetMsgFieldUuid = NET_MSG_FIELD_DATA(16)
+   const NetMsgField kNetMsgFieldTransId = NET_MSG_FIELD_DWORD()
+   const NetMsgField kNetMsgFieldTimeMs = NET_MSG_FIELD_DWORD()
+   const NetMsgField kNetMsgFieldENetError = NET_MSG_FIELD_DWORD()
+   const NetMsgField kNetMsgFieldEAgeId = NET_MSG_FIELD_DWORD()
+   const NetMsgField kNetMsgFieldNetNode = NET_MSG_FIELD_DWORD()
+   const NetMsgField kNetMsgFieldBuildId = NET_MSG_FIELD_DWORD()
