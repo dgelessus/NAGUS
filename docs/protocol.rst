@@ -317,6 +317,13 @@ client and server communicate using messages in the following format:
 * **Message type:** 2-byte unsigned int.
 * **Message data:** Varies depending on message type.
 
+The file server connection uses a slightly different message header,
+but otherwise behaves like all the others:
+
+* **Message byte count:** 4-byte unsigned int.
+* **Message type:** 4-byte unsigned int.
+* **Message data:** Varies dependning on the message type.
+
 The meaning of the message type number depends on the connection type and communication direction
 (client -> server or server -> client).
 For each connection type,
@@ -334,9 +341,11 @@ although the data format differs between connection types.
 
 The format of the message data is completely different for each message type
 (which in turn depends on the connection type and communication direction).
-The overall message format doesn't contain any generic information about the structure of the message,
-not even its length.
-This means that if a message with an unknown type is received,
+The overall message format doesn't contain any generic information about the structure of the message ---
+there isn't even a length field,
+except in the file server protocol.
+For all other connection types,
+if a message with an unknown type is received,
 it's impossible to safely process that message and any further ones after it.
 
 .. note::
@@ -357,8 +366,18 @@ Instead,
 the data following the unknown message type is treated as the start of the next message,
 which is almost guaranteed to result in nonsense and unlikely to resynchronize the message stream correctly.
 
+For the file server protocol,
+the situation is slightly different ---
+because the file server message header contains a length field,
+it's theoretically possible to safely skip unknown messages.
+However,
+the open-sourced client code triggers a debug assertion failure when an unknown message type is received.
+Even worse,
+in :ref:`release builds <debug_release_build>` the assertion is replaced by an unreachable code statement,
+leading to unpredictable behavior if a release client is sent an unknown file server message.
+
 This (lack of) error handling is still present in both the OpenUru and H'uru codebases.
-Cyan's MOULa server software probably behaves similarly.
+Cyan's MOULa server software probably behaves similarly to the open-source client.
 The open-source MOSS and DIRTSAND servers handle this more safely
 by closing the connection when an unknown message is received.
 
@@ -384,7 +403,7 @@ the structure of each message type is declaratively specified in global variable
 which are used by the client code to convert between network and in-memory representations of the message data.
 The file server client code doesn't use this mechanism
 and instead directly reads/writes structs in memory,
-so all information below *doesn't* apply there.
+so this section *doesn't* apply there.
 
 The infrastructure for declaring message structures is found in :file:`Plasma/NucleusLib/pnNetCli/pnNetCli.h`.
 The actual message definitions are found under :file:`Plasma/NucleusLib/pnNetProtocol/Private/Protocols`,
