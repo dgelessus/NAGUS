@@ -17,12 +17,8 @@ Contents
 .. toctree::
    :maxdepth: 2
    
-   intro
-   architecture
-   product_id
-   encryption_keys
-   server_config
-   protocol
+   uru/index
+   nagus
 
 Indices and tables
 ==================
