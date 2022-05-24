@@ -1,11 +1,15 @@
 The MOUL network protocol
 =========================
 
-All the different MOUL servers
-(except for the status server)
-use the same basic network protocol to talk with clients.
-Communication is over TCP,
-by default on port 14617.
+MOUL clients communicate with the server side over TCP,
+on port 14617 by default.
+All the different server types use the same basic protocol,
+although a few server types
+(:ref:`file server <file_server>` and :ref:`SimpleNet <simplenet>`)
+modify the protocol somewhat.
+Finally,
+the :ref:`status server <status_server>` uses standard HTTP on the conventional port 80
+instead of the MOUL protocol.
 
 The protocol mostly uses packed binary data structures.
 Unless indicated otherwise,

@@ -37,9 +37,9 @@ These are all the server types used by the open-sourced MOULa client code:
   Serves the status message (unsurprisingly)
   that is displayed in the patcher and login window.
   Unlike all the other servers,
-  this one uses regular HTTP via the conventional port 80.
-  The status message can be hosted with a standard HTTP server,
-  with the advantage that the status will display even if the Uru server itself is down.
+  this one uses regular HTTP and not the custom :doc:`MOUL protocol <protocol>`.
+  The status message can be hosted with any standard HTTP server separately from the Uru server,
+  which has the advantage that the status will display even if the Uru server is down.
   Alternatively,
   DIRTSAND also includes an optional minimal HTTP server for the status message.
 
