@@ -19,3 +19,4 @@ focusing especially on the network protocol and related aspects.
    encryption_keys
    server_config
    protocol
+   auth_server

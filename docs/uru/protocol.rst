@@ -11,6 +11,10 @@ Finally,
 the :ref:`status server <status_server>` uses standard HTTP on the conventional port 80
 instead of the MOUL protocol.
 
+.. seealso::
+   
+   :doc:`architecture` for a high-level overview of the different MOUL server types.
+
 The protocol mostly uses packed binary data structures.
 Unless indicated otherwise,
 all integers use little-endian byte order

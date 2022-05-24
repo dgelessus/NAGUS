@@ -65,21 +65,14 @@ These are all the server types used by the open-sourced MOULa client code:
   Some files are considered "secure" and are served via the auth server instead,
   although especially H'uru/DIRTSAND-based shards serve everything via the file server.
 
-* .. index:: auth server
-     single: server; auth
-     single: AuthSrv
-     :name: auth_server
-  
-  **Auth server (AuthSrv):**
+* :doc:`auth_server` **(AuthSrv):**
   Handles not just the login process,
-  but all kinds of global communication
+  but all kinds of global communication and state
   that is not specific to the player's current age.
-  This includes sending players to the right game server when going to a new age,
-  providing access to the vault and score mechanisms,
-  and serving "secure" files not provided by the file server.
-  The client code was apparently designed to support multiple alternative auth servers,
-  but this was not fully implemented,
-  so in practice there can be only one.
+  Notably,
+  the auth server sends players to a :ref:`game server <game_server>` when going to a new age,
+  which is then responsible for all intra-age interaction.
+  There is only one auth server per shard for all clients.
 
 * .. index:: game server
      single: server; game
