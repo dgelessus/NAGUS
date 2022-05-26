@@ -28,15 +28,16 @@ from . import base
 logger = logging.getLogger(__name__)
 
 
+CONNECT_DATA = struct.Struct("<I16s")
+
+PING_HEADER = struct.Struct("<III")
+
+
 ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
 
 
 class AuthConnection(base.BaseMOULConnection):
 	CONNECTION_TYPE = base.ConnectionType.cli2auth
-	
-	CONNECT_DATA = struct.Struct("<I16s")
-	
-	PING_HEADER = struct.Struct("<III")
 	
 	async def read_connect_packet_data(self) -> None:
 		"""Read and unpack the type-specific connect packet data.
@@ -44,9 +45,9 @@ class AuthConnection(base.BaseMOULConnection):
 		The unpacked information is currently discarded.
 		"""
 		
-		data_length, token = await self.read_unpack(type(self).CONNECT_DATA)
-		if data_length != type(self).CONNECT_DATA.size:
-			raise base.ProtocolError(f"Client sent client-to-auth connect data with unexpected length {data_length} (should be {type(self).CONNECT_DATA.size})")
+		data_length, token = await self.read_unpack(CONNECT_DATA)
+		if data_length != CONNECT_DATA.size:
+			raise base.ProtocolError(f"Client sent client-to-auth connect data with unexpected length {data_length} (should be {CONNECT_DATA.size})")
 		
 		token = uuid.UUID(bytes_le=token)
 		if token != ZERO_UUID:
@@ -56,8 +57,8 @@ class AuthConnection(base.BaseMOULConnection):
 	async def ping_request(self) -> None:
 		"""Reply to ping request."""
 		
-		header_data = await self.read(type(self).PING_HEADER.size)
-		ping_time, trans_id, payload_length = type(self).PING_HEADER.unpack(header_data)
+		header_data = await self.read(PING_HEADER.size)
+		ping_time, trans_id, payload_length = PING_HEADER.unpack(header_data)
 		logger.debug("Ping request: time %d, transaction %d, payload %d bytes", ping_time, trans_id, payload_length)
 		payload = await self.read(payload_length)
 		# Send everything back unmodified
