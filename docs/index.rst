@@ -9,7 +9,9 @@ for which there is currently not much documentation.
 But please be aware that I actually don't know a lot about Uru's architecture ---
 most of this is written while I'm still figuring it out myself,
 so expect mistakes!
-I'll try to fix the code and docs if I notice that I got something wrong.
+(If you find any errors,
+tell me on the `issue tracker <https://github.com/dgelessus/NAGUS/issues>`__
+and I'll try to fix the code and/or docs.)
 
 .. seealso::
    
