@@ -161,7 +161,7 @@ class BaseMOULConnection(object):
 			try:
 				attr = getattr(cls, name)
 			except AttributeError:
-				pass
+				continue
 			
 			if callable(attr):
 				try:
