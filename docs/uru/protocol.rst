@@ -547,3 +547,46 @@ e.g. some ``transId`` fields are declared as :c:macro:`NET_MSG_FIELD_DWORD` inst
    const NetMsgField kNetMsgFieldEAgeId = NET_MSG_FIELD_DWORD()
    const NetMsgField kNetMsgFieldNetNode = NET_MSG_FIELD_DWORD()
    const NetMsgField kNetMsgFieldBuildId = NET_MSG_FIELD_DWORD()
+
+.. index:: ping
+   :name: ping
+
+Ping messages
+-------------
+
+All server types implement a pair of ping messages.
+When the client sends a ping request,
+the server replies as soon as possible with a ping response.
+(The server cannot initiate pings,
+only reply to requests from the client.)
+
+For all types except the game server,
+the client regularly sends ping requests to the server
+to tell it that the connection is still alive.
+MOSS automatically disconnects clients that haven't sent pings for a while.
+DIRTSAND also times out inactive clients similarly,
+but it understands any client message as a keepalive
+and doesn't require ping messages specifically.
+.. TODO What does Cyan's server software do?
+
+All ping request/reply messages use message type number 0.
+The exact format of the messages differs between server types,
+but the ping request and reply messages for each server type are always structured identically.
+
+All variants of the ping message contain a ping time field,
+which the client sets to a timestamp indicating when the ping was sent.
+This timestamp is not absolute,
+has no well-defined format,
+and cannot be interpreted by the server ---
+it's expected to be sent unmodified back to the client.
+(OpenUru clients set the ping time field based on `GetTickCount <https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-gettickcount>`__,
+whereas H'uru clients use a custom relative clock that is reset for every run of the client.)
+
+The gatekeeper, auth, and CSR ping messages contain two additional fields:
+a transaction ID,
+and a payload of up to 64 KiB.
+Like the ping time,
+they are set by the client
+and sent back unmodified without being interpreted by the server.
+In practice,
+clients always send transaction ID 0 and an empty payload.

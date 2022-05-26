@@ -35,7 +35,7 @@ and request/reply pairs align better.
    :widths: auto
    
    ,*Global*,,
-   0,PingRequest,PingReply,0
+   0,:ref:`PingRequest <cli2auth_ping_request>`,:ref:`PingReply <auth2cli_ping_reply>`,0
    ,,ServerAddr,1
    ,,NotifyNewBuild,2
    ,*Client*,,
@@ -112,3 +112,27 @@ and request/reply pairs align better.
    0x1000,AgeRequestEx,AgeReplyEx,0x1000
    0x1001,ScoreGetHighScores,ScoreGetHighScoresReply,0x1001
    ,,ServerCaps,0x1002
+
+.. _cli2auth_ping_request:
+
+Cli2Auth_PingRequest
+^^^^^^^^^^^^^^^^^^^^
+
+* **Ping time:** 4-byte unsigned int.
+* **Transaction ID:** 4-byte unsigned int.
+* **Payload byte count:** 4-byte unsigned int.
+* **Payload:** Variable-length.
+
+See :ref:`ping` for details.
+
+.. _auth2cli_ping_reply:
+
+Auth2Cli_PingReply
+^^^^^^^^^^^^^^^^^^
+
+* **Ping time:** 4-byte unsigned int.
+* **Transaction ID:** 4-byte unsigned int.
+* **Payload byte count:** 4-byte unsigned int.
+* **Payload:** Variable-length.
+
+See :ref:`ping` for details.
