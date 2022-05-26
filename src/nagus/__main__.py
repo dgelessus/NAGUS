@@ -17,361 +17,32 @@
 
 """This is NAGUS, an Uru Live server that is not very good.
 
-This file currently implements the entire server,
-until I refactor this properly.
-
-See the docs directory for some general documentation about Uru's network protocol.
+This module implements the main entry point for the server.
+There's almost no actual logic in this module ---
+the code here just dispatches incoming connections to other modules that do the actual work.
 """
 
 
-import abc
 import asyncio
-import enum
 import logging
 import socket
-import struct
 import sys
 import typing
-import uuid
+
+from . import auth_server
+from . import base
 
 
 logger = logging.getLogger(__name__)
 
 
-WORD = struct.Struct("<H")
-DWORD = struct.Struct("<I")
-QWORD = struct.Struct("<Q")
-# No BYTE - just do await self.read(1) instead!
+CONNECTION_CLASSES: typing.Mapping[base.ConnectionType, typing.Type[base.BaseMOULConnection]] = {}
 
-CONNECT_HEADER_TAIL = struct.Struct("<III16s") 
-CONNECT_HEADER_LENGTH = struct.calcsize("<BH") + CONNECT_HEADER_TAIL.size
-
-SETUP_MESSAGE_HEADER = struct.Struct("<BB")
-
-
-ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
-
-
-class BuildType(enum.Enum):
-	dev = 10
-	qa = 20
-	test = 30
-	beta = 40
-	live = 50
-
-
-class ConnectionType(enum.Enum):
-	nil = 0
-	debug = 1
-	
-	cli2auth = 10
-	cli2game = 11
-	srv2agent = 12
-	srv2mcp = 13
-	srv2vault = 14
-	srv2db = 15
-	cli2file = 16
-	srv2state = 17
-	srv2log = 18
-	srv2score = 19
-	cli2csr = 20
-	simple_net = 21
-	cli2gatekeeper = 22
-	
-	admin_interface = ord("a")
-
-
-class SetupMessageType(enum.Enum):
-	cli2srv_connect = 0
-	srv2cli_encrypt = 1
-	srv2cli_error = 2
-
-
-class ProtocolError(Exception):
-	pass
-
-
-ConnT = typing.TypeVar("ConnT", bound="BaseMOULConnection")
-MessageHandler = typing.Callable[[ConnT], typing.Awaitable[None]]
-MessageHandlerT = typing.TypeVar("MessageHandlerT", bound=MessageHandler)
-
-
-def message_handler(message_type: int) -> typing.Callable[[MessageHandlerT], MessageHandlerT]:
-	"""Register the decorated method as a handler for the given message type.
-	
-	When the message handler method is called,
-	the message type has already been read,
-	but nothing else.
-	The message handler is responsible for reading the message body.
-	This can't be done generically,
-	because messages don't have an overall byte length field.
-	
-	This decorator should only be used inside :class:`BaseMOULConnection` and subclasses.
-	The decorated method must be ``async``,
-	should take no arguments,
-	and should return nothing.
-	The name of the message handler method should be the name of the message type
-	(adjusted for Python's naming conventions) ---
-	this is displayed in debug log messages.
-	"""
-	
-	def _message_handler_decorator(method: MessageHandlerT) -> MessageHandlerT:
-		method.message_type = message_type
-		return method
-	
-	return _message_handler_decorator
-
-
-CONNECTION_CLASSES: typing.Mapping[ConnectionType, typing.Type["BaseMOULConnection"]] = {}
-
-
-class BaseMOULConnection(object):
-	"""Base implementation of the MOUL network protocol (spoken over port 14617).
-	
-	Subclasses are expected to implement :meth:`read_connect_packet_data`
-	as well as message handlers for all supported message types
-	(see :func:`message_handler`).
-	"""
-	
-	MESSAGE_HANDLERS: typing.ClassVar[typing.Dict[int, MessageHandler]]
-	CONNECTION_TYPE: ConnectionType # to be set in each subclass
-	
-	reader: asyncio.StreamReader
-	writer: asyncio.StreamWriter
-	
-	build_id: int
-	build_type: BuildType
-	branch_id: int
-	product_id: uuid.UUID
-	
-	@classmethod
-	def __init_subclass__(cls) -> None:
-		"""Register a new connection class and its message handlers.
-		
-		Every subclass of :class:`BaseMOULConnection` must set the class attribute :attr:`CONNECTION_TYPE`.
-		The subclass is automatically inserted into the :data:`CONNECTION_CLASSES` dictionary,
-		which is used by the top-level :func:`client_connected` handler to dispatch incoming connections to the correct classes.
-		
-		All message handler methods
-		(decorated with :func:`message_handler`)
-		inside the subclass are collected into the :attr:`MESSAGE_HANDLERS` dictionary,
-		which is used by :meth:`handle_message` to efficiently dispatch messages by type.
-		"""
-		
-		CONNECTION_CLASSES[cls.CONNECTION_TYPE] = cls
-		
-		cls.MESSAGE_HANDLERS = {}
-		
-		for name in dir(cls):
-			try:
-				attr = getattr(cls, name)
-			except AttributeError:
-				continue
-			
-			if callable(attr):
-				try:
-					message_type = attr.message_type
-				except AttributeError:
-					continue
-				
-				cls.MESSAGE_HANDLERS[message_type] = typing.cast(MessageHandler, attr)
-	
-	def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-		super().__init__()
-		
-		self.reader = reader
-		self.writer = writer
-	
-	async def read(self, byte_count: int) -> bytes:
-		"""Read ``byte_count`` bytes from the socket and raise :class:`~asyncio.IncompleteReadError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""
-		
-		return await self.reader.readexactly(byte_count)
-	
-	async def write(self, data: bytes) -> None:
-		"""Write ``data`` to the socket.
-		
-		The exact implementation might change in the future ---
-		it seems that Uru expects certain data to arrive as a single packet,
-		even though TCP doesn't guarantee that packet boundaries are preserved in transmission.
-		"""
-		
-		self.writer.write(data)
-		await self.writer.drain()
-	
-	async def read_unpack(self, st: struct.Struct) -> tuple:
-		"""Read and unpack data from the socket according to the struct ``st``.
-		
-		The number of bytes to read is determined using :field:`struct.Struct.size`,
-		so variable-sized structs cannot be used with this method.
-		"""
-		
-		return st.unpack(await self.read(st.size))
-	
-	async def read_connect_packet_header(self) -> None:
-		"""Read and unpack the remaining connect packet header and store the unpacked information.
-		
-		When this method is called,
-		the connection type has already been read ---
-		it was used to select the subclass of :class:`BaseMOULConnection` to be used.
-		"""
-		
-		(header_length,) = await self.read_unpack(WORD)
-		if header_length != CONNECT_HEADER_LENGTH:
-			raise ProtocolError(f"Client sent connect header with unexpected length {header_length} (should be {CONNECT_HEADER_LENGTH})")
-		
-		build_id, build_type, branch_id, product_id = await self.read_unpack(CONNECT_HEADER_TAIL)
-		self.build_id = build_id
-		self.build_type = BuildType(build_type)
-		self.branch_id = branch_id
-		self.product_id = uuid.UUID(bytes_le=product_id)
-		logger.debug("Received rest of connect packet header: build ID %d, build type %s, branch ID %d, product ID %s", self.build_id, self.build_type, self.branch_id, self.product_id)
-	
-	@abc.abstractmethod
-	async def read_connect_packet_data(self) -> None:
-		"""Read and unpack the type-specific connect packet data."""
-		
-		raise NotImplementedError()
-	
-	async def setup_encryption(self) -> None:
-		"""Handle an encryption setup packet from the client and set up encryption accordingly.
-		
-		Currently doesn't actually support encryption yet!
-		Unencrypted H'uru connections are accepted.
-		Anything that looks like an encrypted connection is assumed to be an OpenUru client with encryption disabled.
-		"""
-		
-		message_type, length = await self.read_unpack(SETUP_MESSAGE_HEADER)
-		message_type = SetupMessageType(message_type)
-		logger.debug("Received setup message: type %s, %d bytes", message_type, length)
-		
-		data = await self.read(length - SETUP_MESSAGE_HEADER.size)
-		logger.debug("Setup message data: %s", data)
-		
-		if data:
-			# Received a server seed from client.
-			# We don't support encryption yet,
-			# so for now,
-			# assume it's a CWE/OpenUru client built with NO_ENCRYPTION.
-			# In this case,
-			# we have to send back a seed of the correct length,
-			# but the client will not use it and the connection will be unencrypted.
-			logger.debug("Received a server seed, but encryption not supported yet! Assuming NO_ENCRYPTION and replying with a dummy client seed.")
-			await self.write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
-		else:
-			# H'uru internal client sent an empty server seed to explicitly request no encryption.
-			# We have to reply with an empty client seed,
-			# or else the client will abort the connection.
-			logger.debug("Received empty server seed - setting up unencrypted connection.")
-			await self.write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
-		
-		logger.debug("Done setting up encryption")
-	
-	async def handle_unknown_message(self, message_type: int) -> None:
-		"""Read and handle an unknown message of the given type.
-		
-		Because the message protocol doesn't have a generic length field,
-		it's impossible to continue reading correctly after an unknown message,
-		so we have to abort the connection.
-		"""
-		
-		try:
-			# For debugging,
-			# try to read a bit of data after it without waiting too long.
-			data = await asyncio.wait_for(self.reader.read(64), 0.1)
-		except asyncio.TimeoutError as exc:
-			raise ProtocolError(f"Client sent unsupported message type {message_type} and no data quickly following it")
-		else:
-			raise ProtocolError(f"Client sent unsupported message type {message_type} - next few bytes: {data}")
-	
-	async def handle_message(self, message_type: int) -> None:
-		"""Dispatch a message to the appropriate handler based on its type."""
-		
-		try:
-			handler = type(self).MESSAGE_HANDLERS[message_type]
-		except KeyError:
-			logger.debug("Received message of unsupported type %d", message_type)
-			await self.handle_unknown_message(message_type)
-		else:
-			logger.debug("Received message of type %d (%s)", message_type, getattr(handler, "__name__", "name missing"))
-			await handler(self)
-	
-	async def handle(self) -> None:
-		await self.read_connect_packet_header()
-		await self.read_connect_packet_data()
-		await self.setup_encryption()
-		
-		# TODO Is there any way for clients to disconnect cleanly without unceremoniously closing the socket?
-		while True:
-			(message_type,) = await self.read_unpack(WORD)
-			await self.handle_message(message_type)
-
-
-class AuthConnection(BaseMOULConnection):
-	CONNECTION_TYPE = ConnectionType.cli2auth
-	
-	CONNECT_DATA = struct.Struct("<I16s")
-	
-	PING_HEADER = struct.Struct("<III")
-	
-	async def read_connect_packet_data(self) -> None:
-		"""Read and unpack the type-specific connect packet data.
-		
-		The unpacked information is currently discarded.
-		"""
-		
-		data_length, token = await self.read_unpack(type(self).CONNECT_DATA)
-		if data_length != type(self).CONNECT_DATA.size:
-			raise ProtocolError(f"Client sent client-to-auth connect data with unexpected length {data_length} (should be {type(self).CONNECT_DATA.size})")
-		
-		token = uuid.UUID(bytes_le=token)
-		if token != ZERO_UUID:
-			raise ProtocolError(f"Client sent client-to-auth connect data with unexpected token {token} (should be {ZERO_UUID})")
-	
-	@message_handler(0)
-	async def ping_request(self) -> None:
-		"""Reply to ping request."""
-		
-		header_data = await self.read(type(self).PING_HEADER.size)
-		ping_time, trans_id, payload_length = type(self).PING_HEADER.unpack(header_data)
-		logger.debug("Ping request: time %d, transaction %d, payload %d bytes", ping_time, trans_id, payload_length)
-		payload = await self.read(payload_length)
-		# Send everything back unmodified
-		await self.write(b"\x00\x00" + header_data + payload)
-	
-	@message_handler(1)
-	async def client_register_request(self) -> None:
-		(build_id,) = await self.read_unpack(DWORD)
-		logger.debug("Build ID: %d", build_id)
-		if build_id != self.build_id:
-			raise ProtocolError(f"Client register request build ID ({build_id}) differs from connect packet ({self.build_id})")
-		
-		# Send ServerCaps message for H'uru clients in a way that doesn't break OpenUru clients.
-		# This is barely tested and does some wacky stuff,
-		# so I'm commenting it out for now.
-		# H'uru clients generally work fine without the ServerCaps message.
-		r"""
-		await self.write(
-			# ServerCaps message type number - recognized by H'uru, but ignored by OpenUru.
-			b"\x02\x10"
-			# ServerCaps message data for H'uru.
-			# OpenUru parses this as the start of a FileDownloadChunk message,
-			# which will be ignored,
-			# because no file download transaction is active.
-			# H'uru sees: 0x25 bytes of data, bit vector is 1 dword long, value is 0
-			# OpenUru sees: message type 0x25 (FileDownloadChunk), transaction ID 0x10000, error code 0, file size 0 (continued below)
-			b"\x25\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00"
-			# ServerCaps message extra data,
-			# which is ignored by H'uru,
-			# because the bit vector doesn't have this many dwords.
-			# OpenUru parses this as the rest of FileDownloadChunk message:
-			b"\x00\x00" # file size 0 (continued)
-			b"\x00\x00\x00\x00\x13\x00\x00\x00" # chunk offset 0, chunk size 0x13
-			b"[ServerCaps compat]" # 0x13 bytes of chunk data
-		)
-		#"""
-		
-		# Reply to client register request
-		await self.write(b"\x03\x00\xde\xad\xbe\xef")
+for cls in [
+	# TODO Add all the other server types here once implemented
+	auth_server.AuthConnection,
+]:
+	CONNECTION_CLASSES[cls.CONNECTION_TYPE] = cls
 
 
 async def client_connected_inner(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
@@ -386,16 +57,16 @@ async def client_connected_inner(reader: asyncio.StreamReader, writer: asyncio.S
 	
 	(conn_type,) = await reader.readexactly(1)
 	try:
-		conn_type = ConnectionType(conn_type)
+		conn_type = base.ConnectionType(conn_type)
 	except ValueError:
-		raise ProtocolError(f"Unknown connection type {conn_type}")
+		raise base.ProtocolError(f"Unknown connection type {conn_type}")
 	
 	logger.info("Client %s requests connection type %s", client_address, conn_type)
 	
 	try:
 		conn_class = CONNECTION_CLASSES[conn_type]
 	except KeyError:
-		raise ProtocolError(f"Unsupported connection type {conn_type}")
+		raise base.ProtocolError(f"Unsupported connection type {conn_type}")
 	
 	conn = conn_class(reader, writer)
 	await conn.handle()
@@ -417,7 +88,7 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 			# because we don't do anything else with the writer anymore.
 	except (ConnectionResetError, asyncio.IncompleteReadError) as exc:
 		logger.error("Client %s disconnected: %s.%s: %s", client_address, type(exc).__module__, type(exc).__qualname__, exc)
-	except ProtocolError as exc:
+	except base.ProtocolError as exc:
 		logger.error("Error in data sent by %s: %s", client_address, exc)
 	except Exception as exc:
 		logger.error("Uncaught exception while handling request from %s:", client_address, exc_info=exc)
