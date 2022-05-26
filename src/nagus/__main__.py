@@ -311,6 +311,8 @@ class AuthConnection(BaseMOULConnection):
 	
 	CONNECT_DATA = struct.Struct("<I16s")
 	
+	PING_HEADER = struct.Struct("<III")
+	
 	async def read_connect_packet_data(self) -> None:
 		"""Read and unpack the type-specific connect packet data.
 		
@@ -329,10 +331,12 @@ class AuthConnection(BaseMOULConnection):
 	async def ping_request(self) -> None:
 		"""Reply to ping request."""
 		
-		# FIXME This assumes an empty ping payload!
-		data = await self.read(12)
-		# Send ping time and payload back unmodified
-		await self.write(b"\x00\x00" + data)
+		header_data = await self.read(type(self).PING_HEADER.size)
+		ping_time, trans_id, payload_length = type(self).PING_HEADER.unpack(header_data)
+		logger.debug("Ping request: time %d, transaction %d, payload %d bytes", ping_time, trans_id, payload_length)
+		payload = await self.read(payload_length)
+		# Send everything back unmodified
+		await self.write(b"\x00\x00" + header_data + payload)
 	
 	@message_handler(1)
 	async def client_register_request(self) -> None:
