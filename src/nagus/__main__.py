@@ -36,7 +36,7 @@ from . import base
 logger = logging.getLogger(__name__)
 
 
-CONNECTION_CLASSES: typing.Mapping[base.ConnectionType, typing.Type[base.BaseMOULConnection]] = {}
+CONNECTION_CLASSES: typing.Dict[base.ConnectionType, typing.Type[base.BaseMOULConnection]] = {}
 
 for cls in [
 	# TODO Add all the other server types here once implemented
@@ -55,11 +55,11 @@ async def client_connected_inner(reader: asyncio.StreamReader, writer: asyncio.S
 		# to try to ensure that every write call goes out as an actual TCP packet right away.
 		sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 	
-	(conn_type,) = await reader.readexactly(1)
+	(conn_type_num,) = await reader.readexactly(1)
 	try:
-		conn_type = base.ConnectionType(conn_type)
+		conn_type = base.ConnectionType(conn_type_num)
 	except ValueError:
-		raise base.ProtocolError(f"Unknown connection type {conn_type}")
+		raise base.ProtocolError(f"Unknown connection type {conn_type_num}")
 	
 	logger.info("Client %s requests connection type %s", client_address, conn_type)
 	

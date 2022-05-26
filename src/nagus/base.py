@@ -105,7 +105,9 @@ def message_handler(message_type: int) -> typing.Callable[[MessageHandlerT], Mes
 	"""
 	
 	def _message_handler_decorator(method: MessageHandlerT) -> MessageHandlerT:
-		method.message_type = message_type
+		# We store the message type number on the function/method object.
+		# There's no way to make mypy happy here.
+		method.message_type = message_type # type: ignore
 		return method
 	
 	return _message_handler_decorator
@@ -264,7 +266,7 @@ class BaseMOULConnection(object):
 		except asyncio.TimeoutError as exc:
 			raise ProtocolError(f"Client sent unsupported message type {message_type} and no data quickly following it")
 		else:
-			raise ProtocolError(f"Client sent unsupported message type {message_type} - next few bytes: {data}")
+			raise ProtocolError(f"Client sent unsupported message type {message_type} - next few bytes: {data!r}")
 	
 	async def handle_message(self, message_type: int) -> None:
 		"""Dispatch a message to the appropriate handler based on its type."""
