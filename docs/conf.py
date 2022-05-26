@@ -21,6 +21,3 @@ exclude_patterns = [
 	"Thumbs.db",
 	".DS_Store",
 ]
-
-# Options for HTML output
-html_static_path = ["_static"]
