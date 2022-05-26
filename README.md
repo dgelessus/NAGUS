@@ -1,5 +1,7 @@
 # not a good Uru server
 
+[![Documentation Status](https://readthedocs.org/projects/nagus/badge/?version=latest)](https://nagus.readthedocs.io/en/latest/?badge=latest)
+
 This is (one day supposed to be) an Uru Live/Myst Online server.
 It is (probably) not very good.
 
@@ -8,7 +10,7 @@ check out OpenUru's [MOSS](https://wiki.openuru.org/index.php/MOSS) and H'uru's 
 
 I started writing this while trying to understand how MOULa's networking works.
 The code does nothing useful at this point,
-but [the docs](./docs/) contain some assorted information about MOULa's networking,
+but [the docs](https://nagus.readthedocs.io/en/latest/) contain some assorted information about MOULa's networking,
 most of which isn't properly documented elsewhere
 (though I'm hoping to change that soon-ish).
 
@@ -39,7 +41,8 @@ $ nagus
 Some documentation about the implementation,
 as well as Uru's network architecture and protocols in general,
 can be found in the [docs](./docs/) subdirectory.
-The docs are built using Sphinx:
+A pre-built version can be found on [Read the Docs](https://nagus.readthedocs.io/en/latest/),
+or you can build the docs yourself using Sphinx:
 
 ```sh
 $ cd docs
