@@ -12,7 +12,7 @@ so expect mistakes!
 I'll try to fix the code and docs if I notice that I got something wrong.
 
 Contents
-========
+--------
 
 .. toctree::
    :maxdepth: 2
@@ -21,17 +21,17 @@ Contents
    nagus
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
 
 License
-=======
+-------
 
 Documentation
--------------
+^^^^^^^^^^^^^
 
 .. image:: https://i.creativecommons.org/l/by-sa/4.0/88x31.png
    :target: http://creativecommons.org/licenses/by-sa/4.0/
@@ -40,7 +40,7 @@ Documentation
 This work is licensed under a `Creative Commons Attribution-ShareAlike 4.0 International License <http://creativecommons.org/licenses/by-sa/4.0/>`__.
 
 Code
-----
+^^^^
 
 Copyright (C) 2022 dgelessus
 
