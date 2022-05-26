@@ -144,7 +144,7 @@ Here are the exact formats for all types
     Set to all zeroes by default.
     
     For auth server connections,
-    the server may send the client a ``ServerAddr`` message containing a different token,
+    the server may send the client an :ref:`auth2cli_server_addr` message containing a different token,
     which the client will send back to the server if it has to reconnect.
     Not sure if this is actually used in practice.
     

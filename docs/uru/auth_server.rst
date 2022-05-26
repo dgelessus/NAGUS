@@ -36,10 +36,10 @@ and request/reply pairs align better.
    
    ,*Global*,,
    0,:ref:`PingRequest <cli2auth_ping_request>`,:ref:`PingReply <auth2cli_ping_reply>`,0
-   ,,ServerAddr,1
-   ,,NotifyNewBuild,2
+   ,,:ref:`ServerAddr <auth2cli_server_addr>`,1
+   ,,:ref:`NotifyNewBuild <auth2cli_notify_new_build>`,2
    ,*Client*,,
-   1,ClientRegisterRequest,ClientRegisterReply,3
+   1,:ref:`ClientRegisterRequest <cli2auth_client_register_request>`,:ref:`ClientRegisterReply <auth2cli_client_register_reply>`,3
    2,ClientSetCCRLevel,,
    ,*Account*,,
    3,AcctLoginRequest,AcctLoginReply,4
@@ -136,3 +136,64 @@ Auth2Cli_PingReply
 * **Payload:** Variable-length.
 
 See :ref:`ping` for details.
+
+.. _auth2cli_server_addr:
+
+Auth2Cli_ServerAddr
+^^^^^^^^^^^^^^^^^^^
+
+* **Server IP address:** 4-byte unsigned int.
+  This is an IPv4 address in packed integer form instead of the more common "dotted quad" format.
+  For example,
+  the address 184.73.198.22 would be represented as the integer 0xb849c616 (= 3091842582 in decimal).
+  Keep in mind that Uru uses little-endian byte order,
+  so the address will be in reverse order compared to "network byte order" (big-endian).
+* **Token:** 16-byte UUID.
+  The client remembers this token as long as it remains running
+  and sends it back to the auth server if it has to reconnect.
+
+Tells the client an IP address to connect to
+if the auth server connection is lost and the client needs to reconnect.
+The token UUID is also sent to the auth server upon reconnect,
+as part of the :ref:`connect packet <connect_packet>`.
+
+According to comments in the open-sourced client code,
+this is meant for when there are multiple auth server behind a load balancer,
+to allow the client to reconnect directly to the same auth server as before.
+No current MOULa shard is large enough to require such a setup,
+so this message currently has no practical use.
+MOSS nonetheless sends a ServerAddr message to all clients
+(in response to the :ref:`ClientRegisterRequest <cli2auth_client_register_request>`)
+with the constant token UUID ``8ac671cb-9fd0-4376-9ecb-310c211ae6a4``.
+DIRTSAND doesn't use ServerAddr messages at all.
+(TODO: What does Cyan's server software do?)
+
+.. _auth2cli_notify_new_build:
+
+Auth2Cli_NotifyNewBuild
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* **foo:** 4-byte unsigned int.
+  Yes, that's the original name from the open-sourced client code
+  (which doesn't use this field for anything).
+  One could guess that this might contain the newly released build number.
+
+May be sent by the server to tell clients that a game update has been released.
+The client displays it to the user as a chat message saying
+"Uru has been updated. Please quit the game and log back in.".
+
+Neither MOSS nor DIRTSAND supports sending this message.
+Cyan's server software presumably supports it,
+but it's not used in practice ---
+Cyan always shuts down the server while an update is being released,
+so there can be no clients connected when the new update becomes available.
+
+.. _cli2auth_client_register_request:
+
+Cli2Auth_ClientRegisterRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. _auth2cli_client_register_reply:
+
+Auth2Cli_ClientRegisterReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
