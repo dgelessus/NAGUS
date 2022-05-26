@@ -104,7 +104,10 @@ async def server_main(host: str, port: int) -> None:
 
 
 def main() -> typing.NoReturn:
-	logging.basicConfig(level=logging.DEBUG)
+	logging.basicConfig(
+		format="[%(levelname)s] %(name)s: %(message)s",
+		level=logging.DEBUG,
+	)
 	
 	try:
 		asyncio.run(server_main("", 14617))
