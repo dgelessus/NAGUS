@@ -38,6 +38,11 @@ import uuid
 logger = logging.getLogger(__name__)
 
 
+WORD = struct.Struct("<H")
+DWORD = struct.Struct("<I")
+QWORD = struct.Struct("<Q")
+# No BYTE - just do await self.read(1) instead!
+
 CONNECT_HEADER_TAIL = struct.Struct("<III16s") 
 CONNECT_HEADER_LENGTH = struct.calcsize("<BH") + CONNECT_HEADER_TAIL.size
 
@@ -210,7 +215,7 @@ class BaseMOULConnection(object):
 		it was used to select the subclass of :class:`BaseMOULConnection` to be used.
 		"""
 		
-		header_length = int.from_bytes(await self.read(2), "little")
+		(header_length,) = await self.read_unpack(WORD)
 		if header_length != CONNECT_HEADER_LENGTH:
 			raise ProtocolError(f"Client sent connect header with unexpected length {header_length} (should be {CONNECT_HEADER_LENGTH})")
 		
@@ -297,7 +302,7 @@ class BaseMOULConnection(object):
 		
 		# TODO Is there any way for clients to disconnect cleanly without unceremoniously closing the socket?
 		while True:
-			message_type = int.from_bytes(await self.read(2), "little")
+			(message_type,) = await self.read_unpack(WORD)
 			await self.handle_message(message_type)
 
 
@@ -331,7 +336,7 @@ class AuthConnection(BaseMOULConnection):
 	
 	@message_handler(1)
 	async def client_register_request(self) -> None:
-		build_id = int.from_bytes(await self.read(4), "little")
+		(build_id,) = await self.read_unpack(DWORD)
 		logger.debug("Build ID: %d", build_id)
 		if build_id != self.build_id:
 			raise ProtocolError(f"Client register request build ID ({build_id}) differs from connect packet ({self.build_id})")
