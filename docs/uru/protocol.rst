@@ -567,7 +567,7 @@ MOSS automatically disconnects clients that haven't sent pings for a while.
 DIRTSAND also times out inactive clients similarly,
 but it understands any client message as a keepalive
 and doesn't require ping messages specifically.
-.. TODO What does Cyan's server software do?
+(TODO: What does Cyan's server software do?)
 
 All ping request/reply messages use message type number 0.
 The exact format of the messages differs between server types,
