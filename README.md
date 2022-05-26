@@ -10,8 +10,8 @@ check out OpenUru's [MOSS](https://wiki.openuru.org/index.php/MOSS) and H'uru's 
 
 I started writing this while trying to understand how MOULa's networking works.
 The code does nothing useful at this point,
-but [the docs](https://nagus.readthedocs.io/en/latest/) contain some assorted information about MOULa's networking,
-most of which isn't properly documented elsewhere
+but [the docs](https://nagus.readthedocs.io/en/latest/) contain some assorted information about MOULa's internals,
+most of which isn't well-documented elsewhere
 (though I'm hoping to change that soon-ish).
 
 ## Requirements

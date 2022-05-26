@@ -3,12 +3,15 @@ NAGUS --- not a good Uru server
 
 This is NAGUS, an Uru Live server that is not very good.
 
-I'm trying to document not just the server implementation,
-but also Uru's network protocol and architecture in general,
-for which there is currently not much documentation.
-But please be aware that I actually don't know a lot about Uru's architecture ---
-most of this is written while I'm still figuring it out myself,
-so expect mistakes!
+I started writing this while trying to understand how MOULa's networking works.
+`The code <https://github.com/dgelessus/NAGUS>`__ does nothing useful at this point,
+but the documentation below contains some assorted information about MOULa's internals,
+most of which isn't well-documented elsewhere
+(though I'm hoping to change that soon-ish).
+
+Please be aware that I actually don't know Uru's internals very well!
+Most of this is written while I'm still figuring it all out myself,
+so expect mistakes.
 (If you find any errors,
 tell me on the `issue tracker <https://github.com/dgelessus/NAGUS/issues>`__
 and I'll try to fix the code and/or docs.)
