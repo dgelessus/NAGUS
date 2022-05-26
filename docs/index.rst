@@ -11,13 +11,34 @@ most of this is written while I'm still figuring it out myself,
 so expect mistakes!
 I'll try to fix the code and docs if I notice that I got something wrong.
 
+.. seealso::
+   
+   If you're looking for a proper MOULa server implementation that you can actually play on,
+   check out OpenUru's `MOSS <https://wiki.openuru.org/index.php/MOSS>`__ and H'uru's `DIRTSAND <https://guildofwriters.org/wiki/DIRTSAND>`__.
+   
+   A lot of Uru-related documentation can be found on the `Guild of Writers <https://www.guildofwriters.org/wiki/>`__ and `OpenUru <https://wiki.openuru.org/>`__ wikis.
+   Most of the information there focuses on age creation and server administration,
+   but especially the GoW wiki also has `some high-level docs <https://www.guildofwriters.org/wiki/Plasma>`__ about the :ref:`Plasma <plasma>` engine and its architecture.
+
 Contents
 --------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :caption: MOUL internals
    
-   uru/index
+   uru/names
+   uru/architecture
+   uru/product_id
+   uru/encryption_keys
+   uru/server_config
+   uru/protocol
+   uru/auth_server
+
+.. toctree::
+   :maxdepth: 1
+   :caption: NAGUS
+   
    nagus
 
 Indices and tables

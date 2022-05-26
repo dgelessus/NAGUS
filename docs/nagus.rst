@@ -1,5 +1,5 @@
-NAGUS
-=====
+About NAGUS
+===========
 
 NAGUS is (one day supposed to be) an Uru Live server.
 It is currently a work in progress and still *extremely* incomplete ---
