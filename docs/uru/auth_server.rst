@@ -25,23 +25,30 @@ but this was not fully implemented.
 Messages
 --------
 
-The overview table below isn't *strictly* sorted by message type number.
+The overview tables below aren't *strictly* sorted by message type number.
 I've moved a few entries
 so that related messages are grouped together
 and request/reply pairs align better.
 
-.. csv-table::
+.. csv-table:: Global
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
-   ,*Global*,,
    0,:ref:`PingRequest <cli2auth_ping_request>`,:ref:`PingReply <auth2cli_ping_reply>`,0
    ,,:ref:`ServerAddr <auth2cli_server_addr>`,1
    ,,:ref:`NotifyNewBuild <auth2cli_notify_new_build>`,2
-   ,*Client*,,
+
+.. csv-table:: Client
+   :header: #,Cli2Auth,Auth2Cli,#
+   :widths: auto
+   
    1,:ref:`ClientRegisterRequest <cli2auth_client_register_request>`,:ref:`ClientRegisterReply <auth2cli_client_register_reply>`,3
    2,:ref:`ClientSetCCRLevel <cli2auth_client_set_ccr_level>`,,
-   ,*Account*,,
+
+.. csv-table:: Account
+   :header: #,Cli2Auth,Auth2Cli,#
+   :widths: auto
+   
    3,AcctLoginRequest,AcctLoginReply,4
    4,AcctSetEulaVersion,,
    5,AcctSetDataRequest,AcctData,5
@@ -54,7 +61,11 @@ and request/reply pairs align better.
    11,AcctActivateRequest,AcctActivateReply,12
    12,AcctCreateFromKeyRequest,AcctCreateFromKeyReply,13
    53,AccountExistsRequest,AccountExistsReply,48
-   ,*Player*,,
+
+.. csv-table:: Player
+   :header: #,Cli2Auth,Auth2Cli,#
+   :widths: auto
+   
    ,,PlayerList,14
    13,PlayerDeleteRequest,PlayerDeleteReply,17
    14,PlayerUndeleteRequest,,
@@ -67,10 +78,18 @@ and request/reply pairs align better.
    21,SetPlayerBanStatusRequest,SetPlayerBanStatusReply,19
    22,KickPlayer,KickedOff,39
    23,ChangePlayerNameRequest,ChangePlayerNameReply,20
-   ,*Friends*,,
+
+.. csv-table:: Friends
+   :header: #,Cli2Auth,Auth2Cli,#
+   :widths: auto
+   
    24,SendFriendInviteRequest,SendFriendInviteReply,21
    ,,FriendNotify,22
-   ,*Vault*,,
+
+.. csv-table:: Vault
+   :header: #,Cli2Auth,Auth2Cli,#
+   :widths: auto
+   
    25,VaultNodeCreate,VaultNodeCreated,23
    26,VaultNodeFetch,VaultNodeFetched,24
    27,VaultNodeSave,VaultNodeChanged,25
@@ -85,22 +104,46 @@ and request/reply pairs align better.
    33,VaultNodeFind,VaultNodeFindReply,31
    34,VaultSetSeen,,
    35,VaultSendNode,,
-   ,*Ages*,,
+
+.. csv-table:: Ages
+   :header: #,Cli2Auth,Auth2Cli,#
+   :widths: auto
+   
    36,AgeRequest,AgeReply,35
-   ,*File-related*,,
+
+.. csv-table:: File-related
+   :header: #,Cli2Auth,Auth2Cli,#
+   :widths: auto
+   
    37,FileListRequest,FileListReply,36
    38,FileDownloadRequest,FileDownloadChunk,37
    39,FileDownloadChunkAck,,
-   ,*Game*,,
+
+.. csv-table:: Game
+   :header: #,Cli2Auth,Auth2Cli,#
+   :widths: auto
+   
    40,PropagateBuffer,PropagateBuffer,38
-   ,*Public ages*,,
+
+.. csv-table:: Public ages
+   :header: #,Cli2Auth,Auth2Cli,#
+   :widths: auto
+   
    41,GetPublicAgeList,PublicAgeList,40
    42,SetAgePublic,,
-   ,*Log messages*,,
+
+.. csv-table:: Log messages
+   :header: #,Cli2Auth,Auth2Cli,#
+   :widths: auto
+   
    43,LogPythonTraceback,,
    44,LogStackDump,,
    45,LogClientDebuggerConnect,,
-   ,*Score*,,
+
+.. csv-table:: Score
+   :header: #,Cli2Auth,Auth2Cli,#
+   :widths: auto
+   
    46,ScoreCreate,ScoreCreateReply,41
    47,ScoreDelete,ScoreDeleteReply,42
    48,ScoreGetScores,ScoreGetScoresReply,43
@@ -108,7 +151,11 @@ and request/reply pairs align better.
    50,ScoreTransferPoints,ScoreTransferPointsReply,45
    51,ScoreSetPoints,ScoreSetPointsReply,46
    52,ScoreGetRanks,ScoreGetRanksReply,47
-   ,*H'uru extensions*,,
+
+.. csv-table:: H'uru extensions
+   :header: #,Cli2Auth,Auth2Cli,#
+   :widths: auto
+   
    0x1000,AgeRequestEx,AgeReplyEx,0x1000
    0x1001,ScoreGetHighScores,ScoreGetHighScoresReply,0x1001
    ,,ServerCaps,0x1002
