@@ -40,7 +40,7 @@ and request/reply pairs align better.
    ,,:ref:`NotifyNewBuild <auth2cli_notify_new_build>`,2
    ,*Client*,,
    1,:ref:`ClientRegisterRequest <cli2auth_client_register_request>`,:ref:`ClientRegisterReply <auth2cli_client_register_reply>`,3
-   2,ClientSetCCRLevel,,
+   2,:ref:`ClientSetCCRLevel <cli2auth_client_set_ccr_level>`,,
    ,*Account*,,
    3,AcctLoginRequest,AcctLoginReply,4
    4,AcctSetEulaVersion,,
@@ -217,3 +217,37 @@ Auth2Cli_ClientRegisterReply
 
 Reply to the :ref:`ClientRegisterRequest <cli2auth_client_register_request>`.
 The client waits for this reply before sending any other messages (except pings) to the auth server.
+
+.. index:: CCR level
+   :name: ccr_level
+
+.. index:: stealth mode
+   :name: stealth_mode
+
+.. _cli2auth_client_set_ccr_level:
+
+Cli2Auth_ClientSetCCRLevel
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* **CCR level:** 4-byte unsigned int.
+  The player's new CCR level.
+
+Notifies the auth server that the player has changed their CCR level.
+All players initially have CCR level 0,
+and during normal gameplay it is never changed.
+Higher CCR levels are only meant to be used by customer care representatives (CCRs).
+
+If a player has a non-zero CCR level,
+they become "invisible" to all other players with a lower CCR level.
+By default,
+this means that they are hidden from the Age Players list of lower-level players,
+but their avatar in the world is still visible.
+A CCR player can additionally enable "stealth mode" to also make their avatar invisible to lower-level players.
+(Other CCRs with the same or higher lever will see "stealth" avatars as semi-transparent instead of fully invisible.)
+
+No open-source version of the client allows the player to change their CCR level,
+so this message isn't used anymore in practice.
+MOSS and DIRTSAND also hardcode all players to CCR level 0
+and don't accept this message from clients.
+Only Cyan's server software implements this message,
+and presumably Cyan's internal CCR clients allowed changing the CCR level.
