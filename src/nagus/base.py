@@ -104,6 +104,9 @@ def message_handler(message_type: int) -> typing.Callable[[MessageHandlerT], Mes
 	this is displayed in debug log messages.
 	"""
 	
+	if callable(message_type):
+		raise TypeError("@message_handler() decorator must be called with parentheses")
+	
 	def _message_handler_decorator(method: MessageHandlerT) -> MessageHandlerT:
 		# We store the message type number on the function/method object.
 		# There's no way to make mypy happy here.
@@ -191,6 +194,10 @@ class BaseMOULConnection(object):
 		"""
 		
 		return st.unpack(await self.read(st.size))
+	
+	async def read_string_field(self) -> str:
+		(length,) = await self.read_unpack(WORD)
+		return (await self.read(2 * length)).decode("utf-16-le")
 	
 	async def read_connect_packet_header(self) -> None:
 		"""Read and unpack the remaining connect packet header and store the unpacked information.

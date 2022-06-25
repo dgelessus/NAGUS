@@ -382,11 +382,22 @@ but both password hashing methods actually perform extra steps on top of plain S
     In the resulting hash,
     every group of 4 bytes is byte-swapped
     (as if the hash was a 5-element array of 4-byte ints).
+    
+    .. note::
+       
+       For example,
+       the password ``hunter2`` would be hashed as ``66bdbbf3f14b3da65740797410d0c38e1de23035``.
+       (Regular SHA-1 would be ``f3bbbd66a63d4bf1747940578ec3d0103530e21d``.)
+
 "SHA-0"
     The password is concatenated with the account name.
     All ASCII letters in the account name are converted to lowercase.
     The last character of the account name and password (respectively) is replaced with U+0000.
     The resulting string is encoded as UTF-16 (little-endian) and hashed using SHA-0.
+    
+    .. note::
+       For example,
+       the password ``hunter2`` with account name ``AzureDiamond`` would be hashed as ``8598c0ad2f51fb1605c7433654baca9bdc589212``.
 
 Recent OpenUru clients (since March 2017) will always attempt to log in using the "SHA-1" password hash first,
 and only if that fails fall back to "SHA-0".

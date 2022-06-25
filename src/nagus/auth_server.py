@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 CONNECT_DATA = struct.Struct("<I16s")
 
 PING_HEADER = struct.Struct("<III")
+ACCOUNT_LOGIN_REQUEST_HEADER = struct.Struct("<II")
 
 
 ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
@@ -98,3 +99,19 @@ class AuthConnection(base.BaseMOULConnection):
 		
 		# Reply to client register request
 		await self.write(b"\x03\x00\xde\xad\xbe\xef")
+	
+	@base.message_handler(3)
+	async def account_login_request(self) -> None:
+		trans_id, client_challenge = await self.read_unpack(ACCOUNT_LOGIN_REQUEST_HEADER)
+		logger.debug("Login request: transaction ID: %d, client challenge 0x%08x", trans_id, client_challenge)
+		account_name = await self.read_string_field()
+		logger.debug("Account name: %r", account_name)
+		challenge_hash = await self.read(20)
+		logger.debug("Challenge hash: %r", challenge_hash)
+		auth_token = await self.read_string_field()
+		logger.debug("Auth token: %r", auth_token)
+		os_name = await self.read_string_field()
+		logger.debug("OS name: %r", os_name)
+		
+		# Reply with "authentication failed"
+		await self.write(b"\x04\x00" + base.DWORD.pack(trans_id) + base.DWORD.pack(20) + bytes(40))
