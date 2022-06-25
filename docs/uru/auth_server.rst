@@ -436,8 +436,8 @@ MOSS and DIRTSAND don't support token-based logins
 and H'uru clients no longer allow passing one on the command line,
 so no fan shard uses it either.
 
-Automatic login using UruLive.cfg
-'''''''''''''''''''''''''''''''''
+Automatic login using :option:`/SkipLoginDialog`
+''''''''''''''''''''''''''''''''''''''''''''''''
 
 :ref:`Internal clients <internal_external_client>` support another method for automatic login,
 enabled using the following command-line option:
