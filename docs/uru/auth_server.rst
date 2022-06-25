@@ -313,7 +313,7 @@ Cli2Auth_AcctLoginRequest
   The account name entered by the user in the login dialog.
   May be overridden using the command-line setting ``screenname``
   (in GameTap-style syntax, see below).
-* **Challenge hash:** :c:macro:`NET_MSG_FIELD_STRING`\(40).
+* **Challenge hash:** 20-byte SHA hash.
   Derived from the password, acount name, and the server and client challenge values
   (details vary, see below).
 * **Auth token:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
