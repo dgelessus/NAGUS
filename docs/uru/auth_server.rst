@@ -205,15 +205,16 @@ The token UUID is also sent to the auth server upon reconnect,
 as part of the :ref:`connect packet <connect_packet>`.
 
 According to comments in the open-sourced client code,
-this is meant for when there are multiple auth server behind a load balancer,
+this is meant for when there are multiple auth servers behind a load balancer,
 to allow the client to reconnect directly to the same auth server as before.
 No current MOULa shard is large enough to require such a setup,
 so this message currently has no practical use.
-MOSS nonetheless sends a ServerAddr message to all clients
-(in response to the :ref:`ClientRegisterRequest <cli2auth_client_register_request>`)
-with the constant token UUID ``8ac671cb-9fd0-4376-9ecb-310c211ae6a4``.
+Nonetheless,
+Cyan's server software and MOSS send a ServerAddr message to all clients
+in response to the :ref:`ClientRegisterRequest <cli2auth_client_register_request>`.
+MOSS uses the constant token UUID ``8ac671cb-9fd0-4376-9ecb-310c211ae6a4``,
+whereas Cyan's server sends a random token (UUID version 4) on every connection.
 DIRTSAND doesn't use ServerAddr messages at all.
-(TODO: What does Cyan's server software do?)
 
 .. _auth2cli_notify_new_build:
 
@@ -246,9 +247,8 @@ Cli2Auth_ClientRegisterRequest
 Sent by the client immediately after connecting to the auth server
 (before even the automatic :ref:`PingRequest <cli2auth_ping_request>`).
 
-DIRTSAND will disconnect clients that send an unexpected build ID.
+Cyan's server software and DIRTSAND will disconnect clients that send an unexpected build ID.
 MOSS doesn't check the build ID here.
-(TODO: What does Cyan's server software do?)
 If the server is happy with the build ID,
 it replies immediately with a :ref:`ClientRegisterReply <auth2cli_client_register_reply>`.
 

@@ -136,6 +136,7 @@ As of 2022,
 Cyan's MOULa shard uses the following hosts for its public-facing servers:
 
 * account.mystonline.com (184.73.198.22): status, gatekeeper, auth, game
+* 172.30.4.226: auth (true address reported by :ref:`auth2cli_server_addr`)
 * 52.72.29.91: TODO unclear --- only contacted very briefly when the login screen appears
 * 54.236.8.109: file
 
