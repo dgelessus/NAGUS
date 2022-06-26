@@ -80,6 +80,15 @@ class ProtocolError(Exception):
 	pass
 
 
+def pack_string_field(string: str, max_length: int = 0xffff) -> bytes:
+	encoded = string.encode("utf-16-le")
+	# Can't use len(string) - it will give the wrong result if the string contains code points above U+FFFF!
+	utf_16_length = len(encoded) // 2
+	if utf_16_length >= max_length:
+		raise ValueError(f"Attempted to send string of length {utf_16_length} in string field with maximum length {max_length} - this would break the client")
+	return WORD.pack(utf_16_length) + encoded
+
+
 ConnT = typing.TypeVar("ConnT", bound="BaseMOULConnection")
 MessageHandler = typing.Callable[[ConnT], typing.Awaitable[None]]
 MessageHandlerT = typing.TypeVar("MessageHandlerT", bound=MessageHandler)

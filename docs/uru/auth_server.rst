@@ -496,7 +496,7 @@ Auth2Cli_AcctPlayerInfo
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 * **Transaction ID:** 4-byte unsigned int.
-* **Player int (?):** 4-byte unsigned int.
+* **Player vault node ID (KI number):** 4-byte unsigned int.
 * **Player name:** :c:macro:`NET_MSG_FIELD_STRING`\(40).
 * **Avatar shape:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
 * **Explorer:** 4-byte unsigned int.

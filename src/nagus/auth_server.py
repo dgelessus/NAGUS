@@ -18,6 +18,7 @@
 """Implements the :ref:`auth server <auth_server>`."""
 
 
+import ipaddress
 import logging
 import random
 import struct
@@ -33,7 +34,12 @@ logger = logging.getLogger(__name__)
 CONNECT_DATA = struct.Struct("<I16s")
 
 PING_HEADER = struct.Struct("<III")
+SERVER_ADDRESS = struct.Struct("<I16s")
+NOTIFY_NEW_BUILD = struct.Struct("<I")
 CLIENT_REGISTER_REPLY = struct.Struct("<I")
+CLIENT_REGISTER_REQUEST = struct.Struct("<I")
+CLIENT_SET_CCR_LEVEL = struct.Struct("<I")
+ACCOUNT_PLAYER_INFO_HEADER = struct.Struct("<II")
 ACCOUNT_LOGIN_REPLY = struct.Struct("<II16sII4I")
 ACCOUNT_LOGIN_REQUEST_HEADER = struct.Struct("<II")
 
@@ -74,13 +80,21 @@ class AuthConnection(base.BaseMOULConnection):
 		# Send everything back unmodified
 		await self.write_message(0, header_data + payload)
 	
+	async def server_address(self, server_ip: ipaddress.IPv4Address, token: uuid.UUID) -> None:
+		logger.debug("Sending server address message: server IP %s, token %s", server_ip, token)
+		await self.write_message(1, SERVER_ADDRESS.pack(int(server_ip), token.bytes_le))
+	
+	async def notify_new_build(self, foo: int) -> None:
+		logger.debug("Sending new build notification: %d", foo)
+		await self.write_message(2, NOTIFY_NEW_BUILD.pack(foo))
+	
 	async def client_register_reply(self, server_challenge: int) -> None:
 		logger.debug("Sending client register reply with server challenge: 0x%08x", server_challenge)
 		await self.write_message(3, CLIENT_REGISTER_REPLY.pack(server_challenge))
 	
 	@base.message_handler(1)
 	async def client_register_request(self) -> None:
-		(build_id,) = await self.read_unpack(base.DWORD)
+		(build_id,) = await self.read_unpack(CLIENT_REGISTER_REQUEST)
 		logger.debug("Build ID: %d", build_id)
 		if build_id != self.build_id:
 			raise base.ProtocolError(f"Client register request build ID ({build_id}) differs from connect packet ({self.build_id})")
@@ -115,6 +129,28 @@ class AuthConnection(base.BaseMOULConnection):
 			logger.warning("Already registered client sent another client register request - generating new server challenge...")
 		self.server_challenge = SYSTEM_RANDOM.randrange(0x100000000)
 		await self.client_register_reply(self.server_challenge)
+	
+	@base.message_handler(2)
+	async def client_set_ccr_level(self) -> None:
+		(ccr_level,) = await self.read_unpack(CLIENT_SET_CCR_LEVEL)
+		logger.warning("Client changed its CCR level to %d", ccr_level)
+		raise base.ProtocolError(f"Client attempted to change its CCR level (to {ccr_level}), we don't allow this")
+	
+	async def account_player_info(
+		self,
+		trans_id: int,
+		player_vault_node_id: int,
+		player_name: str,
+		avatar_shape: str,
+		explorer: int,
+	) -> None:
+		logger.debug("Sending player info: transaction ID %d, KI number %d, player name %r, avatar shape %r, explorer? %d", trans_id, player_vault_node_id, player_name, avatar_shape, explorer)
+		await self.write_message(6, (
+			ACCOUNT_PLAYER_INFO_HEADER.pack(trans_id, player_vault_node_id)
+			+ base.pack_string_field(player_name)
+			+ base.pack_string_field(avatar_shape)
+			+ base.DWORD.pack(explorer)
+		))
 	
 	async def account_login_reply(
 		self,
