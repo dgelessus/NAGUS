@@ -49,18 +49,18 @@ BYTE_SWAPPED_SHA_1_TEST_HASHES = [
 
 
 class ShaTest(unittest.TestCase):
-	def test_sha_0(self):
+	def test_sha_0(self) -> None:
 		for data, hex_hash in SHA_0_TEST_HASHES:
 			with self.subTest(data=data, hash=hex_hash):
 				self.assertEqual(crypto.slow_sha_0(data), bytes.fromhex(hex_hash))
 	
-	def test_sha_1(self):
+	def test_sha_1(self) -> None:
 		for data, hex_hash in SHA_1_TEST_HASHES:
 			with self.subTest(data=data, hash=hex_hash):
 				self.assertEqual(crypto.slow_sha_1(data), bytes.fromhex(hex_hash))
 				self.assertEqual(hashlib.sha1(data).hexdigest(), hex_hash)
 	
-	def test_byte_swapped_sha_1(self):
+	def test_byte_swapped_sha_1(self) -> None:
 		for data, hex_hash in BYTE_SWAPPED_SHA_1_TEST_HASHES:
 			with self.subTest(data=data, hash=hex_hash):
 				self.assertEqual(crypto.byte_swapped_sha_1(data), bytes.fromhex(hex_hash))

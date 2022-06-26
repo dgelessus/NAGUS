@@ -6,7 +6,10 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.mypy]
-files = "src/**/*.py"
+files = [
+	"src/**/*.py",
+	"tests/**/*.py",
+]
 python_version = "3.7"
 
 disallow_untyped_calls = true
