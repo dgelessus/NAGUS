@@ -199,6 +199,9 @@ class BaseMOULConnection(object):
 		(length,) = await self.read_unpack(WORD)
 		return (await self.read(2 * length)).decode("utf-16-le")
 	
+	async def write_message(self, message_type: int, data: bytes) -> None:
+		await self.write(WORD.pack(message_type) + data)
+	
 	async def read_connect_packet_header(self) -> None:
 		"""Read and unpack the remaining connect packet header and store the unpacked information.
 		

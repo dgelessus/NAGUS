@@ -21,6 +21,7 @@
 import logging
 import random
 import struct
+import typing
 import uuid
 
 from . import base
@@ -32,6 +33,8 @@ logger = logging.getLogger(__name__)
 CONNECT_DATA = struct.Struct("<I16s")
 
 PING_HEADER = struct.Struct("<III")
+CLIENT_REGISTER_REPLY = struct.Struct("<I")
+ACCOUNT_LOGIN_REPLY = struct.Struct("<II16sII4I")
 ACCOUNT_LOGIN_REQUEST_HEADER = struct.Struct("<II")
 
 
@@ -69,7 +72,11 @@ class AuthConnection(base.BaseMOULConnection):
 		logger.debug("Ping request: time %d, transaction %d, payload %d bytes", ping_time, trans_id, payload_length)
 		payload = await self.read(payload_length)
 		# Send everything back unmodified
-		await self.write(b"\x00\x00" + header_data + payload)
+		await self.write_message(0, header_data + payload)
+	
+	async def client_register_reply(self, server_challenge: int) -> None:
+		logger.debug("Sending client register reply with server challenge: 0x%08x", server_challenge)
+		await self.write_message(3, CLIENT_REGISTER_REPLY.pack(server_challenge))
 	
 	@base.message_handler(1)
 	async def client_register_request(self) -> None:
@@ -107,8 +114,22 @@ class AuthConnection(base.BaseMOULConnection):
 		if hasattr(self, "server_challenge"):
 			logger.warning("Already registered client sent another client register request - generating new server challenge...")
 		self.server_challenge = SYSTEM_RANDOM.randrange(0x100000000)
-		logger.debug("Replying with server challenge: 0x%08x", self.server_challenge)
-		await self.write(b"\x03\x00" + base.DWORD.pack(self.server_challenge))
+		await self.client_register_reply(self.server_challenge)
+	
+	async def account_login_reply(
+		self,
+		trans_id: int,
+		result: int,
+		account_id: uuid.UUID,
+		account_flags: int,
+		billing_type: int,
+		ntd_encryption_key: typing.Tuple[int, int, int, int],
+	) -> None:
+		logger.debug(
+			"Sending account login reply: transaction ID %d, result %d, account ID %s, account flags 0x%08x, billing type 0x%08x, NTD encryption key [0x%08x, 0x%08x, 0x%08x, 0x%08x]",
+			trans_id, result, account_id, account_flags, billing_type, *ntd_encryption_key,
+		)
+		await self.write_message(4, ACCOUNT_LOGIN_REPLY.pack(trans_id, result, account_id.bytes_le, account_flags, billing_type, *ntd_encryption_key))
 	
 	@base.message_handler(3)
 	async def account_login_request(self) -> None:
@@ -127,4 +148,4 @@ class AuthConnection(base.BaseMOULConnection):
 			raise base.ProtocolError("Client attempted to log in without sending a client register request first")
 		
 		# Reply with "authentication failed"
-		await self.write(b"\x04\x00" + base.DWORD.pack(trans_id) + base.DWORD.pack(20) + bytes(40))
+		await self.account_login_reply(trans_id, 20, ZERO_UUID, 0, 0, (0, 0, 0, 0))
