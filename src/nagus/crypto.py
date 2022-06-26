@@ -32,6 +32,8 @@ SHA_0_1_CHUNK = struct.Struct(">16I")
 SHA_0_1_MESSAGE_LENGTH = struct.Struct(">Q")
 SHA_0_1_HASH = struct.Struct(">5I")
 
+CHALLENGE_HASH_DATA = struct.Struct("<II20s")
+
 
 def _slow_sha_0_1(data: bytes, *, sha_1: bool) -> bytes:
 	"""Slow pure Python implementation of SHA-0 and SHA-1.
@@ -141,12 +143,38 @@ def slow_sha_1(data: bytes) -> bytes:
 	return _slow_sha_0_1(data, sha_1=True)
 
 
+def byte_swap_hash(hash: bytes) -> bytes:
+	"""Byte-swap a SHA hash value as if it were an array of 4-byte integers."""
+	
+	hash_array = array.array("I", hash)
+	hash_array.byteswap()
+	return hash_array.tobytes()
+
+
 def byte_swapped_sha_1(data: bytes) -> bytes:
 	"""Standard SHA-1, except that the final digest is byte-swapped.
 	
 	This is needed for one of MOULa's password hashing methods.
 	"""
 	
-	digest_array = array.array("I", hashlib.sha1(data).digest())
-	digest_array.byteswap()
-	return digest_array.tobytes()
+	return byte_swap_hash(hashlib.sha1(data).digest())
+
+
+def password_hash_sha_0(account_name: str, password: str) -> bytes:
+	"""Implements the SHA-0-based version of MOULa's password hashing function."""
+	
+	# Convert all ASCII letters to lowercase.
+	account_name = account_name.encode().lower().decode()
+	# Replace last character of account name and password with U+0000
+	# (to replicate an off-by-one error in the client code).
+	if account_name:
+		account_name = account_name[:-1] + "\x00"
+	if password:
+		password = password[:-1] + "\x00"
+	return slow_sha_0((password + account_name).encode("utf-16-le"))
+
+
+def challenge_hash(client_challenge: int, server_challenge: int, password_hash: bytes) -> bytes:
+	"""Calculate the challenge hash from client and server challenge values and a password hash."""
+	
+	return slow_sha_0(CHALLENGE_HASH_DATA.pack(client_challenge, server_challenge, password_hash))

@@ -397,7 +397,9 @@ but both password hashing methods actually perform extra steps on top of plain S
     
     .. note::
        For example,
-       the password ``hunter2`` with account name ``AzureDiamond`` would be hashed as ``8598c0ad2f51fb1605c7433654baca9bdc589212``.
+       the password ``hunter2``
+       would be hashed as ``8598c0ad2f51fb1605c7433654baca9bdc589212`` if the account name is ``AzureDiamond``,
+       or as ``0ee474a4a95caf724b52e4931434108176860b25`` if the account name is ``AzureDiamond@example.com``.
 
 Recent OpenUru clients (since March 2017) will always attempt to log in using the "SHA-1" password hash first,
 and only if that fails fall back to "SHA-0".
@@ -420,6 +422,14 @@ then the challenge hash is derived from the password hash as follows:
    as usual.)
 3. The concatenated data is hashed using SHA-0,
    resulting in the challenge hash.
+
+.. note::
+   
+   For example,
+   if the client and server challenge are both 0,
+   then the password ``hunter2`` with account name ``AzureDiamond@example.com``
+   would produce the challenge hash ``475df2fc21a36ede01bf381ea10a5a8121a11c81`` (with "SHA-1" password hash)
+   or ``72650da5e84e37994acd3e07da5658915bf588fe`` (with "SHA-0" password hash).
 
 If the account name is a plain username,
 the challenge hash is identical to the password hash

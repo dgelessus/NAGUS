@@ -19,6 +19,7 @@
 
 
 import logging
+import random
 import struct
 import uuid
 
@@ -37,8 +38,13 @@ ACCOUNT_LOGIN_REQUEST_HEADER = struct.Struct("<II")
 ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
 
 
+SYSTEM_RANDOM = random.SystemRandom()
+
+
 class AuthConnection(base.BaseMOULConnection):
 	CONNECTION_TYPE = base.ConnectionType.cli2auth
+	
+	server_challenge: int
 	
 	async def read_connect_packet_data(self) -> None:
 		"""Read and unpack the type-specific connect packet data.
@@ -98,7 +104,11 @@ class AuthConnection(base.BaseMOULConnection):
 		#"""
 		
 		# Reply to client register request
-		await self.write(b"\x03\x00\xde\xad\xbe\xef")
+		if hasattr(self, "server_challenge"):
+			logger.warning("Already registered client sent another client register request - generating new server challenge...")
+		self.server_challenge = SYSTEM_RANDOM.randrange(0x100000000)
+		logger.debug("Replying with server challenge: 0x%08x", self.server_challenge)
+		await self.write(b"\x03\x00" + base.DWORD.pack(self.server_challenge))
 	
 	@base.message_handler(3)
 	async def account_login_request(self) -> None:
@@ -112,6 +122,9 @@ class AuthConnection(base.BaseMOULConnection):
 		logger.debug("Auth token: %r", auth_token)
 		os_name = await self.read_string_field()
 		logger.debug("OS name: %r", os_name)
+		
+		if not hasattr(self, "server_challenge"):
+			raise base.ProtocolError("Client attempted to log in without sending a client register request first")
 		
 		# Reply with "authentication failed"
 		await self.write(b"\x04\x00" + base.DWORD.pack(trans_id) + base.DWORD.pack(20) + bytes(40))
