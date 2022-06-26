@@ -590,3 +590,219 @@ they are set by the client
 and sent back unmodified without being interpreted by the server.
 In practice,
 clients always send transaction ID 0 and an empty payload.
+
+Transactions
+------------
+
+TODO!
+
+Error codes
+-----------
+
+Many reply messages report success or failure using a common set of error codes.
+They are often displayed to the user ---
+usually as their associated text description,
+but sometimes also with their numeric code,
+which is why e. g. "Net 6" is well-known in the player community.
+
+.. cpp:enum:: ENetError : dword
+   
+   .. cpp:enumerator:: kNetPending = -1
+      
+      "Pending"
+   
+   .. cpp:enumerator:: kNetSuccess = 0
+      
+      "Success"
+   
+   .. cpp:enumerator:: kNetErrInternalError = 1
+      
+      "Internal Error"
+   
+   .. cpp:enumerator:: kNetErrTimeout = 2
+      
+      "No Response From Server"
+   
+   .. cpp:enumerator:: kNetErrBadServerData = 3
+      
+      "Invalid Server Data"
+   
+   .. cpp:enumerator:: kNetErrAgeNotFound = 4
+      
+      "Age Not Found"
+   
+   .. cpp:enumerator:: kNetErrConnectFailed = 5
+      
+      "Network Connection Failed"
+   
+   .. cpp:enumerator:: kNetErrDisconnected = 6
+      
+      "Disconnected From Server"
+   
+   .. cpp:enumerator:: kNetErrFileNotFound = 7
+      
+      "File Not Found"
+   
+   .. cpp:enumerator:: kNetErrOldBuildId = 8
+      
+      "Old Build"
+   
+   .. cpp:enumerator:: kNetErrRemoteShutdown = 9
+      
+      "Remote Shutdown"
+   
+   .. cpp:enumerator:: kNetErrTimeoutOdbc = 10
+      
+      "Database Timeout"
+   
+   .. cpp:enumerator:: kNetErrAccountAlreadyExists = 11
+      
+      "Account Already Exists"
+   
+   .. cpp:enumerator:: kNetErrPlayerAlreadyExists = 12
+      
+      "Player Already Exists"
+   
+   .. cpp:enumerator:: kNetErrAccountNotFound = 13
+      
+      "Account Not Found"
+   
+   .. cpp:enumerator:: kNetErrPlayerNotFound = 14
+      
+      "Player Not Found"
+   
+   .. cpp:enumerator:: kNetErrInvalidParameter = 15
+      
+      "Invalid Parameter"
+   
+   .. cpp:enumerator:: kNetErrNameLookupFailed = 16
+      
+      "Name Lookup Failed"
+   
+   .. cpp:enumerator:: kNetErrLoggedInElsewhere = 17
+      
+      "Logged In Elsewhere"
+   
+   .. cpp:enumerator:: kNetErrVaultNodeNotFound = 18
+      
+      "Vault Node Not Found"
+   
+   .. cpp:enumerator:: kNetErrMaxPlayersOnAcct = 19
+      
+      "Max Players On Account"
+   
+   .. cpp:enumerator:: kNetErrAuthenticationFailed = 20
+      
+      "Authentication Failed"
+   
+   .. cpp:enumerator:: kNetErrStateObjectNotFound = 21
+      
+      "State Object Not Found"
+   
+   .. cpp:enumerator:: kNetErrLoginDenied = 22
+      
+      "Login Denied"
+   
+   .. cpp:enumerator:: kNetErrCircularReference = 23
+      
+      "Circular Reference"
+   
+   .. cpp:enumerator:: kNetErrAccountNotActivated = 24
+      
+      "Account Not Activated"
+   
+   .. cpp:enumerator:: kNetErrKeyAlreadyUsed = 25
+      
+      "Key Already Used"
+   
+   .. cpp:enumerator:: kNetErrKeyNotFound = 26
+      
+      "Key Not Found"
+   
+   .. cpp:enumerator:: kNetErrActivationCodeNotFound = 27
+      
+      "Activation Code Not Found"
+   
+   .. cpp:enumerator:: kNetErrPlayerNameInvalid = 28
+      
+      "Player Name Invalid"
+   
+   .. cpp:enumerator:: kNetErrNotSupported = 29
+      
+      "Not Supported"
+   
+   .. cpp:enumerator:: kNetErrServiceForbidden = 30
+      
+      "Service Forbidden"
+   
+   .. cpp:enumerator:: kNetErrAuthTokenTooOld = 31
+      
+      "Auth Token Too Old"
+   
+   .. cpp:enumerator:: kNetErrMustUseGameTapClient = 32
+      
+      "Must Use GameTap Client"
+   
+   .. cpp:enumerator:: kNetErrTooManyFailedLogins = 33
+      
+      "Too Many Failed Logins"
+   
+   .. cpp:enumerator:: kNetErrGameTapConnectionFailed = 34
+      
+      "GameTap: Connection Failed"
+   
+   .. cpp:enumerator:: kNetErrGTTooManyAuthOptions = 35
+      
+      "GameTap: Too Many Auth Options"
+   
+   .. cpp:enumerator:: kNetErrGTMissingParameter = 36
+      
+      "GameTap: Missing Parameter"
+   
+   .. cpp:enumerator:: kNetErrGTServerError = 37
+      
+      "GameTap: Server Error"
+   
+   .. cpp:enumerator:: kNetErrAccountBanned = 38
+      
+      "Account has been banned"
+   
+   .. cpp:enumerator:: kNetErrKickedByCCR = 39
+      
+      "Account kicked by CCR"
+   
+   .. cpp:enumerator:: kNetErrScoreWrongType = 40
+      
+      "Wrong score type for operation"
+   
+   .. cpp:enumerator:: kNetErrScoreNotEnoughPoints = 41
+      
+      "Not enough points"
+   
+   .. cpp:enumerator:: kNetErrScoreAlreadyExists = 42
+      
+      "Non-fixed score already exists"
+   
+   .. cpp:enumerator:: kNetErrScoreNoDataFound = 43
+      
+      "No score data found"
+   
+   .. cpp:enumerator:: kNetErrInviteNoMatchingPlayer = 44
+      
+      "Invite: Couldn't find player"
+   
+   .. cpp:enumerator:: kNetErrInviteTooManyHoods = 45
+      
+      "Invite: Too many hoods"
+   
+   .. cpp:enumerator:: kNetErrNeedToPay = 46
+      
+      "Payments not up to date"
+   
+   .. cpp:enumerator:: kNetErrServerBusy = 47
+      
+      "Server Busy"
+   
+   .. cpp:enumerator:: kNetErrVaultNodeAccessViolation = 48
+      
+      "Vault Node Access Violation"
