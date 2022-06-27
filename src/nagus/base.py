@@ -80,6 +80,16 @@ class ProtocolError(Exception):
 	pass
 
 
+def truncate_utf_16_string(string: str, max_length: int) -> str:
+	"""Truncate a string to the given number of UTF-16 code units.
+	
+	This simulates truncation of wide strings (``wchar_t *``) on Windows.
+	"""
+	
+	# Decrement max_length by 1 to account for the U+0000 terminator.
+	return string.encode("utf-16-le")[:(max_length-1)*2].decode("utf-16-le", "surrogatepass")
+
+
 def pack_string_field(string: str, max_length: int = 0xffff) -> bytes:
 	encoded = string.encode("utf-16-le")
 	# Can't use len(string) - it will give the wrong result if the string contains code points above U+FFFF!

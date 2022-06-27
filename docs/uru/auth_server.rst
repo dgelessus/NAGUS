@@ -377,6 +377,23 @@ The client supports two different ways of hashing the password.
 They are referred to as "SHA-1" and "SHA-0" after the hash algorithms they are based on,
 but both password hashing methods actually perform extra steps on top of plain SHA-0/SHA-1.
 
+Regardless of which hash algorithm is used,
+the client first truncates the account name to 63 characters
+and the password to 15 characters.
+(To be precise,
+the truncation is based on ``wchar``\s,
+aka UTF-16 code units.)
+
+.. note::
+   
+   For example,
+   the password ``correct horse battery staple`` is truncated to ``correct horse b``.
+   
+   Not all shards replicate this truncation when *registering* an account,
+   meaning that if one chooses a password longer than 15 characters,
+   it may be impossible to log in with the game client
+   until the password is changed to a shorter one.
+
 "SHA-1"
     The password is encoded as UTF-8 (H'uru) or the ANSI code page (OpenUru) and hashed using SHA-1.
     In the resulting hash,

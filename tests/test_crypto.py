@@ -48,16 +48,23 @@ BYTE_SWAP_TEST_HASHES = [
 	("a9993e364706816aba3e25717850c26c9cd0d89d", "363e99a96a81064771253eba6cc250789dd8d09c"),
 	("f3bbbd66a63d4bf1747940578ec3d0103530e21d", "66bdbbf3f14b3da65740797410d0c38e1de23035"),
 ]
-BYTE_SWAPPED_SHA_1_TEST_HASHES = [
-	(b"", "eea339da0d4b6b5eefbf5532901860950907d8af"),
-	(b"abc", "363e99a96a81064771253eba6cc250789dd8d09c"),
-	(b"hunter2", "66bdbbf3f14b3da65740797410d0c38e1de23035"),
+SHA_1_PASSWORD_TEST_HASHES = [
+	("", "ascii", "eea339da0d4b6b5eefbf5532901860950907d8af"),
+	("abc", "ascii", "363e99a96a81064771253eba6cc250789dd8d09c"),
+	("hunter2", "ascii", "66bdbbf3f14b3da65740797410d0c38e1de23035"),
+	("correct horse battery staple", "ascii", "b573145737d1d3c92e707801a017edff0d260ded"),
+	("correct horse b", "ascii", "b573145737d1d3c92e707801a017edff0d260ded"),
+	("pässwörd", "cp1252", "1d488c79086cc08e96b05e9110c2f939bfa41f13"),
+	("pässwörd", "utf-8", "f1dd17f52f112ad3c655adf1cb121b6df7e8e738"),
 ]
 SHA_0_PASSWORD_TEST_HASHES = [
 	("AzureDiamond", "", "b7e516f93d18cdc186aa269d34e2a8702c41f3ae"),
 	("AzureDiamond", "hunter2", "8598c0ad2f51fb1605c7433654baca9bdc589212"),
 	("AzureDiamond@example.com", "", "803305d66ba54db37424794b341fb32795ff5223"),
 	("AzureDiamond@example.com", "hunter2", "0ee474a4a95caf724b52e4931434108176860b25"),
+	("longassaccountnamegoingpastthelimitof63utf16codeunits@example.com", "correct horse battery staple", "e48b7292626f71ee9398b72025031cce4b178fa9"),
+	("longassaccountnamegoingpastthelimitof63utf16codeunits@example.c", "correct horse b", "e48b7292626f71ee9398b72025031cce4b178fa9"),
+	("ünicöde@example.com", "pässwörd", "469f82acd0b514293cfd31c19f7703000b36eca2"),
 ]
 CHALLENGE_TEST_HASHES = [
 	(0, 0, "eea339da0d4b6b5eefbf5532901860950907d8af", "78e1389e938b12d4c8e97bb3b3eb4b1e2b40cc85"),
@@ -72,6 +79,9 @@ CHALLENGE_TEST_HASHES = [
 	(0x8fb97218, 0x441d9a53, "803305d66ba54db37424794b341fb32795ff5223", "3552c2ec040aee2bc5ba269fede109628f8c3a5e"),
 	(0xfc46f7a9, 0x441d9a53, "66bdbbf3f14b3da65740797410d0c38e1de23035", "a579c026624cfd60530c87f6f57d56586ce36cb4"),
 	(0xf5d41122, 0x441d9a53, "0ee474a4a95caf724b52e4931434108176860b25", "e52ddb60b73319815f801044b91cdcbb933343e8"),
+	(0x96993700, 0xdeadbeef, "e48b7292626f71ee9398b72025031cce4b178fa9", "1a503639541a29bc709dacbcf8588369d0da6db3"),
+	(0x3a41474b, 0xdeadbeef, "469f82acd0b514293cfd31c19f7703000b36eca2", "f929aeed5d5a9390452b9f8b8c344b1a37c465c5"),
+	(0xb30d7f53, 0xdeadbeef, "469f82acd0b514293cfd31c19f7703000b36eca2", "d9930d4f26a2e58da91df760243a94a101950d30"),
 ]
 
 
@@ -93,10 +103,10 @@ class ShaTest(unittest.TestCase):
 				self.assertEqual(crypto.byte_swap_hash(bytes.fromhex(hex_hash)), bytes.fromhex(hex_hash_swapped))
 				self.assertEqual(crypto.byte_swap_hash(bytes.fromhex(hex_hash_swapped)), bytes.fromhex(hex_hash))
 	
-	def test_byte_swapped_sha_1(self) -> None:
-		for data, hex_hash in BYTE_SWAPPED_SHA_1_TEST_HASHES:
-			with self.subTest(data=data, hash=hex_hash):
-				self.assertEqual(crypto.byte_swapped_sha_1(data), bytes.fromhex(hex_hash))
+	def test_password_sha_1(self) -> None:
+		for password, encoding, hex_hash in SHA_1_PASSWORD_TEST_HASHES:
+			with self.subTest(password=password, encoding=encoding, hash=hex_hash):
+				self.assertEqual(crypto.password_hash_sha_1(password, encoding=encoding), bytes.fromhex(hex_hash))
 	
 	def test_password_sha_0(self) -> None:
 		for account_name, password, hex_hash in SHA_0_PASSWORD_TEST_HASHES:

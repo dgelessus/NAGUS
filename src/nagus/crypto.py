@@ -27,6 +27,8 @@ import hashlib
 import struct
 import typing
 
+from . import base
+
 
 SHA_0_1_CHUNK = struct.Struct(">16I")
 SHA_0_1_MESSAGE_LENGTH = struct.Struct(">Q")
@@ -151,18 +153,24 @@ def byte_swap_hash(hash: bytes) -> bytes:
 	return hash_array.tobytes()
 
 
-def byte_swapped_sha_1(data: bytes) -> bytes:
-	"""Standard SHA-1, except that the final digest is byte-swapped.
+def truncate_credentials(account_name: str, password: str) -> typing.Tuple[str, str]:
+	"""Truncate an account name and password the same way that the MOULa client does."""
 	
-	This is needed for one of MOULa's password hashing methods.
-	"""
+	return base.truncate_utf_16_string(account_name, 64), base.truncate_utf_16_string(password, 16)
+
+
+def password_hash_sha_1(password: str, *, encoding: str = "utf-8", errors: str = "strict") -> bytes:
+	"""Implements the SHA-1-based version of MOULa's password hashing function."""
 	
+	_, password = truncate_credentials("", password)
+	data = password.encode(encoding, errors)
 	return byte_swap_hash(hashlib.sha1(data).digest())
 
 
 def password_hash_sha_0(account_name: str, password: str) -> bytes:
 	"""Implements the SHA-0-based version of MOULa's password hashing function."""
 	
+	account_name, password = truncate_credentials(account_name, password)
 	# Convert all ASCII letters to lowercase.
 	account_name = account_name.encode().lower().decode()
 	# Replace last character of account name and password with U+0000
