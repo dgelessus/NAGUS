@@ -174,10 +174,10 @@ class AuthConnection(base.BaseMOULConnection):
 	@base.message_handler(3)
 	async def account_login_request(self) -> None:
 		trans_id, client_challenge = await self.read_unpack(ACCOUNT_LOGIN_REQUEST_HEADER)
-		account_name = await self.read_string_field()
+		account_name = await self.read_string_field(64)
 		challenge_hash = await self.read(20)
-		auth_token = await self.read_string_field()
-		os_name = await self.read_string_field()
+		auth_token = await self.read_string_field(64)
+		os_name = await self.read_string_field(8)
 		
 		logger.debug("Login request: transaction ID: %d, client challenge 0x%08x, account %r, challenge hash %s", trans_id, client_challenge, account_name, challenge_hash.hex())
 		if auth_token:

@@ -214,8 +214,10 @@ class BaseMOULConnection(object):
 		
 		return st.unpack(await self.read(st.size))
 	
-	async def read_string_field(self) -> str:
+	async def read_string_field(self, max_length: int = 0xffff) -> str:
 		(length,) = await self.read_unpack(WORD)
+		if length >= max_length:
+			raise ProtocolError(f"Client sent string of length {length} in string field with maximum length {max_length}")
 		return (await self.read(2 * length)).decode("utf-16-le")
 	
 	async def write_message(self, message_type: int, data: bytes) -> None:
