@@ -496,10 +496,41 @@ Auth2Cli_AcctPlayerInfo
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 * **Transaction ID:** 4-byte unsigned int.
-* **Player vault node ID (KI number):** 4-byte unsigned int.
+* **Player vault node ID:** 4-byte unsigned int.
+  Displayed to players as the KI number.
 * **Player name:** :c:macro:`NET_MSG_FIELD_STRING`\(40).
+  The avatar's in-game display name.
 * **Avatar shape:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
+  Also known as "avatar dataset",
+  or in practical terms,
+  the avatar's gender.
+  Either ``"female"`` or ``"male"``.
 * **Explorer:** 4-byte unsigned int.
+  1 if the player is a full explorer,
+  or 0 if it's just a visitor.
+
+Reports information about a single avatar associated with the client's account.
+Sent by the server after a successful login,
+but before the :ref:`AcctLoginReply <auth2cli_acct_login_reply>`.
+
+One message is sent per avatar in the account ---
+possibly none at all,
+if the account currently has no avatars.
+The client technically supports at most 6 avatars per account ---
+1 visitor and 5 explorers ---
+but because visitors are no longer used in MOULa,
+the practical limit is 5 avatars.
+
+.. note::
+   
+   Visitors are a holdover from GameTap-era MOUL,
+   where non-paying players were only allowed to create a single visitor avatar
+   that had limited customization options
+   and could only visit a restricted set of locations
+   (Relto, Cleft, Nexus, a single neighborhood and its Gahreesen).
+   With MOULa being free to play,
+   all accounts are considered "paying",
+   so visitor avatars no longer have any use and can't be created anymore.
 
 .. _auth2cli_acct_login_reply:
 
@@ -507,8 +538,134 @@ Auth2Cli_AcctLoginReply
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 * **Transaction ID:** 4-byte unsigned int.
-* **Result:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
 * **Account ID:** 16-byte UUID.
+  The client sends this UUID to the game server when linking to an age instance.
 * **Account flags:** 4-byte unsigned int.
+  A set of bit flags describing the account's "role".
+  Not actually used on the client side.
 * **Billing type:** 4-byte unsigned int.
+  A set of bit flags describing the account's payment/billing status (see below).
 * **notthedroids encryption key:** 4-element array of 4-byte unsigned ints.
+  Key for decrypting :ref:`notthedroids <notthedroids>`-encrypted files
+  that may be served by the auth server.
+
+Reply to an :ref:`AcctLoginRequest <cli2auth_acct_login_request>`.
+Sent after all :ref:`AcctPlayerInfo <auth2cli_acct_player_info>` messages (if any).
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrAccountNotFound`: Account name doesn't exist.
+  DIRTSAND never returns this error
+  and instead also uses :cpp:enumerator:`kNetErrAuthenticationFailed` to report nonexistant accounts.
+  This prevents leaking information about the existence of other people's accounts.
+* :cpp:enumerator:`kNetErrVaultNodeNotFound`: For some reason,
+  the open-sourced client code considers this a successful login.
+* :cpp:enumerator:`kNetErrAuthenticationFailed`: Password is invalid,
+  or in the case of DIRTSAND,
+  the account name might also be invalid.
+  In response to this error,
+  OpenUru clients may try to send another login request using a different password hash function
+  (see :ref:`AcctLoginRequest <cli2auth_acct_login_request>`).
+* :cpp:enumerator:`kNetErrLoginDenied`: Login failed for some other reason,
+  e. g. the server currently has logins restricted to admins only.
+* :cpp:enumerator:`kNetErrAccountNotActivated`: Only used by Cyan's server software.
+* :cpp:enumerator:`kNetErrAccountBanned`
+
+If the login failed,
+all fields except for the transaction ID and result should be zeroed out.
+Cyan's server software isn't always consistent about this ---
+e. g. the notthedroids key is returned even for failed logins.
+The error code is displayed to the user as a text description.
+
+Account flags
+'''''''''''''
+
+The open-sourced client code defines these flags
+even though it doesn't use them in any way.
+Most likely they are only used by Cyan's server software.
+
+The flags :cpp:var:`kAccountRoleBetaTester`,
+:cpp:var:`kAccountRoleUser`,
+and :cpp:var:`kAccountRoleSpecialEvent`
+apparently indicate the user's primary "role".
+It seems that exactly one of these flags is meant to be set on every account,
+although DIRTSAND doesn't do this and instead sets no flags at all for normal accounts.
+All other flags seem to be true flags that may be set in any combination on top of the primary "role".
+
+.. cpp:var:: const unsigned kAccountRoleDisabled = 0 << 0
+   
+   Default state if no role flags are set.
+
+.. cpp:var:: const unsigned kAccountRoleAdmin = 1 << 0
+   
+   Exact original meaning unknown.
+   In DIRTSAND,
+   has the same effect as :cpp:var:`kAccountRoleBetaTester`
+   and additionally allows the player in question to send certain unsafe Plasma messages over the network.
+
+.. cpp:var:: const unsigned kAccountRoleDeveloper = 1 << 1
+   
+   Meaning unknown.
+   Not supported by any fan server implementation.
+
+.. cpp:var:: const unsigned kAccountRoleBetaTester = 1 << 2
+   
+   Exact original meaning unknown.
+   In DIRTSAND,
+   allows logging in to the account in question even when logins are restricted
+   (normally the login would fail with :cpp:enumerator:`kNetErrLoginDenied`).
+
+.. cpp:var:: const unsigned kAccountRoleUser = 1 << 3
+   
+   Apparently meant to indicate normal users.
+   MOSS sets this flag in all sucessful login replies
+   (and never any other flags).
+   DIRTSAND *never* sets this flag.
+
+.. cpp:var:: const unsigned kAccountRoleSpecialEvent = 1 << 4
+   
+   Meaning unknown.
+   Not supported by any fan server implementation.
+
+.. cpp:var:: const unsigned kAccountRoleBanned = 1 << 16
+   
+   Supported by DIRTSAND ---
+   if set,
+   logging in to the account in question always fails with :cpp:enumerator:`kNetErrAccountBanned`.
+   Not used by MOSS ---
+   it handles account bans using an internal database flag
+   that isn't sent to the client.
+
+Billing type
+''''''''''''
+
+The open-sourced client code defines the following billing types:
+
+.. cpp:var:: const unsigned kBillingTypeFree = 0 << 0
+   
+   Technically the default state,
+   but no longer used in MOULa,
+   as all accounts are considered "paid subscribers".
+
+.. cpp:var:: const unsigned kBillingTypePaidSubscriber = 1 << 0
+   
+   Indicates that the account has full access to all game content.
+   Before MOULa,
+   this was only set for paying subscribers,
+   as the name indicates.
+   With MOULa being free to play,
+   all accounts have this flag set
+   despite not actually paying for a subscription.
+   
+   DIRTSAND sets this flag for all accounts and doesn't allow changing it.
+   MOSS has a few bits of code that theoretically handle non-paid accounts,
+   but this seems to be unused in practice.
+
+.. cpp:var:: const unsigned kBillingTypeGameTap = 1 << 1
+   
+   Exact meaning unknown ---
+   not used in the open-sourced client code.
+   MOSS sets this flag in all successful login replies,
+   presumably mirroring what Cyan's server software did during the GameTap era.
