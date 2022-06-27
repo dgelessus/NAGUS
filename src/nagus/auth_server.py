@@ -75,7 +75,11 @@ class AuthConnection(base.BaseMOULConnection):
 		
 		header_data = await self.read(PING_HEADER.size)
 		ping_time, trans_id, payload_length = PING_HEADER.unpack(header_data)
-		logger.debug("Ping request: time %d, transaction %d, payload %d bytes", ping_time, trans_id, payload_length)
+		logger.debug("Ping request: time %d", ping_time)
+		if trans_id != 0:
+			logger.info("Ping request with non-zero transaction ID: %d", trans_id)
+		if payload_length != 0:
+			logger.info("Ping request with non-empty payload: %d bytes", payload_length)
 		payload = await self.read(payload_length)
 		# Send everything back unmodified
 		await self.write_message(0, header_data + payload)
@@ -170,15 +174,16 @@ class AuthConnection(base.BaseMOULConnection):
 	@base.message_handler(3)
 	async def account_login_request(self) -> None:
 		trans_id, client_challenge = await self.read_unpack(ACCOUNT_LOGIN_REQUEST_HEADER)
-		logger.debug("Login request: transaction ID: %d, client challenge 0x%08x", trans_id, client_challenge)
 		account_name = await self.read_string_field()
-		logger.debug("Account name: %r", account_name)
 		challenge_hash = await self.read(20)
-		logger.debug("Challenge hash: %r", challenge_hash)
 		auth_token = await self.read_string_field()
-		logger.debug("Auth token: %r", auth_token)
 		os_name = await self.read_string_field()
-		logger.debug("OS name: %r", os_name)
+		
+		logger.debug("Login request: transaction ID: %d, client challenge 0x%08x, account %r, challenge hash %s", trans_id, client_challenge, account_name, challenge_hash.hex())
+		if auth_token:
+			logger.warning("Login request with auth token %r by account %r", auth_token, account_name)
+		if os_name != "win":
+			logger.info("Login request with non-Windows OS name %r by account %r", os_name, account_name)
 		
 		if not hasattr(self, "server_challenge"):
 			raise base.ProtocolError("Client attempted to log in without sending a client register request first")
