@@ -460,7 +460,7 @@ by passing the account name and an authentication token on the command line.
 The expected format for the command line is
 :samp:`screenname={ACCOUNT_NAME} authtoken={AUTH_TOKEN} os={OS}`.
 This is the only case where the auth token field is used ---
-otherwise it is set to all zeroes.
+otherwise it is left empty.
 If an auth token is used,
 the challenge hash is set to zero
 (or possibly left uninitialized --- I don't know C++ well enough to tell).
