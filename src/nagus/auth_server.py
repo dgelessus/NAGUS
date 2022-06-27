@@ -151,8 +151,8 @@ class AuthConnection(base.BaseMOULConnection):
 		logger.debug("Sending player info: transaction ID %d, KI number %d, player name %r, avatar shape %r, explorer? %d", trans_id, player_vault_node_id, player_name, avatar_shape, explorer)
 		await self.write_message(6, (
 			ACCOUNT_PLAYER_INFO_HEADER.pack(trans_id, player_vault_node_id)
-			+ base.pack_string_field(player_name)
-			+ base.pack_string_field(avatar_shape)
+			+ base.pack_string_field(player_name, 40)
+			+ base.pack_string_field(avatar_shape, 64)
 			+ base.DWORD.pack(explorer)
 		))
 	
