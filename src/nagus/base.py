@@ -81,9 +81,9 @@ class ProtocolError(Exception):
 
 
 def truncate_utf_16_string(string: str, max_length: int) -> str:
-	"""Truncate a string to the given number of UTF-16 code units.
+	"""Truncate a string to the given number of UTF-16 code units *minus one*.
 	
-	This simulates truncation of wide strings (``wchar_t *``) on Windows.
+	This simulates truncation of Windows wide strings when stored into a fixed-length ``wchar_t`` array.
 	"""
 	
 	# Decrement max_length by 1 to account for the U+0000 terminator.
