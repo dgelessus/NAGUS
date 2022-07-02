@@ -18,6 +18,7 @@
 """Implements the :ref:`auth server <auth_server>`."""
 
 
+import enum
 import ipaddress
 import logging
 import random
@@ -48,6 +49,22 @@ ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
 
 
 SYSTEM_RANDOM = random.SystemRandom()
+
+
+class AccountFlags(enum.IntFlag):
+	disabled = 0
+	admin = 1 << 0
+	developer = 1 << 1
+	beta_tester = 1 << 2
+	user = 1 << 3
+	special_event = 1 << 4
+	banned = 1 << 16
+
+
+class AccountBillingType(enum.IntFlag):
+	free = 0
+	paid_subscriber = 1 << 0
+	gametap = 1 << 1
 
 
 class AuthConnection(base.BaseMOULConnection):
@@ -161,12 +178,12 @@ class AuthConnection(base.BaseMOULConnection):
 		trans_id: int,
 		result: base.NetError,
 		account_id: uuid.UUID,
-		account_flags: int,
-		billing_type: int,
+		account_flags: AccountFlags,
+		billing_type: AccountBillingType,
 		ntd_encryption_key: typing.Tuple[int, int, int, int],
 	) -> None:
 		logger.debug(
-			"Sending account login reply: transaction ID %d, result %r, account ID %s, account flags 0x%08x, billing type 0x%08x, NTD encryption key [0x%08x, 0x%08x, 0x%08x, 0x%08x]",
+			"Sending account login reply: transaction ID %d, result %r, account ID %s, account flags %r, billing type %r, NTD encryption key [0x%08x, 0x%08x, 0x%08x, 0x%08x]",
 			trans_id, result, account_id, account_flags, billing_type, *ntd_encryption_key,
 		)
 		await self.write_message(4, ACCOUNT_LOGIN_REPLY.pack(trans_id, result, account_id.bytes_le, account_flags, billing_type, *ntd_encryption_key))
@@ -188,4 +205,4 @@ class AuthConnection(base.BaseMOULConnection):
 		if not hasattr(self, "server_challenge"):
 			raise base.ProtocolError("Client attempted to log in without sending a client register request first")
 		
-		await self.account_login_reply(trans_id, base.NetError.authentication_failed, ZERO_UUID, 0, 0, (0, 0, 0, 0))
+		await self.account_login_reply(trans_id, base.NetError.authentication_failed, ZERO_UUID, AccountFlags.user, AccountBillingType.paid_subscriber, (0, 0, 0, 0))
