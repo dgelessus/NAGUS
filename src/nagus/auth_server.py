@@ -159,14 +159,14 @@ class AuthConnection(base.BaseMOULConnection):
 	async def account_login_reply(
 		self,
 		trans_id: int,
-		result: int,
+		result: base.NetError,
 		account_id: uuid.UUID,
 		account_flags: int,
 		billing_type: int,
 		ntd_encryption_key: typing.Tuple[int, int, int, int],
 	) -> None:
 		logger.debug(
-			"Sending account login reply: transaction ID %d, result %d, account ID %s, account flags 0x%08x, billing type 0x%08x, NTD encryption key [0x%08x, 0x%08x, 0x%08x, 0x%08x]",
+			"Sending account login reply: transaction ID %d, result %r, account ID %s, account flags 0x%08x, billing type 0x%08x, NTD encryption key [0x%08x, 0x%08x, 0x%08x, 0x%08x]",
 			trans_id, result, account_id, account_flags, billing_type, *ntd_encryption_key,
 		)
 		await self.write_message(4, ACCOUNT_LOGIN_REPLY.pack(trans_id, result, account_id.bytes_le, account_flags, billing_type, *ntd_encryption_key))
@@ -188,5 +188,4 @@ class AuthConnection(base.BaseMOULConnection):
 		if not hasattr(self, "server_challenge"):
 			raise base.ProtocolError("Client attempted to log in without sending a client register request first")
 		
-		# Reply with "authentication failed"
-		await self.account_login_reply(trans_id, 20, ZERO_UUID, 0, 0, (0, 0, 0, 0))
+		await self.account_login_reply(trans_id, base.NetError.authentication_failed, ZERO_UUID, 0, 0, (0, 0, 0, 0))

@@ -76,6 +76,122 @@ class SetupMessageType(enum.Enum):
 	srv2cli_error = 2
 
 
+class NetError(enum.IntEnum):
+	"""Python conversion of the :cpp:enum:`ENetError` enum,
+	which is used for status codes in various messages.
+	"""
+	
+	# These first two codes are not actually errors:
+	pending = -1
+	success = 0
+	
+	internal_error = 1
+	timeout = 2
+	bad_server_data = 3
+	age_not_found = 4
+	connect_failed = 5
+	disconnected = 6
+	file_not_found = 7
+	old_build_id = 8
+	remote_shutdown = 9
+	timeout_odbc = 10
+	account_already_exists = 11
+	player_already_exists = 12
+	account_not_found = 13
+	player_not_found = 14
+	invalid_parameter = 15
+	name_lookup_failed = 16
+	logged_in_elsewhere = 17
+	vault_node_not_found = 18
+	max_players_on_acct = 19
+	authentication_failed = 20
+	state_object_not_found = 21
+	login_denied = 22
+	circular_reference = 23
+	account_not_activated = 24
+	key_already_used = 25
+	key_not_found = 26
+	activation_code_not_found = 27
+	player_name_invalid = 28
+	not_supported = 29
+	service_forbidden = 30
+	auth_token_too_old = 31
+	must_use_gametap_client = 32
+	too_many_failed_logins = 33
+	gametap_connection_failed = 34
+	gt_too_many_auth_options = 35
+	gt_missing_parameter = 36
+	gt_server_error = 37
+	account_banned = 38
+	kicked_by_ccr = 39
+	score_wrong_type = 40
+	score_not_enough_points = 41
+	score_already_exists = 42
+	score_no_data_found = 43
+	invite_no_matching_player = 44
+	invite_too_many_hoods = 45
+	need_to_pay = 46
+	server_busy = 47
+	vault_node_access_violation = 48
+	
+	@property
+	def message(self) -> typing.Optional[str]:
+		return NET_ERROR_MESSAGES.get(self, None)
+
+
+NET_ERROR_MESSAGES = {
+	NetError.success: "Success",
+	NetError.internal_error: "Internal Error",
+	NetError.timeout: "No Response From Server",
+	NetError.bad_server_data: "Invalid Server Data",
+	NetError.age_not_found: "Age Not Found",
+	NetError.connect_failed: "Network Connection Failed",
+	NetError.disconnected: "Disconnected From Server",
+	NetError.file_not_found: "File Not Found",
+	NetError.old_build_id: "Old Build",
+	NetError.remote_shutdown: "Remote Shutdown",
+	NetError.timeout_odbc: "Database Timeout",
+	NetError.account_already_exists: "Account Already Exists",
+	NetError.player_already_exists: "Player Already Exists",
+	NetError.account_not_found: "Account Not Found",
+	NetError.player_not_found: "Player Not Found",
+	NetError.invalid_parameter: "Invalid Parameter",
+	NetError.name_lookup_failed: "Name Lookup Failed",
+	NetError.logged_in_elsewhere: "Logged In Elsewhere",
+	NetError.vault_node_not_found: "Vault Node Not Found",
+	NetError.max_players_on_acct: "Max Players On Account",
+	NetError.authentication_failed: "Authentication Failed",
+	NetError.state_object_not_found: "State Object Not Found",
+	NetError.login_denied: "Login Denied",
+	NetError.circular_reference: "Circular Reference",
+	NetError.account_not_activated: "Account Not Activated",
+	NetError.key_already_used: "Key Already Used",
+	NetError.key_not_found: "Key Not Found",
+	NetError.activation_code_not_found: "Activation Code Not Found",
+	NetError.player_name_invalid: "Player Name Invalid",
+	NetError.not_supported: "Not Supported",
+	NetError.service_forbidden: "Service Forbidden",
+	NetError.auth_token_too_old: "Auth Token Too Old",
+	NetError.must_use_gametap_client: "Must Use GameTap Client",
+	NetError.too_many_failed_logins: "Too Many Failed Logins",
+	NetError.gametap_connection_failed: "GameTap: Connection Failed",
+	NetError.gt_too_many_auth_options: "GameTap: Too Many Auth Options",
+	NetError.gt_missing_parameter: "GameTap: Missing Parameter",
+	NetError.gt_server_error: "GameTap: Server Error",
+	NetError.account_banned: "Account has been banned",
+	NetError.kicked_by_ccr: "Account kicked by CCR",
+	NetError.score_wrong_type: "Wrong score type for operation",
+	NetError.score_not_enough_points: "Not enough points",
+	NetError.score_already_exists: "Non-fixed score already exists",
+	NetError.score_no_data_found: "No score data found",
+	NetError.invite_no_matching_player: "Invite: Couldn't find player",
+	NetError.invite_too_many_hoods: "Invite: Too many hoods",
+	NetError.need_to_pay: "Payments not up to date",
+	NetError.server_busy: "Server Busy",
+	NetError.vault_node_access_violation: "Vault Node Access Violation",
+}
+
+
 class ProtocolError(Exception):
 	pass
 
