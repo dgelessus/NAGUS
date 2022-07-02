@@ -21,8 +21,8 @@ import unittest
 from nagus import crypto
 
 
-# The SHA-0 test hashes are stolen from DIRTSAND's tests.
 SHA_0_TEST_HASHES = [
+	# Stolen from DIRTSAND's test code:
 	(b"", "f96cea198ad1dd5617ac084a3d92c6107708c0ef"),
 	(b"a", "37f297772fae4cb1ba39b6cf9cf0381180bd62f2"),
 	(b"abc", "0164b8a914cd2a5e74c4f7ff082c4d97f1edf880"),
@@ -37,6 +37,8 @@ SHA_0_TEST_HASHES = [
 		),
 		"459f83b95db2dc87bb0f5b513a28f900ede83237",
 	),
+	# Stolen from the H'uru Plasma tests:
+	(b"Hello World", "45d579c3582a30e6ec0cc15e7ebd586838b0f7fb"),
 ]
 SHA_1_TEST_HASHES = [
 	(b"", "da39a3ee5e6b4b0d3255bfef95601890afd80709"),
@@ -91,11 +93,43 @@ class ShaTest(unittest.TestCase):
 			with self.subTest(data=data, hash=hex_hash):
 				self.assertEqual(crypto.slow_sha_0(data), bytes.fromhex(hex_hash))
 	
+	@unittest.skip("slow") # Takes about 2.7 sec on an AMD Ryzen 5 3400G.
+	def test_sha_0_long(self) -> None:
+		# Stolen from the H'uru Plasma tests.
+		self.assertEqual(
+			crypto.slow_sha_0(b"a" * 1000000),
+			bytes.fromhex("3232affa48628a26653b5aaa44541fd90d690603"),
+		)
+	
+	@unittest.skip("extremely slow") # Would take about 48 minutes, based on the above time.
+	def test_sha_0_very_long(self) -> None:
+		# Stolen from the H'uru Plasma tests.
+		self.assertEqual(
+			crypto.slow_sha_0(b"abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmno" * 16777216),
+			bytes.fromhex("bd18f2e7736c8e6de8b5abdfdeab948f5171210c"),
+		)
+	
 	def test_sha_1(self) -> None:
 		for data, hex_hash in SHA_1_TEST_HASHES:
 			with self.subTest(data=data, hash=hex_hash):
 				self.assertEqual(crypto.slow_sha_1(data), bytes.fromhex(hex_hash))
 				self.assertEqual(hashlib.sha1(data).hexdigest(), hex_hash)
+	
+	@unittest.skip("slow") # Takes about 3.0 sec on an AMD Ryzen 5 3400G.
+	def test_sha_1_long(self) -> None:
+		# Stolen from the H'uru Plasma tests.
+		self.assertEqual(
+			crypto.slow_sha_1(b"a" * 1000000),
+			bytes.fromhex("34aa973cd4c4daa4f61eeb2bdbad27316534016f"),
+		)
+	
+	@unittest.skip("extremely slow") # Would take about 54 minutes, based on the above time.
+	def test_sha_1_very_long(self) -> None:
+		# Stolen from the H'uru Plasma tests.
+		self.assertEqual(
+			crypto.slow_sha_1(b"abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmno" * 16777216),
+			bytes.fromhex("7789f0c9ef7bfc40d93311143dfbe69e2017f592"),
+		)
 	
 	def test_byte_swap(self) -> None:
 		for hex_hash, hex_hash_swapped in BYTE_SWAP_TEST_HASHES:
