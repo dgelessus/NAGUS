@@ -108,6 +108,7 @@ def main() -> typing.NoReturn:
 	logging.basicConfig(
 		format="[%(levelname)s] %(name)s: %(message)s",
 		level=logging.DEBUG,
+		stream=sys.stdout,
 	)
 	
 	status, status_thread = status_server.spawn_status_server("", 8080)
