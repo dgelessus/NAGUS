@@ -31,6 +31,7 @@ import typing
 
 from . import auth_server
 from . import base
+from . import status_server
 
 
 logger = logging.getLogger(__name__)
@@ -109,10 +110,16 @@ def main() -> typing.NoReturn:
 		level=logging.DEBUG,
 	)
 	
+	status, status_thread = status_server.spawn_status_server("", 8080)
+	
 	try:
 		asyncio.run(server_main("", 14617))
 	except KeyboardInterrupt:
 		logger.info("KeyboardInterrupt received, stopping server.")
+	
+	logger.debug("Waiting for status server to shut down...")
+	status.shutdown()
+	status_thread.join()
 	
 	sys.exit(0)
 
