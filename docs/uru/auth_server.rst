@@ -30,6 +30,11 @@ I've moved a few entries
 so that related messages are grouped together
 and request/reply pairs align better.
 
+Message types in *italics* are completely unused in any open-source MOUL(a) code.
+Except for their message type number,
+nothing is known about them,
+not even their structure.
+
 .. csv-table:: Global
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
@@ -51,8 +56,8 @@ and request/reply pairs align better.
    
    3,:ref:`AcctLoginRequest <cli2auth_acct_login_request>`,:ref:`AcctPlayerInfo <auth2cli_acct_player_info>`,6
    ,,:ref:`AcctLoginReply <auth2cli_acct_login_reply>`,4
-   4,AcctSetEulaVersion,,
-   5,AcctSetDataRequest,AcctData,5
+   4,*AcctSetEulaVersion*,,
+   5,*AcctSetDataRequest*,*AcctData*,5
    6,AcctSetPlayerRequest,AcctSetPlayerReply,7
    7,AcctCreateRequest,AcctCreateReply,8
    8,AcctChangePasswordRequest,AcctChangePasswordReply,9
