@@ -26,6 +26,8 @@ import struct
 import typing
 import uuid
 
+from . import state
+
 
 logger = logging.getLogger(__name__)
 
@@ -264,6 +266,7 @@ class BaseMOULConnection(object):
 	
 	reader: asyncio.StreamReader
 	writer: asyncio.StreamWriter
+	server_state: state.ServerState
 	
 	build_id: int
 	build_type: BuildType
@@ -299,11 +302,12 @@ class BaseMOULConnection(object):
 				
 				cls.MESSAGE_HANDLERS[message_type] = typing.cast(MessageHandler, attr)
 	
-	def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+	def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, server_state: state.ServerState) -> None:
 		super().__init__()
 		
 		self.reader = reader
 		self.writer = writer
+		self.server_state = server_state
 	
 	async def read(self, byte_count: int) -> bytes:
 		"""Read ``byte_count`` bytes from the socket and raise :class:`~asyncio.IncompleteReadError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""
@@ -427,12 +431,18 @@ class BaseMOULConnection(object):
 			logger.debug("Received message of type %d (%s)", message_type, getattr(handler, "__name__", "name missing"))
 			await handler(self)
 	
+	async def handle_disconnect(self) -> None:
+		"""May be overridden to perform custom cleanup when the client disconnects."""
+	
 	async def handle(self) -> None:
-		await self.read_connect_packet_header()
-		await self.read_connect_packet_data()
-		await self.setup_encryption()
-		
-		# TODO Is there any way for clients to disconnect cleanly without unceremoniously closing the socket?
-		while True:
-			(message_type,) = await self.read_unpack(WORD)
-			await self.handle_message(message_type)
+		try:
+			await self.read_connect_packet_header()
+			await self.read_connect_packet_data()
+			await self.setup_encryption()
+			
+			# TODO Is there any way for clients to disconnect cleanly without unceremoniously closing the socket?
+			while True:
+				(message_type,) = await self.read_unpack(WORD)
+				await self.handle_message(message_type)
+		finally:
+			await self.handle_disconnect()

@@ -18,6 +18,7 @@
 """Implements the :ref:`auth server <auth_server>`."""
 
 
+import asyncio
 import enum
 import ipaddress
 import logging
@@ -27,6 +28,7 @@ import typing
 import uuid
 
 from . import base
+from . import state
 
 
 logger = logging.getLogger(__name__)
@@ -67,15 +69,51 @@ class AccountBillingType(enum.IntFlag):
 	gametap = 1 << 1
 
 
+class AuthClientState(object):
+	cleanup_handle: asyncio.TimerHandle
+	token: uuid.UUID
+	server_challenge: int
+
+
 class AuthConnection(base.BaseMOULConnection):
 	CONNECTION_TYPE = base.ConnectionType.cli2auth
+	DISCONNECTED_CLIENT_TIMEOUT = 30
 	
-	server_challenge: int
+	client_state: AuthClientState
+	
+	def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, server_state: state.ServerState) -> None:
+		super().__init__(reader, writer, server_state)
+		
+		self.client_state = AuthClientState()
+	
+	async def handle_disconnect(self) -> None:
+		try:
+			token = self.client_state.token
+		except AttributeError:
+			# Client disconnected very early
+			# or never received a token for some other reason,
+			# so there's nothing that needs to be cleaned up.
+			return
+		
+		def _remove_disconnected_connection_callback() -> None:
+			logger.info("Client with token %s didn't reconnect within %d seconds - discarding its state", token, type(self).DISCONNECTED_CLIENT_TIMEOUT)
+			if token not in self.server_state.auth_connections:
+				raise AssertionError(f"Cleanup callback for token {token} fired even though the corresponding state has already been discarded")
+			elif self.server_state.auth_connections[token] != self:
+				raise AssertionError(f"Cleanup callback for token {token} fired even though the client has reconnected")
+			else:
+				del self.server_state.auth_connections[token]
+		
+		self.client_state.cleanup_handle = self.server_state.loop.call_later(
+			type(self).DISCONNECTED_CLIENT_TIMEOUT,
+			_remove_disconnected_connection_callback,
+		)
 	
 	async def read_connect_packet_data(self) -> None:
-		"""Read and unpack the type-specific connect packet data.
+		"""Read and unpack the client's token.
 		
-		The unpacked information is currently discarded.
+		If a previously connected client reconnects using its token,
+		restore the corresponding client-specific state.
 		"""
 		
 		data_length, token = await self.read_unpack(CONNECT_DATA)
@@ -85,6 +123,24 @@ class AuthConnection(base.BaseMOULConnection):
 		token = uuid.UUID(bytes_le=token)
 		if token != ZERO_UUID:
 			logger.info("Client reconnected using token %s", token)
+			try:
+				# When client reconnects with a token,
+				# restore the corresponding server-side state,
+				# assuming it still exists.
+				self.client_state = self.server_state.auth_connections[token].client_state
+				self.client_state.cleanup_handle.cancel()
+				self.server_state.auth_connections[token] = self
+			except KeyError:
+				raise base.ProtocolError(f"Client attempted to reconnect using an unknown token: {token}")
+		else:
+			# Client doesn't have a token yet (probably a new connection) - assign it one.
+			self.client_state.token = uuid.uuid4()
+			while self.client_state.token in self.server_state.auth_connections:
+				logger.warning("Random UUID collision!? %s is already taken, trying again...", self.client_state.token)
+				self.client_state.token = uuid.uuid4()
+			
+			logger.info("New client connection, assigning token %s", self.client_state.token)
+			self.server_state.auth_connections[self.client_state.token] = self
 	
 	@base.message_handler(0)
 	async def ping_request(self) -> None:
@@ -148,8 +204,8 @@ class AuthConnection(base.BaseMOULConnection):
 		# Reply to client register request
 		if hasattr(self, "server_challenge"):
 			logger.warning("Already registered client sent another client register request - generating new server challenge...")
-		self.server_challenge = SYSTEM_RANDOM.randrange(0x100000000)
-		await self.client_register_reply(self.server_challenge)
+		self.client_state.server_challenge = SYSTEM_RANDOM.randrange(0x100000000)
+		await self.client_register_reply(self.client_state.server_challenge)
 		
 		sockname = self.writer.get_extra_info("sockname")
 		if sockname is None:
@@ -159,7 +215,7 @@ class AuthConnection(base.BaseMOULConnection):
 		else:
 			(addr, port) = sockname
 			ip_addr = ipaddress.IPv4Address(addr)
-			await self.server_address(ip_addr, uuid.uuid4())
+			await self.server_address(ip_addr, self.client_state.token)
 	
 	@base.message_handler(2)
 	async def client_set_ccr_level(self) -> None:
@@ -212,7 +268,7 @@ class AuthConnection(base.BaseMOULConnection):
 		if os_name != "win":
 			logger.info("Login request with non-Windows OS name %r by account %r", os_name, account_name)
 		
-		if not hasattr(self, "server_challenge"):
+		if not hasattr(self.client_state, "server_challenge"):
 			raise base.ProtocolError("Client attempted to log in without sending a client register request first")
 		
 		# TODO Implement actual authentication

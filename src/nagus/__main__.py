@@ -31,6 +31,7 @@ import typing
 
 from . import auth_server
 from . import base
+from . import state
 from . import status_server
 
 
@@ -46,7 +47,7 @@ for cls in [
 	CONNECTION_CLASSES[cls.CONNECTION_TYPE] = cls
 
 
-async def client_connected_inner(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+async def client_connected_inner(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, server_state: state.ServerState) -> None:
 	client_address = writer.get_extra_info("peername")
 	
 	sock = writer.transport.get_extra_info("socket")
@@ -69,11 +70,11 @@ async def client_connected_inner(reader: asyncio.StreamReader, writer: asyncio.S
 	except KeyError:
 		raise base.ProtocolError(f"Unsupported connection type {conn_type}")
 	
-	conn = conn_class(reader, writer)
+	conn = conn_class(reader, writer, server_state)
 	await conn.handle()
 
 
-async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, server_state: state.ServerState) -> None:
 	# Avoid UnboundLocalError in case get_extra_info throws an exception somehow
 	client_address = None
 	
@@ -81,7 +82,7 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 		try:
 			client_address = writer.get_extra_info("peername")
 			logger.info("Connection from %s", client_address)
-			await client_connected_inner(reader, writer)
+			await client_connected_inner(reader, writer, server_state)
 		finally:
 			writer.close()
 			logger.info("Closing connection with %s", client_address)
@@ -98,14 +99,18 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 		raise
 
 
-async def moul_server_main(host: str, port: int) -> None:
-	async with await asyncio.start_server(client_connected, host, port) as server:
+async def moul_server_main(host: str, port: int, server_state: state.ServerState) -> None:
+	async def _client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+		await client_connected(reader, writer, server_state)
+	
+	async with await asyncio.start_server(_client_connected, host, port) as server:
 		logger.info("NAGUS listening on address %r:%d...", host, port)
 		await server.serve_forever()
 
 
 async def async_main() -> None:
-	moul_task = asyncio.create_task(moul_server_main("", 14617))
+	server_state = state.ServerState(asyncio.get_event_loop())
+	moul_task = asyncio.create_task(moul_server_main("", 14617, server_state))
 	status_task = asyncio.create_task(status_server.run_status_server("", 8080))
 	await asyncio.gather(moul_task, status_task)
 
