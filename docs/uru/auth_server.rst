@@ -61,7 +61,7 @@ not even their structure.
    ,,:ref:`AcctLoginReply <auth2cli_acct_login_reply>`,4
    4,*AcctSetEulaVersion*,,
    5,*AcctSetDataRequest*,*AcctData*,5
-   6,AcctSetPlayerRequest,AcctSetPlayerReply,7
+   6,:ref:`AcctSetPlayerRequest <cli2auth_acct_set_player_request>`,:ref:`AcctSetPlayerReply <auth2cli_acct_set_player_reply>`,7
    7,AcctCreateRequest,AcctCreateReply,8
    8,AcctChangePasswordRequest,AcctChangePasswordReply,9
    9,AcctSetRolesRequest,AcctSetRolesReply,10
@@ -704,3 +704,43 @@ The open-sourced client code defines the following billing types:
    not used in the open-sourced client code.
    MOSS sets this flag in all successful login replies,
    presumably mirroring what Cyan's server software did during the GameTap era.
+
+.. _cli2auth_acct_set_player_request:
+
+Cli2Auth_AcctSetPlayerRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* **Transaction ID:** 4-byte unsigned int.
+* **Player vault node ID:** 4-byte unsigned int.
+  KI number of the avatar to be made active,
+  or 0 to explicitly switch to no active avatar
+  (used for the avatar creation/selection screen).
+
+Switch to a different avatar.
+Sent by the client after the player has selected an avatar,
+or when going to the avatar creation/selection screen
+(to switch away from any previous avatar).
+
+.. _auth2cli_acct_set_player_reply:
+
+Auth2Cli_AcctSetPlayerReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to an :ref:`AcctSetPlayerRequest <cli2auth_acct_set_player_request>`.
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrTimeout`
+* :cpp:enumerator:`kNetErrPlayerNotFound`
+* :cpp:enumerator:`kNetErrLoggedInElsewhere`:
+  DIRTSAND responds with this error code if a client tries to switch to an avatar that's already in use.
+  This differs from Cyan's server software and MOSS,
+  which reject parallel logins at the account level
+  and will kick an already logged-in client
+  rather than refusing the new login.
+* :cpp:enumerator:`kNetErrVaultNodeNotFound`: For some reason,
+  the open-sourced client code considers this a success.

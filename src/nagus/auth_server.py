@@ -45,6 +45,8 @@ CLIENT_SET_CCR_LEVEL = struct.Struct("<I")
 ACCOUNT_PLAYER_INFO_HEADER = struct.Struct("<II")
 ACCOUNT_LOGIN_REPLY = struct.Struct("<II16sII4I")
 ACCOUNT_LOGIN_REQUEST_HEADER = struct.Struct("<II")
+ACCOUNT_SET_PLAYER_REPLY = struct.Struct("<II")
+ACCOUNT_SET_PLAYER_REQUEST = struct.Struct("<II")
 
 
 ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
@@ -73,6 +75,7 @@ class AuthClientState(object):
 	cleanup_handle: asyncio.TimerHandle
 	token: uuid.UUID
 	server_challenge: int
+	ki_number: int
 
 
 class AuthConnection(base.BaseMOULConnection):
@@ -273,3 +276,15 @@ class AuthConnection(base.BaseMOULConnection):
 		
 		# TODO Implement actual authentication
 		await self.account_login_reply(trans_id, base.NetError.success, ZERO_UUID, AccountFlags.user, AccountBillingType.paid_subscriber, (0, 0, 0, 0))
+	
+	async def account_set_player_reply(self, trans_id: int, result: base.NetError) -> None:
+		logger.debug("Sending set player reply: transaction ID %d, result %r", trans_id, result)
+		await self.write_message(7, ACCOUNT_SET_PLAYER_REPLY.pack(trans_id, result))
+	
+	@base.message_handler(6)
+	async def account_set_player_request(self) -> None:
+		trans_id, ki_number = await self.read_unpack(ACCOUNT_SET_PLAYER_REQUEST)
+		logger.debug("Set player request: transaction ID %d, KI number %d", trans_id, ki_number)
+		# TODO Check that the KI number actually belongs to the player's account
+		self.client_state.ki_number = ki_number
+		await self.account_set_player_reply(trans_id, base.NetError.success)
