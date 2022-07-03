@@ -205,4 +205,5 @@ class AuthConnection(base.BaseMOULConnection):
 		if not hasattr(self, "server_challenge"):
 			raise base.ProtocolError("Client attempted to log in without sending a client register request first")
 		
-		await self.account_login_reply(trans_id, base.NetError.authentication_failed, ZERO_UUID, AccountFlags.user, AccountBillingType.paid_subscriber, (0, 0, 0, 0))
+		# TODO Implement actual authentication
+		await self.account_login_reply(trans_id, base.NetError.success, ZERO_UUID, AccountFlags.user, AccountBillingType.paid_subscriber, (0, 0, 0, 0))
