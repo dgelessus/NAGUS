@@ -22,6 +22,7 @@ because there is no :mod:`asyncio`-based HTTP server in the Python standard libr
 """
 
 
+import asyncio
 import datetime
 import http.server
 import json
@@ -110,14 +111,53 @@ class StatusServerRequestHandler(http.server.BaseHTTPRequestHandler):
 			self.send_error(http.HTTPStatus.NOT_IMPLEMENTED)
 
 
-def _run_server(server: http.server.HTTPServer) -> None:
-	with server:
-		server.serve_forever()
+def _run_server(host: str, port: int, loop: asyncio.AbstractEventLoop, future: asyncio.Future[None]) -> None:
+	with http.server.ThreadingHTTPServer((host, port), StatusServerRequestHandler) as server:
+		try:
+			@loop.call_soon_threadsafe
+			def _add_callback_callback() -> None:
+				@future.add_done_callback
+				def _shutdown_callback(_future: asyncio.Future[None]) -> None:
+					threading.Thread(target=server.shutdown, name="NAGUS status server shutdown thread", daemon=True).start()
+		except RuntimeError:
+			# Event loop is already closed
+			return
+		
+		try:
+			logger.info("NAGUS status server listening on address %r:%d...", host, port)
+			server.serve_forever()
+		except BaseException as e:
+			try:
+				@loop.call_soon_threadsafe
+				def _exception_callback() -> None:
+					if not future.cancelled():
+						future.set_exception(e)
+			except RuntimeError:
+				pass # Event loop is already closed
+		else:
+			try:
+				@loop.call_soon_threadsafe
+				def _success_callback() -> None:
+					if not future.cancelled():
+						future.set_result(None)
+			except RuntimeError:
+				pass # Event loop is already closed
 
 
-def spawn_status_server(host: str, port: int) -> typing.Tuple[http.server.HTTPServer, threading.Thread]:
-	server = http.server.ThreadingHTTPServer((host, port), StatusServerRequestHandler)
-	thread = threading.Thread(target=_run_server, args=(server,), name="NAGUS status server", daemon=True)
-	thread.start()
-	logger.info("NAGUS status server listening on address %r:%d...", host, port)
-	return server, thread
+async def run_status_server(host: str, port: int) -> None:
+	"""Run a status server at the given address and port.
+	
+	The status server continues running until this coroutine is cancelled.
+	"""
+	
+	# We can't use the usual functions like asyncio.to_thread or asyncio.AbstractEventLoop.run_in_executor,
+	# because the futures they return can't be cancelled properly
+	# (cancelling the future does nothing once the function has started executing).
+	# In addition,
+	# those APIs run the given function on a shared executor,
+	# which is a bad idea for long-running threads.
+	# So instead we create our own thread and set up a custom future that can be cancelled properly.
+	loop = asyncio.get_event_loop()
+	future = loop.create_future()
+	threading.Thread(target=lambda: _run_server(host, port, loop, future), name="NAGUS status server").start()
+	await future

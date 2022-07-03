@@ -98,10 +98,16 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 		raise
 
 
-async def server_main(host: str, port: int) -> None:
+async def moul_server_main(host: str, port: int) -> None:
 	async with await asyncio.start_server(client_connected, host, port) as server:
 		logger.info("NAGUS listening on address %r:%d...", host, port)
 		await server.serve_forever()
+
+
+async def async_main() -> None:
+	moul_task = asyncio.create_task(moul_server_main("", 14617))
+	status_task = asyncio.create_task(status_server.run_status_server("", 8080))
+	await asyncio.gather(moul_task, status_task)
 
 
 def main() -> typing.NoReturn:
@@ -111,16 +117,10 @@ def main() -> typing.NoReturn:
 		stream=sys.stdout,
 	)
 	
-	status, status_thread = status_server.spawn_status_server("", 8080)
-	
 	try:
-		asyncio.run(server_main("", 14617))
+		asyncio.run(async_main())
 	except KeyboardInterrupt:
 		logger.info("KeyboardInterrupt received, stopping server.")
-	
-	logger.debug("Waiting for status server to shut down...")
-	status.shutdown()
-	status_thread.join()
 	
 	sys.exit(0)
 
