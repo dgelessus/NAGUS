@@ -36,6 +36,7 @@ nothing is known about them,
 not even their structure.
 
 .. csv-table:: Global
+   :name: auth_messages_global
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
@@ -44,6 +45,7 @@ not even their structure.
    ,,:ref:`NotifyNewBuild <auth2cli_notify_new_build>`,2
 
 .. csv-table:: Client
+   :name: auth_messages_client
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
@@ -51,6 +53,7 @@ not even their structure.
    2,:ref:`ClientSetCCRLevel <cli2auth_client_set_ccr_level>`,,
 
 .. csv-table:: Account
+   :name: auth_messages_account
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
@@ -68,6 +71,7 @@ not even their structure.
    53,AccountExistsRequest,AccountExistsReply,48
 
 .. csv-table:: Player
+   :name: auth_messages_player
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
@@ -85,6 +89,7 @@ not even their structure.
    23,ChangePlayerNameRequest,ChangePlayerNameReply,20
 
 .. csv-table:: Friends
+   :name: auth_messages_friends
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
@@ -92,6 +97,7 @@ not even their structure.
    ,,FriendNotify,22
 
 .. csv-table:: Vault
+   :name: auth_messages_vault
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
@@ -111,12 +117,14 @@ not even their structure.
    35,VaultSendNode,,
 
 .. csv-table:: Ages
+   :name: auth_messages_ages
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
    36,AgeRequest,AgeReply,35
 
 .. csv-table:: File-related
+   :name: auth_messages_file_related
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
@@ -125,12 +133,14 @@ not even their structure.
    39,FileDownloadChunkAck,,
 
 .. csv-table:: Game
+   :name: auth_messages_game
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
    40,PropagateBuffer,PropagateBuffer,38
 
 .. csv-table:: Public ages
+   :name: auth_messages_public_ages
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
@@ -138,6 +148,7 @@ not even their structure.
    42,SetAgePublic,,
 
 .. csv-table:: Log messages
+   :name: auth_messages_log_messages
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
@@ -146,6 +157,7 @@ not even their structure.
    45,LogClientDebuggerConnect,,
 
 .. csv-table:: Score
+   :name: auth_messages_score
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
@@ -158,6 +170,7 @@ not even their structure.
    52,ScoreGetRanks,ScoreGetRanksReply,47
 
 .. csv-table:: H'uru extensions
+   :name: auth_messages_h_uru_extensions
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
