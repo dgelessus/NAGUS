@@ -84,7 +84,7 @@ class AuthConnection(base.BaseMOULConnection):
 		
 		token = uuid.UUID(bytes_le=token)
 		if token != ZERO_UUID:
-			raise base.ProtocolError(f"Client sent client-to-auth connect data with unexpected token {token} (should be {ZERO_UUID})")
+			logger.info("Client reconnected using token %s", token)
 	
 	@base.message_handler(0)
 	async def ping_request(self) -> None:
@@ -150,6 +150,16 @@ class AuthConnection(base.BaseMOULConnection):
 			logger.warning("Already registered client sent another client register request - generating new server challenge...")
 		self.server_challenge = SYSTEM_RANDOM.randrange(0x100000000)
 		await self.client_register_reply(self.server_challenge)
+		
+		sockname = self.writer.get_extra_info("sockname")
+		if sockname is None:
+			logger.warning("Unable to send a ServerAddr message to client - couldn't determine own IP address")
+		elif len(sockname) != 2:
+			logger.warning("Unable to send a ServerAddr message to client - own address has unexpected format (probably IPv6): %r", sockname)
+		else:
+			(addr, port) = sockname
+			ip_addr = ipaddress.IPv4Address(addr)
+			await self.server_address(ip_addr, uuid.uuid4())
 	
 	@base.message_handler(2)
 	async def client_set_ccr_level(self) -> None:
