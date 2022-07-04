@@ -75,14 +75,14 @@ not even their structure.
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
-   ,,PlayerList,14
+   ,,*PlayerList*,14
    13,PlayerDeleteRequest,PlayerDeleteReply,17
-   14,PlayerUndeleteRequest,,
-   15,PlayerSelectRequest,,
-   16,PlayerRenameRequest,,
+   14,*PlayerUndeleteRequest*,,
+   15,*PlayerSelectRequest*,,
+   16,*PlayerRenameRequest*,,
    17,PlayerCreateRequest,PlayerCreateReply,16
-   18,PlayerSetStatus,,
-   19,PlayerChat,PlayerChat,15
+   18,*PlayerSetStatus*,,
+   19,*PlayerChat*,*PlayerChat*,15
    20,UpgradeVisitorRequest,UpgradeVisitorReply,18
    21,SetPlayerBanStatusRequest,SetPlayerBanStatusReply,19
    22,KickPlayer,KickedOff,39
@@ -94,7 +94,7 @@ not even their structure.
    :widths: auto
    
    24,SendFriendInviteRequest,SendFriendInviteReply,21
-   ,,FriendNotify,22
+   ,,*FriendNotify*,22
 
 .. csv-table:: Vault
    :name: auth_messages_vault
