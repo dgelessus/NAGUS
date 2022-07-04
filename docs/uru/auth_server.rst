@@ -66,8 +66,8 @@ not even their structure.
    8,:ref:`AcctChangePasswordRequest <cli2auth_acct_change_password_request>`,:ref:`AcctChangePasswordReply <cli2auth_acct_change_password_reply>`,9
    9,:ref:`AcctSetRolesRequest <cli2auth_acct_set_roles_request>`,:ref:`AcctSetRolesReply <auth2cli_acct_set_roles_reply>`,10
    10,:ref:`AcctSetBillingTypeRequest <cli2auth_acct_set_billing_type_request>`,:ref:`AcctSetBillingTypeReply <auth2cli_acct_set_billing_type_reply>`,11
-   11,AcctActivateRequest,AcctActivateReply,12
-   12,AcctCreateFromKeyRequest,AcctCreateFromKeyReply,13
+   11,:ref:`AcctActivateRequest <cli2auth_acct_activate_request>`,:ref:`AcctActivateReply <auth2cli_acct_activate_reply>`,12
+   12,:ref:`AcctCreateFromKeyRequest <cli2auth_acct_create_from_key_request>`,:ref:`AcctCreateFromKeyReply <auth2cli_acct_create_from_key_reply>`,13
    53,AccountExistsRequest,AccountExistsReply,48
 
 .. csv-table:: Player
@@ -902,4 +902,67 @@ Auth2Cli_AcctSetBillingTypeReply
 * **Result:** 4-byte :cpp:enum:`ENetError`.
 
 Reply to an :ref:`AcctSetBillingTypeRequest <cli2auth_acct_set_billing_type_request>`
+and similarly unused in practice.
+
+.. _cli2auth_acct_activate_request:
+
+Cli2Auth_AcctActivateRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 11
+* **Transaction ID:** 4-byte unsigned int.
+* **Activation key:** 16-byte UUID.
+
+Implemented in the open-sourced client code,
+but never actually used,
+and not supported by any fan server implementation.
+Unclear if Cyan's server software supports it.
+All current shards (Cyan and fan-run) that require account activation implement it using a web interface.
+
+.. _auth2cli_acct_activate_reply:
+
+Auth2Cli_AcctActivateReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 12
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to an :ref:`AcctActivateRequest <cli2auth_acct_activate_request>`
+and similarly unused in practice.
+
+.. _cli2auth_acct_create_from_key_request:
+
+Cli2Auth_AcctCreateFromKeyRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 12
+* **Transaction ID:** 4-byte unsigned int.
+* **Account name:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
+* **Password hash:** 20-byte SHA hash.
+  Same format as the :ref:`password hash <password_hash>` in :ref:`AcctLoginRequest <cli2auth_acct_login_request>`.
+* **Key:** 16-byte UUID.
+* **Billing type:** 4-byte unsigned int.
+  Same meaning as the :ref:`billing type <billing_type>` in :ref:`AcctLoginReply <auth2cli_acct_login_reply>`.
+
+Variant of :ref:`AcctCreateRequest <cli2auth_acct_create_request>`.
+Implemented in the open-sourced client code,
+but never actually used,
+and not supported by any fan server implementation.
+Unclear if Cyan's server software still supports it.
+All current shards (Cyan and fan-run) implement account creation using a web interface or other mechanism.
+
+.. _auth2cli_acct_create_from_key_reply:
+
+Auth2Cli_AcctCreateFromKeyReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 13
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Account ID:** 16-byte UUID.
+  Same meaning as the account ID in :ref:`AcctLoginReply <auth2cli_acct_login_reply>`.
+* **Activation key:** 16-byte UUID.
+
+Reply to an :ref:`AcctCreateFromKeyRequest <cli2auth_acct_create_from_key_request>`
 and similarly unused in practice.
