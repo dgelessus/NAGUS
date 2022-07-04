@@ -64,8 +64,8 @@ not even their structure.
    6,:ref:`AcctSetPlayerRequest <cli2auth_acct_set_player_request>`,:ref:`AcctSetPlayerReply <auth2cli_acct_set_player_reply>`,7
    7,:ref:`AcctCreateRequest <cli2auth_acct_create_request>`,:ref:`AcctCreateReply <auth2cli_acct_create_reply>`,8
    8,:ref:`AcctChangePasswordRequest <cli2auth_acct_change_password_request>`,:ref:`AcctChangePasswordReply <cli2auth_acct_change_password_reply>`,9
-   9,AcctSetRolesRequest,AcctSetRolesReply,10
-   10,AcctSetBillingTypeRequest,AcctSetBillingTypeReply,11
+   9,:ref:`AcctSetRolesRequest <cli2auth_acct_set_roles_request>`,:ref:`AcctSetRolesReply <auth2cli_acct_set_roles_reply>`,10
+   10,:ref:`AcctSetBillingTypeRequest <cli2auth_acct_set_billing_type_request>`,:ref:`AcctSetBillingTypeReply <auth2cli_acct_set_billing_type_reply>`,11
    11,AcctActivateRequest,AcctActivateReply,12
    12,AcctCreateFromKeyRequest,AcctCreateFromKeyReply,13
    53,AccountExistsRequest,AccountExistsReply,48
@@ -847,3 +847,59 @@ The result is usually one of:
 * :cpp:enumerator:`kNetSuccess`
 * :cpp:enumerator:`kNetErrAccountNotFound`
 * :cpp:enumerator:`kNetErrInvalidParameter`
+
+.. _cli2auth_acct_set_roles_request:
+
+Cli2Auth_AcctSetRolesRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 9
+* **Transaction ID:** 4-byte unsigned int.
+* **Account name:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
+* **Account flags:** 4-byte unsigned int.
+  Same meaning as the :ref:`account flags <account_flags>` in :ref:`AcctLoginReply <auth2cli_acct_login_reply>`.
+
+Implemented in the open-sourced client code,
+but never actually used,
+and not supported by any fan server implementation.
+Unclear if Cyan's server software supports it.
+
+.. _auth2cli_acct_set_roles_reply:
+
+Auth2Cli_AcctSetRolesReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 10
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to an :ref:`AcctSetRolesRequest <cli2auth_acct_set_roles_request>`
+and similarly unused in practice.
+
+.. _cli2auth_acct_set_billing_type_request:
+
+Cli2Auth_AcctSetBillingTypeRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 10
+* **Transaction ID:** 4-byte unsigned int.
+* **Account name:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
+* **Billing type:** 4-byte unsigned int.
+  Same meaning as the :ref:`billing type <billing_type>` in :ref:`AcctLoginReply <auth2cli_acct_login_reply>`.
+
+Implemented in the open-sourced client code,
+but never actually used,
+and not supported by any fan server implementation.
+Unclear if Cyan's server software supports it.
+
+.. _auth2cli_acct_set_billing_type_reply:
+
+Auth2Cli_AcctSetBillingTypeReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 11
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to an :ref:`AcctSetBillingTypeRequest <cli2auth_acct_set_billing_type_request>`
+and similarly unused in practice.
