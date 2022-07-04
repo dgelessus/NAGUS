@@ -63,7 +63,7 @@ not even their structure.
    5,*AcctSetDataRequest*,*AcctData*,5
    6,:ref:`AcctSetPlayerRequest <cli2auth_acct_set_player_request>`,:ref:`AcctSetPlayerReply <auth2cli_acct_set_player_reply>`,7
    7,:ref:`AcctCreateRequest <cli2auth_acct_create_request>`,:ref:`AcctCreateReply <auth2cli_acct_create_reply>`,8
-   8,AcctChangePasswordRequest,AcctChangePasswordReply,9
+   8,:ref:`AcctChangePasswordRequest <cli2auth_acct_change_password_request>`,:ref:`AcctChangePasswordReply <cli2auth_acct_change_password_reply>`,9
    9,AcctSetRolesRequest,AcctSetRolesReply,10
    10,AcctSetBillingTypeRequest,AcctSetBillingTypeReply,11
    11,AcctActivateRequest,AcctActivateReply,12
@@ -797,3 +797,53 @@ Auth2Cli_AcctCreateReply
 
 Reply to an :ref:`AcctCreateRequest <cli2auth_acct_create_request>`
 and similarly unused in practice.
+
+.. _cli2auth_acct_change_password_request:
+
+Cli2Auth_AcctChangePasswordRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 8
+* **Transaction ID:** 4-byte unsigned int.
+* **Account name:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
+  Name of the account for which to change the password.
+  Must match the name of the account with which the client is currently logged in.
+* **Password hash:** 20-byte SHA hash.
+  Hashed version of the new password.
+  Same format as the :ref:`password hash <password_hash>` in :ref:`AcctLoginRequest <cli2auth_acct_login_request>`.
+
+Change the password of an existing account.
+Sent by the client when the user uses the ``/changepassword`` chat command.
+The client always uses the SHA-0-based hash function for the new password,
+even for account names where the SHA-1-based hash should be used,
+which may lead to the player being unable to log in with the new password.
+At least MOSS detects this case and rejects such a password change.
+
+This message doesn't authenticate the client ---
+it can only be sent after a successful :ref:`AcctLoginRequest <cli2auth_acct_login_request>`,
+and the account name field must exactly match the one sent at login.
+
+MOSS appears to fully implement this message,
+whereas Cyan's server software seems to ignore it.
+DIRTSAND doesn't support it at all.
+
+All current public shards (Cyan and fan-run) also provide a web interface to change account passwords,
+so this message and the ``/changepassword`` command is no longer the primary way to change passwords,
+even where the server does implement the message.
+
+.. _cli2auth_acct_change_password_reply:
+
+Auth2Cli_AcctChangePasswordReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 9
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to an :ref:`AcctChangePasswordRequest <cli2auth_acct_change_password_request>`.
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrAccountNotFound`
+* :cpp:enumerator:`kNetErrInvalidParameter`
