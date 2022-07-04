@@ -68,7 +68,7 @@ not even their structure.
    10,:ref:`AcctSetBillingTypeRequest <cli2auth_acct_set_billing_type_request>`,:ref:`AcctSetBillingTypeReply <auth2cli_acct_set_billing_type_reply>`,11
    11,:ref:`AcctActivateRequest <cli2auth_acct_activate_request>`,:ref:`AcctActivateReply <auth2cli_acct_activate_reply>`,12
    12,:ref:`AcctCreateFromKeyRequest <cli2auth_acct_create_from_key_request>`,:ref:`AcctCreateFromKeyReply <auth2cli_acct_create_from_key_reply>`,13
-   53,AccountExistsRequest,AccountExistsReply,48
+   53,:ref:`AccountExistsRequest <cli2auth_account_exists_request>`,:ref:`AccountExistsReply <auth2cli_account_exists_reply>`,48
 
 .. csv-table:: Player
    :name: auth_messages_player
@@ -965,4 +965,32 @@ Auth2Cli_AcctCreateFromKeyReply
 * **Activation key:** 16-byte UUID.
 
 Reply to an :ref:`AcctCreateFromKeyRequest <cli2auth_acct_create_from_key_request>`
+and similarly unused in practice.
+
+.. _cli2auth_account_exists_request:
+
+Cli2Auth_AccountExistsRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 53
+* **Transaction ID:** 4-byte unsigned int.
+* **Account name:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
+
+Implemented in the open-sourced client code,
+but never actually used,
+and not supported by any fan server implementation.
+Unclear if Cyan's server software still supports it.
+
+.. _auth2cli_account_exists_reply:
+
+Auth2Cli_AccountExistsReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 48
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Account exists:** 1-byte unsigned int.
+  Presumably a boolean.
+
+Reply to an :ref:`AccountExistsRequest <auth2cli_account_exists_reply>`
 and similarly unused in practice.
