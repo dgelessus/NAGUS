@@ -62,7 +62,7 @@ not even their structure.
    4,*AcctSetEulaVersion*,,
    5,*AcctSetDataRequest*,*AcctData*,5
    6,:ref:`AcctSetPlayerRequest <cli2auth_acct_set_player_request>`,:ref:`AcctSetPlayerReply <auth2cli_acct_set_player_reply>`,7
-   7,AcctCreateRequest,AcctCreateReply,8
+   7,:ref:`AcctCreateRequest <cli2auth_acct_create_request>`,:ref:`AcctCreateReply <auth2cli_acct_create_reply>`,8
    8,AcctChangePasswordRequest,AcctChangePasswordReply,9
    9,AcctSetRolesRequest,AcctSetRolesReply,10
    10,AcctSetBillingTypeRequest,AcctSetBillingTypeReply,11
@@ -388,6 +388,8 @@ in which case it's considered a plain username.
    * ``noreply@gametap.net``
    * ``noreply@spam.gametap.net``
 
+.. _password_hash:
+
 Password hash
 '''''''''''''
 
@@ -614,6 +616,8 @@ Cyan's server software isn't always consistent about this ---
 e. g. the notthedroids key is returned even for failed logins.
 The error code is displayed to the user as a text description.
 
+.. _account_flags:
+
 Account flags
 '''''''''''''
 
@@ -672,6 +676,8 @@ All other flags seem to be true flags that may be set in any combination on top 
    Not used by MOSS ---
    it handles account bans using an internal database flag
    that isn't sent to the client.
+
+.. _billing_type:
 
 Billing type
 ''''''''''''
@@ -744,3 +750,36 @@ The result is usually one of:
   rather than refusing the new login.
 * :cpp:enumerator:`kNetErrVaultNodeNotFound`: For some reason,
   the open-sourced client code considers this a success.
+
+.. _cli2auth_acct_create_request:
+
+Cli2Auth_AcctCreateRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* **Transaction ID:** 4-byte unsigned int.
+* **Account name:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
+* **Password hash:** 20-byte SHA hash.
+  Same format as the :ref:`password hash <password_hash>` in :ref:`AcctLoginRequest <cli2auth_acct_login_request>`.
+* **Account flags:** 4-byte unsigned int.
+  Same meaning as the :ref:`account flags <account_flags>` in :ref:`AcctLoginReply <auth2cli_acct_login_reply>`.
+* **Billing type:** 4-byte unsigned int.
+  Same meaning as the :ref:`billing type <billing_type>` in :ref:`AcctLoginReply <auth2cli_acct_login_reply>`.
+
+Implemented in the open-sourced client code,
+but never actually used,
+and not supported by any fan server implementation.
+Unclear if Cyan's server software still supports it.
+All current shards (Cyan and fan-run) implement account creation using a web interface or other mechanism.
+
+.. _auth2cli_acct_create_reply:
+
+Auth2Cli_AcctCreateReply
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Account ID:** 16-byte UUID.
+  Same meaning as the account ID in :ref:`AcctLoginReply <auth2cli_acct_login_reply>`.
+
+Reply to an :ref:`AcctCreateRequest <cli2auth_acct_create_request>`
+and similarly unused in practice.
