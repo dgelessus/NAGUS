@@ -76,7 +76,7 @@ not even their structure.
    :widths: auto
    
    ,,*PlayerList*,14
-   13,PlayerDeleteRequest,PlayerDeleteReply,17
+   13,:ref:`PlayerDeleteRequest <cli2auth_player_delete_request>`,:ref:`PlayerDeleteReply <auth2cli_player_delete_reply>`,17
    14,*PlayerUndeleteRequest*,,
    15,*PlayerSelectRequest*,,
    16,*PlayerRenameRequest*,,
@@ -994,3 +994,41 @@ Auth2Cli_AccountExistsReply
 
 Reply to an :ref:`AccountExistsRequest <auth2cli_account_exists_reply>`
 and similarly unused in practice.
+
+.. _cli2auth_player_delete_request:
+
+Cli2Auth_PlayerDeleteRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 13
+* **Transaction ID:** 4-byte unsigned int.
+* **Player vault node ID:** 4-byte unsigned int.
+  KI number of the avatar to be deleted.
+  Must correspond to one of the avatars in the currently logged in account.
+
+Delete an existing avatar.
+Sent by the client when the player uses the "Delete Explorer" button on the avatar selection screen.
+
+Deleting an avatar removes it from the account and allows its name to be reused for a new avatar.
+However,
+it *doesn't* delete the avatar's vault node and other related data,
+so the deleted avatar will continue to appear in its neighborhood member list
+and in other players' buddies/recent lists until deleted.
+In general,
+there's no way for other players to tell that the avatar has been deleted.
+
+.. _auth2cli_player_delete_reply:
+
+Auth2Cli_PlayerDeleteReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 17
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to a :ref:`PlayerDeleteRequest <cli2auth_player_delete_request>`.
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrPlayerNotFound`
