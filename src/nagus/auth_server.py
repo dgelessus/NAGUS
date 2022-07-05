@@ -47,6 +47,10 @@ ACCOUNT_LOGIN_REPLY = struct.Struct("<II16sII4I")
 ACCOUNT_LOGIN_REQUEST_HEADER = struct.Struct("<II")
 ACCOUNT_SET_PLAYER_REPLY = struct.Struct("<II")
 ACCOUNT_SET_PLAYER_REQUEST = struct.Struct("<II")
+PLAYER_DELETE_REPLY = struct.Struct("<II")
+PLAYER_DELETE_REQUEST = struct.Struct("<II")
+PLAYER_CREATE_REPLY_HEADER = struct.Struct("<IIII")
+PLAYER_CREATE_REQUEST_HEADER = struct.Struct("<I")
 
 
 ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
@@ -288,3 +292,53 @@ class AuthConnection(base.BaseMOULConnection):
 		# TODO Check that the KI number actually belongs to the player's account
 		self.client_state.ki_number = ki_number
 		await self.account_set_player_reply(trans_id, base.NetError.success)
+	
+	async def player_delete_reply(self, trans_id: int, result: base.NetError) -> None:
+		logger.debug("Sending player delete reply: transaction ID %d, result %r", trans_id, result)
+		await self.write_message(17, PLAYER_DELETE_REPLY.pack(trans_id, result))
+	
+	@base.message_handler(13)
+	async def player_delete_request(self) -> None:
+		trans_id, ki_number = await self.read_unpack(PLAYER_DELETE_REQUEST)
+		logger.debug("Player delete request: transaction ID %d, KI number %d", trans_id, ki_number)
+		if ki_number == getattr(self.client_state, "ki_number", None):
+			# Can't delete current avatar
+			await self.player_delete_reply(trans_id, base.NetError.invalid_parameter)
+			return
+		# TODO Actually implement this
+		await self.player_delete_reply(trans_id, base.NetError.success)
+	
+	async def player_create_reply(
+		self,
+		trans_id: int,
+		result: base.NetError,
+		ki_number: int,
+		explorer: int,
+		avatar_name: str,
+		avatar_shape: str,
+	) -> None:
+		await self.write_message(16, (
+			PLAYER_CREATE_REPLY_HEADER.pack(trans_id, result, ki_number, explorer)
+			+ base.pack_string_field(avatar_name, 40)
+			+ base.pack_string_field(avatar_shape, 64)
+		))
+	
+	@base.message_handler(17)
+	async def player_create_request(self) -> None:
+		(trans_id,) = await self.read_unpack(PLAYER_CREATE_REQUEST_HEADER)
+		avatar_name = await self.read_string_field(40)
+		avatar_shape = await self.read_string_field(260)
+		friend_invite_code = await self.read_string_field(260)
+		logger.debug("Player create request: transaction ID %d, avatar name %r, avatar shape %r", trans_id, avatar_name, avatar_shape)
+		if avatar_shape not in {"female", "male"}:
+			logger.error("Unsupported avatar shape %r")
+			# More correct would be invalid_parameter,
+			# but the client assumes that means an invalid invite code.
+			await self.player_create_reply(trans_id, base.NetError.not_supported, 0, 0, "", "")
+			return
+		if friend_invite_code:
+			logger.error("Player create request with friend invite code, we don't support this: %r", friend_invite_code)
+			await self.player_create_reply(trans_id, base.NetError.invalid_parameter, 0, 0, "", "")
+			return
+		# TODO Actually implement this
+		await self.player_create_reply(trans_id, base.NetError.success, 1337, 1, avatar_name, avatar_shape)
