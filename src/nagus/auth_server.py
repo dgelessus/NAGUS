@@ -51,6 +51,8 @@ PLAYER_DELETE_REPLY = struct.Struct("<II")
 PLAYER_DELETE_REQUEST = struct.Struct("<II")
 PLAYER_CREATE_REPLY_HEADER = struct.Struct("<IIII")
 PLAYER_CREATE_REQUEST_HEADER = struct.Struct("<I")
+UPGRADE_VISITOR_REQUEST = struct.Struct("<II")
+UPGRADE_VISITOR_REPLY = struct.Struct("<II")
 
 
 ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
@@ -343,3 +345,13 @@ class AuthConnection(base.BaseMOULConnection):
 			return
 		# TODO Actually implement this
 		await self.player_create_reply(trans_id, base.NetError.success, 1337, 1, avatar_name, avatar_shape)
+	
+	async def upgrade_visitor_reply(self, trans_id: int, result: base.NetError) -> None:
+		logger.debug("Sending upgrade visitor reply: transaction ID %d, result %r", trans_id, result)
+		await self.write_message(18, UPGRADE_VISITOR_REPLY.pack(trans_id, result))
+	
+	@base.message_handler(20)
+	async def upgrade_visitor_request(self) -> None:
+		(trans_id, ki_number) = await self.read_unpack(UPGRADE_VISITOR_REQUEST)
+		# TODO Actually implement this
+		await self.upgrade_visitor_reply(trans_id, base.NetError.success)

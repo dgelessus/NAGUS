@@ -83,7 +83,7 @@ not even their structure.
    17,:ref:`PlayerCreateRequest <cli2auth_player_create_request>`,:ref:`PlayerCreateReply <auth2cli_player_create_reply>`,16
    18,*PlayerSetStatus*,,
    19,*PlayerChat*,*PlayerChat*,15
-   20,UpgradeVisitorRequest,UpgradeVisitorReply,18
+   20,:ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`,:ref:`UpgradeVisitorReply <auth2cli_upgrade_visitor_reply>`,18
    21,SetPlayerBanStatusRequest,SetPlayerBanStatusReply,19
    22,KickPlayer,KickedOff,39
    23,ChangePlayerNameRequest,ChangePlayerNameReply,20
@@ -552,8 +552,8 @@ Auth2Cli_AcctPlayerInfo
   the avatar's gender.
   Either ``"female"`` or ``"male"``.
 * **Explorer:** 4-byte unsigned int.
-  1 if the player is a full explorer,
-  or 0 if it's just a visitor.
+  1 if the player is a full :ref:`explorer <explorer>`,
+  or 0 if it's just a :ref:`visitor <visitor>`.
 
 Reports information about a single avatar associated with the client's account.
 Sent by the server after a successful login,
@@ -567,6 +567,12 @@ The client technically supports at most 6 avatars per account ---
 but because visitors are no longer used in MOULa,
 the practical limit is 5 avatars.
 
+.. index:: visitor
+   :name: visitor
+
+.. index:: explorer
+   :name: explorer
+
 .. note::
    
    Visitors are a holdover from GameTap-era MOUL,
@@ -577,6 +583,7 @@ the practical limit is 5 avatars.
    With MOULa being free to play,
    all accounts are considered "paying",
    so visitor avatars no longer have any use and can't be created anymore.
+   H'uru clients no longer support visitor avatars at all.
 
 .. _auth2cli_acct_login_reply:
 
@@ -709,6 +716,11 @@ The open-sourced client code defines the following billing types:
    With MOULa being free to play,
    all accounts have this flag set
    despite not actually paying for a subscription.
+   
+   Accounts with this flag unset can only create a single :ref:`visitor <visitor>` avatar.
+   Accounts with this flag set can only create :ref:`explorer <explorer>` avatars,
+   and any existing visitor avatar is automatically upgraded to an explorer
+   (see :ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`).
    
    DIRTSAND sets this flag for all accounts and doesn't allow changing it.
    MOSS has a few bits of code that theoretically handle non-paid accounts,
@@ -1118,3 +1130,43 @@ The result is usually one of:
 * :cpp:enumerator:`kNetErrInviteNoMatchingPlayer`: The avatar associated with the friend invite code couldn't be found.
 * :cpp:enumerator:`kNetErrInviteTooManyHoods`: The avatar associated with the friend invite code has too many hoods (?).
   Probably actually means too many members in the inviter's hood.
+
+.. _cli2auth_upgrade_visitor_request:
+
+Cli2Auth_UpgradeVisitorRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 20
+* **Transaction ID:** 4-byte unsigned int.
+* **Player vault node ID:** 4-byte unsigned int.
+  KI number of the avatar to be upgraded.
+  Must correspond to a visitor avatar in the currently logged in account.
+
+Upgrade an avatar from :ref:`visitor <visitor>` to :ref:`explorer <explorer>` status.
+
+Automatically sent by OpenUru clients upon loading the avatar selection screen
+if the account contains a visitor avatar despite having :cpp:var:`kBillingTypePaidSubscriber`.
+This would happen during the GameTap era
+when a player started playing on a free trial
+and then switched to a paid subscription.
+
+With MOULa being free to play,
+all accounts are considered "paid" from the beginning
+and there is no chance for the player to create a visitor avatar,
+so this message is practically unused.
+The H'uru client no longer has any support for visitor avatars,
+including the automatic upgrade from visitor to explorer.
+MOSS ignores this message,
+and DIRTSAND doesn't support it at all.
+Unclear if Cyan's server software still supports it.
+
+.. _auth2cli_upgrade_visitor_reply:
+
+Auth2Cli_UpgradeVisitorReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 18
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to an :ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`.
