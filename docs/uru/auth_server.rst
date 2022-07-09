@@ -1004,7 +1004,7 @@ Auth2Cli_AccountExistsReply
 * **Account exists:** 1-byte unsigned int.
   Presumably a boolean.
 
-Reply to an :ref:`AccountExistsRequest <auth2cli_account_exists_reply>`
+Reply to an :ref:`AccountExistsRequest <cli2auth_account_exists_request>`
 and similarly unused in practice.
 
 .. _cli2auth_player_delete_request:
