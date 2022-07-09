@@ -53,6 +53,7 @@ PLAYER_CREATE_REPLY_HEADER = struct.Struct("<IIII")
 PLAYER_CREATE_REQUEST_HEADER = struct.Struct("<I")
 UPGRADE_VISITOR_REQUEST = struct.Struct("<II")
 UPGRADE_VISITOR_REPLY = struct.Struct("<II")
+KICKED_OFF = struct.Struct("<I")
 
 
 ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
@@ -151,6 +152,19 @@ class AuthConnection(base.BaseMOULConnection):
 			logger.info("New client connection, assigning token %s", self.client_state.token)
 			self.server_state.auth_connections[self.client_state.token] = self
 	
+	async def kicked_off(self, reason: base.NetError) -> None:
+		await self.write_message(39, KICKED_OFF.pack(reason))
+	
+	async def disconnect_with_reason(self, client_reason: base.NetError, server_log_message: str) -> typing.NoReturn:
+		"""Send the client a reason why it's being disconnected before actually disconnecting it.
+		
+		This must only be used after the connection has been fully set up!
+		Otherwise the client won't recognize the Auth2Cli_KickedOff message.
+		"""
+		
+		await self.kicked_off(client_reason)
+		raise base.ProtocolError(server_log_message)
+	
 	@base.message_handler(0)
 	async def ping_request(self) -> None:
 		"""Reply to ping request."""
@@ -183,7 +197,7 @@ class AuthConnection(base.BaseMOULConnection):
 		(build_id,) = await self.read_unpack(CLIENT_REGISTER_REQUEST)
 		logger.debug("Build ID: %d", build_id)
 		if build_id != self.build_id:
-			raise base.ProtocolError(f"Client register request build ID ({build_id}) differs from connect packet ({self.build_id})")
+			await self.disconnect_with_reason(base.NetError.invalid_parameter, f"Client register request build ID ({build_id}) differs from connect packet ({self.build_id})")
 		
 		# Send ServerCaps message for H'uru clients in a way that doesn't break OpenUru clients.
 		# This is barely tested and does some wacky stuff,
@@ -230,7 +244,7 @@ class AuthConnection(base.BaseMOULConnection):
 	async def client_set_ccr_level(self) -> None:
 		(ccr_level,) = await self.read_unpack(CLIENT_SET_CCR_LEVEL)
 		logger.warning("Client changed its CCR level to %d", ccr_level)
-		raise base.ProtocolError(f"Client attempted to change its CCR level (to {ccr_level}), we don't allow this")
+		await self.disconnect_with_reason(base.NetError.service_forbidden, f"Client attempted to change its CCR level (to {ccr_level}), we don't allow this")
 	
 	async def account_player_info(
 		self,
@@ -278,7 +292,7 @@ class AuthConnection(base.BaseMOULConnection):
 			logger.info("Login request with non-Windows OS name %r by account %r", os_name, account_name)
 		
 		if not hasattr(self.client_state, "server_challenge"):
-			raise base.ProtocolError("Client attempted to log in without sending a client register request first")
+			await self.disconnect_with_reason(base.NetError.service_forbidden, "Client attempted to log in without sending a client register request first")
 		
 		# TODO Implement actual authentication
 		await self.account_login_reply(trans_id, base.NetError.success, ZERO_UUID, AccountFlags.user, AccountBillingType.paid_subscriber, (0, 0, 0, 0))
