@@ -85,7 +85,7 @@ not even their structure.
    19,*PlayerChat*,*PlayerChat*,15
    20,:ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`,:ref:`UpgradeVisitorReply <auth2cli_upgrade_visitor_reply>`,18
    21,:ref:`SetPlayerBanStatusRequest <cli2auth_set_player_ban_status_request>`,:ref:`SetPlayerBanStatusReply <auth2cli_set_player_ban_status_reply>`,19
-   22,:ref:`KickPlayer <cli2auth_kick_player>`,KickedOff,39
+   22,:ref:`KickPlayer <cli2auth_kick_player>`,:ref:`KickedOff <auth2cli_kicked_off>`,39
    23,ChangePlayerNameRequest,ChangePlayerNameReply,20
 
 .. csv-table:: Friends
@@ -1213,3 +1213,27 @@ Implemented in the open-sourced client code,
 but never actually used,
 and not supported by any fan server implementation.
 Unclear if Cyan's server software supports it.
+
+.. _auth2cli_kicked_off:
+
+Auth2Cli_KickedOff
+^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 39
+* **Reason:** 4-byte :cpp:enum:`ENetError`.
+  Indicates why the player was kicked.
+
+Sent by the server to tell the client why it's being disconnected.
+The obvious use case is when a shard admin kicks the player in question,
+but it's also used when disconnecting clients for other reasons
+to display a more helpful message to players.
+
+Implemented by Cyan's server software and MOSS,
+but not DIRTSAND.
+
+The reason is usually one of:
+
+* :cpp:enumerator:`kNetErrLoggedInElsewhere`:
+  Sent by Cyan's server software and MOSS
+  when another client logs into the client's currently logged in account.
+* :cpp:enumerator:`kNetErrKickedByCCR`
