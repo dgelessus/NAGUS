@@ -84,7 +84,7 @@ not even their structure.
    18,*PlayerSetStatus*,,
    19,*PlayerChat*,*PlayerChat*,15
    20,:ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`,:ref:`UpgradeVisitorReply <auth2cli_upgrade_visitor_reply>`,18
-   21,SetPlayerBanStatusRequest,SetPlayerBanStatusReply,19
+   21,:ref:`SetPlayerBanStatusRequest <cli2auth_set_player_ban_status_request>`,:ref:`SetPlayerBanStatusReply <auth2cli_set_player_ban_status_reply>`,19
    22,KickPlayer,KickedOff,39
    23,ChangePlayerNameRequest,ChangePlayerNameReply,20
 
@@ -1170,3 +1170,32 @@ Auth2Cli_UpgradeVisitorReply
 * **Result:** 4-byte :cpp:enum:`ENetError`.
 
 Reply to an :ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`.
+
+.. _cli2auth_set_player_ban_status_request:
+
+Cli2Auth_SetPlayerBanStatusRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 21
+* **Transaction ID:** 4-byte unsigned int.
+* **Player vault node ID:** 4-byte unsigned int.
+  KI number of the avatar whose ban status should be changed.
+* **Banned:** 4-byte unsigned int.
+  Presumably a boolean.
+
+Implemented in the open-sourced client code,
+but never actually used,
+and not supported by any fan server implementation.
+Unclear if Cyan's server software supports it.
+
+.. _auth2cli_set_player_ban_status_reply:
+
+Auth2Cli_SetPlayerBanStatusReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 19
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to a :ref:`SetPlayerBanStatusRequest <cli2auth_set_player_ban_status_request>`
+and similarly unused in practice.
