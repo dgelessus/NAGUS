@@ -317,6 +317,7 @@ class AuthConnection(base.BaseMOULConnection):
 		avatar_name: str,
 		avatar_shape: str,
 	) -> None:
+		logger.debug("Sending player create reply: transaction ID %d, result %r, KI number %d, explorer? %d, name %r, avatar shape %r", trans_id, result, ki_number, explorer, avatar_name, avatar_shape)
 		await self.write_message(16, (
 			PLAYER_CREATE_REPLY_HEADER.pack(trans_id, result, ki_number, explorer)
 			+ base.pack_string_field(avatar_name, 40)
