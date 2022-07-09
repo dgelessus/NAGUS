@@ -86,7 +86,7 @@ not even their structure.
    20,:ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`,:ref:`UpgradeVisitorReply <auth2cli_upgrade_visitor_reply>`,18
    21,:ref:`SetPlayerBanStatusRequest <cli2auth_set_player_ban_status_request>`,:ref:`SetPlayerBanStatusReply <auth2cli_set_player_ban_status_reply>`,19
    22,:ref:`KickPlayer <cli2auth_kick_player>`,:ref:`KickedOff <auth2cli_kicked_off>`,39
-   23,ChangePlayerNameRequest,ChangePlayerNameReply,20
+   23,:ref:`ChangePlayerNameRequest <cli2auth_change_player_name_request>`,:ref:`ChangePlayerNameReply <auth2cli_change_player_name_reply>`,20
 
 .. csv-table:: Friends
    :name: auth_messages_friends
@@ -1237,3 +1237,32 @@ The reason is usually one of:
   Sent by Cyan's server software and MOSS
   when another client logs into the client's currently logged in account.
 * :cpp:enumerator:`kNetErrKickedByCCR`
+
+.. _cli2auth_change_player_name_request:
+
+Cli2Auth_ChangePlayerNameRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 23
+* **Transaction ID:** 4-byte unsigned int.
+* **Player vault node ID:** 4-byte unsigned int.
+  KI number of the avatar to rename.
+* **Player name:** :c:macro:`NET_MSG_FIELD_STRING`\(40).
+  The avatar's new display name.
+
+Implemented in the open-sourced client code,
+but never actually used,
+and not supported by any fan server implementation.
+Unclear if Cyan's server software supports it.
+
+.. _auth2cli_change_player_name_reply:
+
+Auth2Cli_ChangePlayerNameReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 20
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to a :ref:`ChangePlayerNameRequest <cli2auth_change_player_name_request>`
+and similarly unused in practice.
