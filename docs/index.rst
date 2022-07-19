@@ -38,6 +38,7 @@ Contents
    uru/encryption_keys
    uru/server_config
    uru/protocol
+   uru/vault
    uru/auth_server
 
 .. toctree::
