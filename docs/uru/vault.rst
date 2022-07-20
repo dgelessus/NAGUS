@@ -50,7 +50,7 @@ this is usually represented using nullable columns.
 Some fields (strings and blobs) have variable sizes.
 There is no direct limit to these sizes,
 but when sent over the network,
-the representation of a single vault node must be less than 1 MiB long.
+the representation of a single vault node cannot exceed 1 MiB.
 
 The field names are taken from the open-sourced client code.
 Fan tools also use these same field names
@@ -106,8 +106,10 @@ Fan tools also use these same field names
 * ``Blob_1``, ``Blob_2``: Each a free-form byte array with an explicit length and no restrictions.
   Generic fields with no pre-defined purpose.
 
-Network format
-^^^^^^^^^^^^^^
+.. _vault_node_network_format:
+
+Vault node network format
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When sent over the network,
 every vault node starts with an 8-byte integer of bit flags

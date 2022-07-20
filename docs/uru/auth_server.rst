@@ -101,7 +101,7 @@ not even their structure.
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
-   25,VaultNodeCreate,VaultNodeCreated,23
+   25,:ref:`VaultNodeCreate <cli2auth_vault_node_create>`,:ref:`VaultNodeCreated <auth2cli_vault_node_created>`,23
    26,VaultNodeFetch,VaultNodeFetched,24
    27,VaultNodeSave,VaultNodeChanged,25
    ,,VaultSaveNodeReply,32
@@ -1318,3 +1318,51 @@ The result is usually one of:
   Displayed by the client as "Friend invites are currently disabled.".
   Since MOULa,
   Cyan's server software always returns this result.
+
+.. _cli2auth_vault_node_create:
+
+Cli2Auth_VaultNodeCreate
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 25
+* **Transaction ID:** 4-byte unsigned int.
+* **Node data length:** 4-byte unsigned int.
+  Byte length of the following node data field.
+  Can be at most 1 MiB.
+* **Node data:** Variable-length byte array in the format described in :ref:`vault_node_network_format`.
+
+Create a new vault node based on the given fields.
+In general,
+all fields sent by the client are stored as-is into the new vault node,
+and all fields are optional and will be left unset if not set by the client.
+The following fields have special behavior though:
+
+* ``NodeId``: Initialized by the server to a new unused node ID.
+  Ignored when set by the client.
+* ``CreateTime``, ``ModifyTime``: Initialized by the server to the current time.
+  Ignored when set by the client.
+* ``CreatorAcct``, ``CreatorId``: MOSS initializes them to the client's current account/avatar info,
+  ignoring any values sent by the client.
+  DIRTSAND uses whatever values the client sends,
+  or if the client leaves them unset (which is usually the case),
+  it sets the respective fields to zero.
+* ``NodeType``: Should always be set.
+  MOSS *requires* this field and replies with :cpp:enumerator:`kNetErrBadServerData` if left unset.
+  DIRTSAND technically allows creating a node without a type.
+
+.. _auth2cli_vault_node_created:
+
+Auth2Cli_VaultNodeCreated
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 23
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Node ID:** 4-byte unsigned int.
+  ID of the newly created vault node.
+
+Reply to a :ref:`VaultNodeCreate <cli2auth_vault_node_create>` message.
+
+Upon receiving this message,
+if the result is successful,
+the client automatically sends a VaultNodeFetch message for the new node ID.
