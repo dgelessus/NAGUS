@@ -102,7 +102,7 @@ not even their structure.
    :widths: auto
    
    25,:ref:`VaultNodeCreate <cli2auth_vault_node_create>`,:ref:`VaultNodeCreated <auth2cli_vault_node_created>`,23
-   26,VaultNodeFetch,VaultNodeFetched,24
+   26,:ref:`VaultNodeFetch <cli2auth_vault_node_fetch>`,:ref:`VaultNodeFetched <auth2cli_vault_node_fetched>`,24
    27,VaultNodeSave,VaultNodeChanged,25
    ,,VaultSaveNodeReply,32
    28,VaultNodeDelete,VaultNodeDeleted,26
@@ -1365,4 +1365,37 @@ Reply to a :ref:`VaultNodeCreate <cli2auth_vault_node_create>` message.
 
 Upon receiving this message,
 if the result is successful,
-the client automatically sends a VaultNodeFetch message for the new node ID.
+the client automatically sends a :ref:`VaultNodeFetch <cli2auth_vault_node_fetch>` message for the new node ID.
+
+.. _cli2auth_vault_node_fetch:
+
+Cli2Auth_VaultNodeFetch
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 26
+* **Transaction ID:** 4-byte unsigned int.
+* **Node ID:** 4-byte unsigned int.
+  ID of the vault node to fetch.
+
+Retrieve the entire contents of a vault node by its ID.
+
+.. _auth2cli_vault_node_fetched:
+
+Auth2Cli_VaultNodeFetched
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 24
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Node data length:** 4-byte unsigned int.
+  Byte length of the following node data field.
+  Can be at most 1 MiB.
+  Set to 0 on error.
+* **Node data:** Variable-length byte array in the format described in :ref:`vault_node_network_format`.
+
+Reply to a :ref:`VaultNodeFetch <cli2auth_vault_node_fetch>` message.
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrVaultNodeNotFound`: There is no vault node with the given ID.
