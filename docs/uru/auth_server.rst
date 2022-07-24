@@ -105,7 +105,7 @@ not even their structure.
    26,:ref:`VaultNodeFetch <cli2auth_vault_node_fetch>`,:ref:`VaultNodeFetched <auth2cli_vault_node_fetched>`,24
    ,,:ref:`VaultNodeChanged <auth2cli_vault_node_changed>`,25
    27,:ref:`VaultNodeSave <cli2auth_vault_node_save>`,:ref:`VaultSaveNodeReply <auth2cli_vault_save_node_reply>`,32
-   28,VaultNodeDelete,VaultNodeDeleted,26
+   28,*VaultNodeDelete*,:ref:`VaultNodeDeleted <auth2cli_vault_node_deleted>`,26
    29,VaultNodeAdd,VaultNodeAdded,27
    ,,VaultAddNodeReply,33
    30,VaultNodeRemove,VaultNodeRemoved,28
@@ -1487,3 +1487,23 @@ Auth2Cli_VaultSaveNodeReply
 * **Result:** 4-byte :cpp:enum:`ENetError`.
 
 Reply to a :ref:`VaultNodeSave <cli2auth_vault_node_save>` message.
+
+.. _auth2cli_vault_node_deleted:
+
+Auth2Cli_VaultNodeDeleted
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 26
+* **Node ID:** 4-byte unsigned int.
+  ID of the vault node that was deleted.
+
+Notify the client that a vault node has been deleted.
+
+This message is practically unused.
+Although the open-sourced client code fully supports it,
+there's no situation where the server would send it,
+because clients cannot delete vault nodes
+(the corresponding Cli2Auth_VaultNodeDelete message is unimplemented in the client code).
+
+MOSS and DIRTSAND never send this message,
+and it's unclear if Cyan's server software still uses it.
