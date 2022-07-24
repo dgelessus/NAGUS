@@ -103,8 +103,8 @@ not even their structure.
    
    25,:ref:`VaultNodeCreate <cli2auth_vault_node_create>`,:ref:`VaultNodeCreated <auth2cli_vault_node_created>`,23
    26,:ref:`VaultNodeFetch <cli2auth_vault_node_fetch>`,:ref:`VaultNodeFetched <auth2cli_vault_node_fetched>`,24
-   27,VaultNodeSave,VaultNodeChanged,25
-   ,,VaultSaveNodeReply,32
+   ,,:ref:`VaultNodeChanged <auth2cli_vault_node_changed>`,25
+   27,:ref:`VaultNodeSave <cli2auth_vault_node_save>`,:ref:`VaultSaveNodeReply <auth2cli_vault_save_node_reply>`,32
    28,VaultNodeDelete,VaultNodeDeleted,26
    29,VaultNodeAdd,VaultNodeAdded,27
    ,,VaultAddNodeReply,33
@@ -1399,3 +1399,91 @@ The result is usually one of:
 
 * :cpp:enumerator:`kNetSuccess`
 * :cpp:enumerator:`kNetErrVaultNodeNotFound`: There is no vault node with the given ID.
+
+.. _auth2cli_vault_node_changed:
+
+Auth2Cli_VaultNodeChanged
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 25
+* **Node ID:** 4-byte unsigned int.
+  ID of the vault node that changed.
+* **Revision ID:** 16-byte UUID.
+  As sent in the :ref:`VaultNodeSave <cli2auth_vault_node_save>` message by the client that performed the change.
+
+Notify the client about a change to a vault node.
+
+This message is sent even for changes made by the client itself using :ref:`VaultNodeSave <cli2auth_vault_node_save>`.
+Clients can detect self-caused change notifications using the revision ID field in both messages.
+
+Not all clients are notified about every vault node change.
+The exact rules for which clients are notified about which changes depend on the server.
+Both MOSS and DIRTSAND notify each client about changes to its respective current player and age nodes,
+as well as any of their child nodes.
+MOSS additionally notifies all clients about changes to the system vault node.
+
+.. _cli2auth_vault_node_save:
+
+Cli2Auth_VaultNodeSave
+^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 27
+* **Transaction ID:** 4-byte unsigned int.
+* **Node ID:** 4-byte unsigned int.
+  ID of the vault node to update.
+* **Revision ID:** 16-byte UUID.
+  Sent to this and other clients as part of the :ref:`VaultNodeChanged <auth2cli_vault_node_changed>` message.
+  Not stored permanently.
+* **Node data length:** 4-byte unsigned int.
+  Byte length of the following node data field.
+  Can be at most 1 MiB.
+* **Node data:** Variable-length byte array in the format described in :ref:`vault_node_network_format`.
+
+Update the contents of an existing vault node.
+
+In general,
+all fields sent by the client are written into the vault node,
+overwriting any existing values for the respective fields.
+Fields *not* sent by the client are left unchanged,
+i. e. remain unset or keep their existing values.
+There is no way to explicitly unset a previously set field.
+
+The following fields have special behavior:
+
+* ``NodeId``: Should never be changed.
+  OpenUru clients will never send changes for this field.
+  MOSS theoretically allows changing it,
+  whereas DIRTSAND ignores it when set by the client.
+* ``CreateTime``: Should never be changed.
+  OpenUru clients will never send changes for this field.
+  Ignored by MOSS and DIRTSAND when set by the client.
+* ``ModifyTime``: Automatically set by the server to the current time.
+  Ignored when set by the client.
+* ``CreatorAcct``, ``CreatorId``: Should never be changed.
+  OpenUru clients will never send changes for these fields.
+  MOSS and DIRTSAND theoretically allow changing them anyway.
+* ``NodeType``: Always sent by the client,
+  even though it should never be changed.
+  Ignored by MOSS,
+  whereas DIRTSAND theoretically allows changing it.
+* ``String64_1``: For SDL nodes,
+  H'uru clients always send this field even if it hasn't changed,
+  because of an unspecified issue with Cyan's server software.
+
+After the vault node has been changed,
+the server sends a :ref:`VaultSaveNodeReply <auth2cli_vault_save_node_reply>` the client that performed the change,
+as well as :ref:`VaultNodeChanged <auth2cli_vault_node_changed>` messages to all clients for which the changed node is relevant.
+The order of these messages can vary
+(e. g. MOSS sends the reply before the change notifications,
+but DIRTSAND does it the other way around).
+
+.. _auth2cli_vault_save_node_reply:
+
+Auth2Cli_VaultSaveNodeReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 32
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to a :ref:`VaultNodeSave <cli2auth_vault_node_save>` message.
