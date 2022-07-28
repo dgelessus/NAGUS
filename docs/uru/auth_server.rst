@@ -106,8 +106,8 @@ not even their structure.
    ,,:ref:`VaultNodeChanged <auth2cli_vault_node_changed>`,25
    27,:ref:`VaultNodeSave <cli2auth_vault_node_save>`,:ref:`VaultSaveNodeReply <auth2cli_vault_save_node_reply>`,32
    28,*VaultNodeDelete*,:ref:`VaultNodeDeleted <auth2cli_vault_node_deleted>`,26
-   29,VaultNodeAdd,VaultNodeAdded,27
-   ,,VaultAddNodeReply,33
+   ,,:ref:`VaultNodeAdded <auth2cli_vault_node_added>`,27
+   29,:ref:`VaultNodeAdd <cli2auth_vault_node_add>`,:ref:`VaultAddNodeReply <auth2cli_vault_add_node_reply>`,33
    30,VaultNodeRemove,VaultNodeRemoved,28
    ,,VaultRemoveNodeReply,34
    31,VaultFetchNodeRefs,VaultNodeRefsFetched,29
@@ -1507,3 +1507,56 @@ because clients cannot delete vault nodes
 
 MOSS and DIRTSAND never send this message,
 and it's unclear if Cyan's server software still uses it.
+
+.. _auth2cli_vault_node_added:
+
+Auth2Cli_VaultNodeAdded
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 27
+* **Parent node ID:** 4-byte unsigned int.
+* **Child node ID:** 4-byte unsigned int.
+* **Owner node ID:** 4-byte unsigned int.
+
+Notify the client about a newly added vault node relationship.
+
+This message is sent even for changes made by the client itself using :ref:`Cli2Auth_VaultNodeAdd <cli2auth_vault_node_add>`.
+
+Not all clients are notified about every new vault node relationship.
+The rules are the same as for :ref:`VaultNodeChanged <auth2cli_vault_node_changed>` messages ---
+if a client receives change notifications for a node,
+then it also receives notifications for new relationships where that node is the parent.
+
+.. _cli2auth_vault_node_add:
+
+Cli2Auth_VaultNodeAdd
+^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 29
+* **Transaction ID:** 4-byte unsigned int.
+* **Parent node ID:** 4-byte unsigned int.
+  Node to which the child node should be added.
+* **Child node ID:** 4-byte unsigned int.
+  Node to be added under the parent node.
+* **Owner node ID:** 4-byte unsigned int.
+  KI number of the avatar adding the relationship,
+  or 0 if it shouldn't/can't be associated with any particular avatar.
+
+Add a new relationship between the given vault nodes.
+
+After the relationship has been added,
+the server sends a :ref:`VaultAddNodeReply <auth2cli_vault_add_node_reply>` the client that performed the change,
+as well as :ref:`VaultNodeAdded <auth2cli_vault_node_added>` messages to all clients for which the changed node is relevant.
+The order of these messages can vary
+(though currently both MOSS and DIRTSAND send the added notifications before the reply).
+
+.. _auth2cli_vault_add_node_reply:
+
+Auth2Cli_VaultAddNodeReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 33
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to a :ref:`VaultNodeAdd <cli2auth_vault_node_add>` message.

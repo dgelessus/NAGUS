@@ -14,12 +14,25 @@ such as the score mechanism and the game manager.)
 Every entry in the vault,
 called a vault node,
 has the same :ref:`generic structure <vault_node_structure>`.
-Vault nodes are linked together in a directed graph ---
-each node can have any number of child nodes,
+Vault nodes are linked together by parent/child relationships,
+called "node refs",
+which form a directed graph.
+Each node can have any number of child nodes,
 and a node may have multiple parents.
-It's possible to create cyclic node structures,
-but normally the vault node graph should be acyclic.
-(TODO How well do client and server handle reference cycles in the vault?)
+
+Additionally,
+each node ref can have an owner node,
+which is the player node (KI number) of the avatar that created the ref.
+Not all refs have their owner set though ---
+in various cases,
+the client sets owner ID 0 instead of the proper owner.
+
+Node refs should never form cycles.
+According to comments in the open-sourced client code,
+the server is supposed to check for reference cycles and forbid adding refs that would create a cycle,
+but no open-source server implementation does this.
+(TODO What does Cyan's server software do?)
+(TODO How well does the client handle reference cycles?)
 
 There is no single root node or entry point from which all other nodes can be reached.
 In a usual vault database,
