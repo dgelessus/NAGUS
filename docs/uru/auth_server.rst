@@ -108,8 +108,8 @@ not even their structure.
    28,*VaultNodeDelete*,:ref:`VaultNodeDeleted <auth2cli_vault_node_deleted>`,26
    ,,:ref:`VaultNodeAdded <auth2cli_vault_node_added>`,27
    29,:ref:`VaultNodeAdd <cli2auth_vault_node_add>`,:ref:`VaultAddNodeReply <auth2cli_vault_add_node_reply>`,33
-   30,VaultNodeRemove,VaultNodeRemoved,28
-   ,,VaultRemoveNodeReply,34
+   ,,:ref:`VaultNodeRemoved <auth2cli_vault_node_removed>`,28
+   30,:ref:`VaultNodeRemove <cli2auth_vault_node_remove>`,:ref:`VaultRemoveNodeReply <auth2cli_vault_remove_node_reply>`,34
    31,VaultFetchNodeRefs,VaultNodeRefsFetched,29
    32,VaultInitAgeRequest,VaultInitAgeReply,30
    33,VaultNodeFind,VaultNodeFindReply,31
@@ -1471,7 +1471,7 @@ The following fields have special behavior:
   because of an unspecified issue with Cyan's server software.
 
 After the vault node has been changed,
-the server sends a :ref:`VaultSaveNodeReply <auth2cli_vault_save_node_reply>` the client that performed the change,
+the server sends a :ref:`VaultSaveNodeReply <auth2cli_vault_save_node_reply>` to the client that performed the change,
 as well as :ref:`VaultNodeChanged <auth2cli_vault_node_changed>` messages to all clients for which the changed node is relevant.
 The order of these messages can vary
 (e. g. MOSS sends the reply before the change notifications,
@@ -1545,7 +1545,7 @@ Cli2Auth_VaultNodeAdd
 Add a new relationship between the given vault nodes.
 
 After the relationship has been added,
-the server sends a :ref:`VaultAddNodeReply <auth2cli_vault_add_node_reply>` the client that performed the change,
+the server sends a :ref:`VaultAddNodeReply <auth2cli_vault_add_node_reply>` to the client that performed the change,
 as well as :ref:`VaultNodeAdded <auth2cli_vault_node_added>` messages to all clients for which the changed node is relevant.
 The order of these messages can vary
 (though currently both MOSS and DIRTSAND send the added notifications before the reply).
@@ -1560,3 +1560,57 @@ Auth2Cli_VaultAddNodeReply
 * **Result:** 4-byte :cpp:enum:`ENetError`.
 
 Reply to a :ref:`VaultNodeAdd <cli2auth_vault_node_add>` message.
+
+.. _auth2cli_vault_node_removed:
+
+Auth2Cli_VaultNodeRemoved
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 28
+* **Parent node ID:** 4-byte unsigned int.
+  Parent node of the relationship that was removed.
+* **Child node ID:** 4-byte unsigned int.
+  Child node of the relationship that was removed.
+
+Notify the client that an existing vault node relationship was removed.
+
+This message is sent even for changes made by the client itself using :ref:`Cli2Auth_VaultNodeRemove <cli2auth_vault_node_remove>`.
+
+Not all clients are notified about every removed vault node relationship.
+The rules are the same as for :ref:`VaultNodeChanged <auth2cli_vault_node_changed>` messages ---
+if a client receives change notifications for a node,
+then it also receives notifications for removed relationships where that node is the parent.
+
+.. _cli2auth_vault_node_remove:
+
+Cli2Auth_VaultNodeRemove
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 30
+* **Transaction ID:** 4-byte unsigned int.
+* **Parent node ID:** 4-byte unsigned int.
+  Parent node of the relationship to remove.
+* **Child node ID:** 4-byte unsigned int.
+  Child node of the relationship to remove.
+
+Remove an existing relationship between the given vault nodes.
+The vault nodes themselves are *not* deleted!
+(Clients cannot fully delete vault nodes,
+see :ref:`VaultNodeDeleted <auth2cli_vault_node_deleted>`.)
+
+After the relationship has been removed,
+the server sends a :ref:`VaultRemoveNodeReply <auth2cli_vault_remove_node_reply>` to the client that performed the change,
+as well as :ref:`VaultNodeRemoved <auth2cli_vault_node_removed>` messages to all clients for which the changed node is relevant.
+The order of these messages can vary
+(though currently both MOSS and DIRTSAND send the removed notifications before the reply).
+
+.. _auth2cli_vault_remove_node_reply:
+
+Auth2Cli_VaultRemoveNodeReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 34
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to a :ref:`VaultNodeRemove <cli2auth_vault_node_remove>` message.
