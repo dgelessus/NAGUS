@@ -110,7 +110,7 @@ not even their structure.
    29,:ref:`VaultNodeAdd <cli2auth_vault_node_add>`,:ref:`VaultAddNodeReply <auth2cli_vault_add_node_reply>`,33
    ,,:ref:`VaultNodeRemoved <auth2cli_vault_node_removed>`,28
    30,:ref:`VaultNodeRemove <cli2auth_vault_node_remove>`,:ref:`VaultRemoveNodeReply <auth2cli_vault_remove_node_reply>`,34
-   31,VaultFetchNodeRefs,VaultNodeRefsFetched,29
+   31,:ref:`VaultFetchNodeRefs <cli2auth_vault_fetch_node_refs>`,:ref:`VaultNodeRefsFetched <auth2cli_vault_node_refs_fetched>`,29
    32,VaultInitAgeRequest,VaultInitAgeReply,30
    33,VaultNodeFind,VaultNodeFindReply,31
    34,VaultSetSeen,,
@@ -1614,3 +1614,46 @@ Auth2Cli_VaultRemoveNodeReply
 * **Result:** 4-byte :cpp:enum:`ENetError`.
 
 Reply to a :ref:`VaultNodeRemove <cli2auth_vault_node_remove>` message.
+
+.. _cli2auth_vault_fetch_node_refs:
+
+Cli2Auth_VaultFetchNodeRefs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 31
+* **Transaction ID:** 4-byte unsigned int.
+* **Node ID:** 4-byte unsigned int.
+  Top of the node tree whose relationships should be fetched.
+
+Retrieve a list of all vault node refs under the given node ID,
+i. e. all refs whose parent is that node ID or any of its children.
+
+This message always recursively fetches the entire tree of refs.
+There is no equivalent message for fetching just the refs directly under the node.
+
+.. _auth2cli_vault_node_refs_fetched:
+
+Auth2Cli_VaultNodeRefsFetched
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 29
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Ref count:** 4-byte unsigned int.
+  May be at most 1048576.
+* **Refs:** Variable-length array.
+  All node refs that make up the tree under the requested node ID.
+  Each element has the following structure:
+  
+  * **Parent node ID:** 4-byte unsigned int.
+  * **Child node ID:** 4-byte unsigned int.
+  * **Owner node ID:** 4-byte unsigned int.
+  * **Seen:** 1-byte boolean.
+    Meant to be used as an unread/read flag for user-visible vault node refs
+    (i. e. KI mail).
+    The client semi-ignores this field though and considers all refs unread all the time.
+    Neither MOSS nor DIRTSAND persistently stores the seen status of refs ---
+    MOSS always sets this field to 0xcc (yes, really) and DIRTSAND always to 0.
+    (TODO What does Cyan's server software do?)
+
+Reply to a :ref:`VaultFetchNodeRefs <cli2auth_vault_fetch_node_refs>` message.
