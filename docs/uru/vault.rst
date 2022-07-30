@@ -155,7 +155,7 @@ they should never appear in the actual vault database or over the network.
    
    * *Invalid* = 0
    * *VNodeMgrLow* = 1
-   * Player = 2
+   * :ref:`Player <vault_node_player>` = 2
    * Age = 3
    * *VNodeMgr_UNUSED00* = 4
    * *VNodeMgr_UNUSED01* = 5
@@ -197,3 +197,44 @@ they should never appear in the actual vault database or over the network.
    33,Age Info,AgeSequenceNumber,IsPublic,AgeLanguage,AgeId,AgeCzarId,AgeInfoFlags,AgeInstanceGuid,ParentAgeInstanceGuid,,AgeFilename,AgeInstanceName,AgeUserDefinedName,,AgeDescription,,
    34,Age Info List,folderType,,,,,,,,folderName,,,,,,,
    35,Marker Game,,,,,,,GameGuid,,,,,,,GameName,Reward (H'uru),MarkerData (H'uru)
+
+.. _vault_node_player:
+
+Player
+^^^^^^
+
+* ``NodeType`` = 2
+* ``Int32_1`` = **Disabled:** Not used by the open-sourced client code or fan servers.
+  (TODO Does Cyan's server software do anything with it?)
+  Normally left unset.
+  MOSS initializes it to 0 when creating a new avatar.
+* ``Int32_2`` = **Explorer:**
+  1 if the avatar is a full :ref:`explorer <explorer>`,
+  or 0 if it's just a :ref:`visitor <visitor>`.
+* ``UInt32_1`` = **OnlineTime:** Not used by the open-sourced client code or fan servers.
+  (TODO Does Cyan's server software do anything with it?)
+  Normally left unset.
+  MOSS initializes it to 0 when creating a new avatar.
+* ``Uuid_1`` = **AccountUuid:** Account ID to which this avatar belongs.
+* ``Uuid_2`` = **InviteUuid:** Identifies friend invites sent by this avatar.
+  Unset by default.
+  The client automatically generates a random invite UUID and stores it into this field
+  before sending a :ref:`cli2auth_send_friend_invite_request` for the first time.
+* ``String64_1`` = **AvatarShapeName:**
+  The avatar's gender.
+  Either ``"female"`` or ``"male"``.
+* ``IString64_1`` = **PlayerName:**
+  The avatar's display name.
+
+Some of these fields overlap with those returned in :ref:`auth2cli_acct_player_info`,
+namely the explorer flag, avatar shape, and player name.
+These fields should always stay in sync with the corresponding player vault node,
+as the client may use the values from either of the two sources,
+depending on context.
+DIRTSAND stores the AcctPlayerInfo fields in a different database table separate from the vault,
+whereas MOSS uses the same database table for both purposes.
+(TODO What does Cyan's server software do?)
+In practice this doesn't make a difference,
+because the affected fields should never change anyway ---
+the explorer flag is effectively unused and should always be 1,
+and there's no way for the player to change the name or gender of an existing avatar.
