@@ -156,7 +156,7 @@ they should never appear in the actual vault database or over the network.
    * *Invalid* = 0
    * *VNodeMgrLow* = 1
    * :ref:`Player <vault_node_player>` = 2
-   * Age = 3
+   * :ref:`Age <vault_node_age>` = 3
    * *VNodeMgr_UNUSED00* = 4
    * *VNodeMgr_UNUSED01* = 5
    * *VNodeMgr_UNUSED02* = 6
@@ -238,3 +238,14 @@ In practice this doesn't make a difference,
 because the affected fields should never change anyway ---
 the explorer flag is effectively unused and should always be 1,
 and there's no way for the player to change the name or gender of an existing avatar.
+
+.. _vault_node_age:
+
+Age
+^^^
+
+* ``NodeType`` = 3
+* ``Uuid_1`` = **AgeInstanceGuid:** This age instance's unique ID.
+* ``Uuid_2`` = **ParentAgeInstanceGuid:** The AgeInstanceGuid of this age instance's parent instance,
+  or unset if this age is not a sub-age.
+* ``String64_1`` = **AgeName:** Internal name of the age that this is an instance of.
