@@ -142,6 +142,42 @@ Strings are encoded as UTF-16 (little-endian, as usual)
 and include a zero terminator (despite the explicit length).
 Any field whose corresponding flag *isn't* set is omitted entirely.
 
+.. _moss_vault:
+
+MOSS vault database structure
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Almost all Uru server implementations store all vault nodes in a single big database table.
+The only exception is MOSS,
+which uses separate tables for the different vault node types.
+These tables don't support the full set of generic vault node fields ---
+each table only has columns for the fields that the client actually uses in practice for that node type.
+
+In practice,
+this implementation difference isn't noticeable most of the time.
+Despite this different internal representation,
+the network protocol has remained unchanged
+and the vault is still exposed to clients as a single unified collection of nodes.
+The only noticeable difference is that it's impossible for clients to create nodes of unknown types
+or to set unexpected fields on supported node types.
+Introducing new node types or adding fields to existing types requires updating the server and extending the database schema.
+
+This is a problem e. g. when using H'uru clients on MOSS,
+as H'uru has introduced a new format for marker games that no longer relies on the :ref:`GameMgr <game_server>`,
+using a previously unused fields on marker game nodes.
+This new marker game format isn't handled correctly by MOSS unless the database is updated accordingly
+(MOSS ships with a script ``postgresql/UpdateForHuruGames.sql`` for this purpose).
+
+For all node types,
+MOSS supports the type-independent fields
+``NodeId``, ``CreateTime``, ``ModifyTime``, ``CreatorAcct``, ``CreatorId``.
+The fields ``CreateAgeName``, ``CreateAgeUuid`` are supported for most node types,
+but are omitted for some nodes that are never tied to a particular age instance.
+Such node types are pointed out in the documentation below.
+The ``NodeType`` field is implicitly derived from the database table in which each node is stored.
+For all other fields (whose meanings are fully type-dependent),
+assume that MOSS only supports exactly the fields listed below in the documentation for the respective node type.
+
 .. _vault_node_types:
 
 Node types
@@ -203,6 +239,8 @@ they should never appear in the actual vault database or over the network.
 Player
 ^^^^^^
 
+* ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
+  Not supported by MOSS for this node type.
 * ``NodeType`` = 2
 * ``Int32_1`` = **Disabled:** Not used by the open-sourced client code or fan servers.
   (TODO Does Cyan's server software do anything with it?)
@@ -244,6 +282,8 @@ and there's no way for the player to change the name or gender of an existing av
 Age
 ^^^
 
+* ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
+  Not supported by MOSS for this node type.
 * ``NodeType`` = 3
 * ``Uuid_1`` = **AgeInstanceGuid:** This age instance's unique ID.
 * ``Uuid_2`` = **ParentAgeInstanceGuid:** The AgeInstanceGuid of this age instance's parent instance,
