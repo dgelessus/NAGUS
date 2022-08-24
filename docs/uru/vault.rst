@@ -198,7 +198,7 @@ they should never appear in the actual vault database or over the network.
    * *VNodeMgr_UNUSED02* = 6
    * *VNodeMgr_UNUSED03* = 7
    * *VNodeMgrHigh* = 21
-   * Folder = 22
+   * :ref:`Folder <vault_node_folder>` = 22
    * Player Info = 23
    * System = 24
    * Image = 25
@@ -289,3 +289,67 @@ Age
 * ``Uuid_2`` = **ParentAgeInstanceGuid:** The AgeInstanceGuid of this age instance's parent instance,
   or unset if this age is not a sub-age.
 * ``String64_1`` = **AgeName:** Internal name of the age that this is an instance of.
+
+.. _vault_node_folder:
+
+Folder
+^^^^^^
+
+* ``NodeType`` = 22
+* ``Int32_1`` = **FolderType:** The folder's general meaning/purpose.
+  See :ref:`vault_folder_list_types` for details.
+* ``String64_1`` = **FolderName:** Name of the folder.
+  If present,
+  it's often (but not always) a human-readable name that is displayed to the player,
+  e. g. the name of an age inbox folder.
+  For many folder types,
+  this field is left unset
+  and it's expected that the type alone uniquely identifies the folder inside its parent.
+
+.. _vault_folder_list_types:
+
+Folder/list types
+-----------------
+
+The three node types :ref:`vault_node_folder`, Player Info List, and Age Info List use a common numbering scheme for their **FolderType** field (``Int32_1``).
+Below is a full list of all folder/list types defined in the open-sourced client code.
+Types in *italics* are effectively unused ---
+they are never added to the vault by the client or any known server implementation.
+
+.. csv-table::
+   :header: #,Folder type,Used in node type
+   :widths: auto
+   
+   0,*UserDefinedNode*,*unused*
+   1,InboxFolder,:ref:`vault_node_folder`
+   2,BuddyListFolder,Player Info List
+   3,IgnoreListFolder,Player Info List
+   4,PeopleIKnowAboutFolder,Player Info List
+   5,*VaultMgrGlobalDataFolder*,*unused*
+   6,ChronicleFolder,:ref:`vault_node_folder`
+   7,AvatarOutfitFolder,:ref:`vault_node_folder`
+   8,AgeTypeJournalFolder,:ref:`vault_node_folder`
+   9,SubAgesFolder,Age Info List
+   10,DeviceInboxFolder,:ref:`vault_node_folder`
+   11,*HoodMembersFolder*,*unused in vault*
+   12,AllPlayersFolder,Player Info List
+   13,*AgeMembersFolder*,*unused in vault*
+   14,AgeJournalsFolder,:ref:`vault_node_folder`
+   15,AgeDevicesFolder,:ref:`vault_node_folder`
+   16,*AgeInstanceSDLNode*,*unused*
+   17,*AgeGlobalSDLNode*,*unused*
+   18,CanVisitFolder,Player Info List
+   19,AgeOwnersFolder,Player Info List
+   20,*AllAgeGlobalSDLNodesFolder*,*unused*
+   21,*PlayerInfoNode*,*unused*
+   22,*PublicAgesFolder*,*unused*
+   23,AgesIOwnFolder,Age Info List
+   24,AgesICanVisitFolder,Age Info List
+   25,AvatarClosetFolder,:ref:`vault_node_folder`
+   26,*AgeInfoNode*,*unused*
+   27,*SystemNode*,*unused*
+   28,PlayerInviteFolder,:ref:`vault_node_folder`
+   29,*CCRPlayersFolder*,*unused*
+   30,GlobalInboxFolder,:ref:`vault_node_folder`
+   31,ChildAgesFolder,Age Info List
+   32,*GameScoresFolder*,*unused*
