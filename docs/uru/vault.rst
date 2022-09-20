@@ -199,7 +199,7 @@ they should never appear in the actual vault database or over the network.
    * *VNodeMgr_UNUSED03* = 7
    * *VNodeMgrHigh* = 21
    * :ref:`Folder <vault_node_folder>` = 22
-   * Player Info = 23
+   * :ref:`Player Info <vault_node_player_info>` = 23
    * System = 24
    * Image = 25
    * Text Note = 26
@@ -305,6 +305,37 @@ Folder
   For many folder types,
   this field is left unset
   and it's expected that the type alone uniquely identifies the folder inside its parent.
+
+.. _vault_node_player_info:
+
+Player Info
+^^^^^^^^^^^
+
+* ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
+  Not supported by MOSS for this node type.
+* ``NodeType`` = 23
+* ``Int32_1`` = **Online:**
+  1 if the avatar is currently online,
+  or 0 otherwise.
+* ``Int32_2`` = **CCRLevel:**
+  The avatar's current CCR level.
+  Normally left unset if the avatar's CCR level has never been changed from the default 0.
+  Not supported by MOSS.
+* ``UInt32_1`` = **PlayerId:**
+  ID of the corresponding :ref:`vault_node_player` node,
+  i. e. the avatar's KI number.
+* ``String64_1`` = **AgeInstName:**
+  Display name of the age instance that the avatar is currently in.
+  Should always be identical to the ``String64_3`` (AgeInstanceName) field of the Age Info node indicated by this node's AgeInstUuid field,
+  or set to an empty string if the avatar is not currently in any instance.
+* ``IString64_1`` = **PlayerName:**
+  The avatar's display name.
+  Should always be identical to the same field in the corresponding :ref:`vault_node_player` node.
+* ``Uuid_1`` = **AgeInstUuid:**
+  UUID of the age instance that the avatar is currently in.
+  Set to all zeroes if the avatar is not currently in any instance.
+
+A Player Info node should never have any child nodes.
 
 .. _vault_folder_list_types:
 
