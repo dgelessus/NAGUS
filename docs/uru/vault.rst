@@ -200,7 +200,7 @@ they should never appear in the actual vault database or over the network.
    * *VNodeMgrHigh* = 21
    * :ref:`Folder <vault_node_folder>` = 22
    * :ref:`Player Info <vault_node_player_info>` = 23
-   * System = 24
+   * :ref:`System <vault_node_system>` = 24
    * Image = 25
    * Text Note = 26
    * SDL = 27
@@ -337,6 +337,50 @@ Player Info
 
 A Player Info node should never have any child nodes.
 
+.. _vault_node_system:
+
+System
+^^^^^^
+
+* ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
+  Not supported by MOSS for this node type.
+* ``NodeType`` = 24
+* ``Int32_1`` = **CCRStatus:**
+  1 if any CCRs are currently online,
+  or 0 otherwise.
+  Normally left unset if no CCR has ever been online.
+  No open-source client actively uses this field.
+  Not supported by MOSS.
+
+There should only ever be a single System node in the entire vault.
+It is normally the first vault node that is ever created
+and has the lowest possible vault node ID:
+1 for Cyan's server software,
+101 for MOSS,
+and 10001 for DIRTSAND.
+All :ref:`vault_node_player` and :ref:`vault_node_age` nodes should have the System node as their first child node.
+
+The System node should have the following children:
+
+* :ref:`vault_node_folder`: FolderType = GlobalInboxFolder
+  
+  * :ref:`vault_node_folder`: FolderType = UserDefinedNode, FolderName = "Journals"
+    
+    * Text Note: Type = Generic, SubType = Generic, Title = "Sharper", Text = *contents of Douglas Sharper's journal*
+  
+  * :ref:`vault_node_folder`: FolderType = UserDefinedNode, FolderName = "MemorialImager"
+    
+    * Text Note: Type = Generic, SubType = Generic, Title = "MemorialImager", Text = *list of names to be displayed on the Kahlo Pub memorial imager*
+  
+  * *additional nodes that will be displayed in every avatar's Incoming folder*
+
+All child nodes of the global inbox folder,
+except for :ref:`vault_node_folder` or Chronicle nodes,
+are displayed as the first entries in every avatar's KI Incoming folder,
+above any nodes from the per-avatar inbox folder.
+Players cannot delete nodes from the global inbox folder using the KI user interface,
+unlike nodes stored in the per-avatar inbox folder.
+
 .. _vault_folder_list_types:
 
 Folder/list types
@@ -351,7 +395,7 @@ they are never added to the vault by the client or any known server implementati
    :header: #,Folder type,Used in node type
    :widths: auto
    
-   0,*UserDefinedNode*,*unused*
+   0,UserDefinedNode,:ref:`vault_node_folder`
    1,InboxFolder,:ref:`vault_node_folder`
    2,BuddyListFolder,Player Info List
    3,IgnoreListFolder,Player Info List
