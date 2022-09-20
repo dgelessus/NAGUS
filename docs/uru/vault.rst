@@ -201,7 +201,7 @@ they should never appear in the actual vault database or over the network.
    * :ref:`Folder <vault_node_folder>` = 22
    * :ref:`Player Info <vault_node_player_info>` = 23
    * :ref:`System <vault_node_system>` = 24
-   * Image = 25
+   * :ref:`Image <vault_node_image>` = 25
    * Text Note = 26
    * SDL = 27
    * Age Link = 28
@@ -380,6 +380,30 @@ are displayed as the first entries in every avatar's KI Incoming folder,
 above any nodes from the per-avatar inbox folder.
 Players cannot delete nodes from the global inbox folder using the KI user interface,
 unlike nodes stored in the per-avatar inbox folder.
+
+.. _vault_node_image:
+
+Image
+^^^^^
+
+* ``NodeType`` = 25
+* ``Int32_1`` = **ImageType:**
+  Indicates the format of the ImageData field.
+  May be one of:
+  
+  * None = 0: Placeholder type to indicate that image saving failed.
+    The image data should be empty.
+  * JPEG = 1: Default image type and the only one supported by OpenUru clients.
+  * PNG = 2: Only supported by H'uru clients.
+    Not actively used.
+* ``String64_1`` = **ImageTitle:**
+  Human-readable title/caption for the image.
+  For images stored in the KI,
+  it can be edited by the player.
+* ``Blob_1`` = **ImageData:**
+  The image's raw data in the format indicated by ImageType.
+
+An Image node should never have any child nodes.
 
 .. _vault_folder_list_types:
 
