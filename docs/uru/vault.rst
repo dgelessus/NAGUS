@@ -191,18 +191,18 @@ they should never appear in the actual vault database or over the network.
    
    * *Invalid* = 0
    * *VNodeMgrLow* = 1
-   * :ref:`Player <vault_node_player>` = 2
-   * :ref:`Age <vault_node_age>` = 3
+   * :ref:`vault_node_player` = 2
+   * :ref:`vault_node_age` = 3
    * *VNodeMgr_UNUSED00* = 4
    * *VNodeMgr_UNUSED01* = 5
    * *VNodeMgr_UNUSED02* = 6
    * *VNodeMgr_UNUSED03* = 7
    * *VNodeMgrHigh* = 21
-   * :ref:`Folder <vault_node_folder>` = 22
-   * :ref:`Player Info <vault_node_player_info>` = 23
-   * :ref:`System <vault_node_system>` = 24
-   * :ref:`Image <vault_node_image>` = 25
-   * :ref:`Text Note <vault_node_text_note>` = 26
+   * :ref:`vault_node_folder` = 22
+   * :ref:`vault_node_player_info` = 23
+   * :ref:`vault_node_system` = 24
+   * :ref:`vault_node_image` = 25
+   * :ref:`vault_node_text_note` = 26
    * SDL = 27
    * Age Link = 28
    * Chronicle = 29
