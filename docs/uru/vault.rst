@@ -202,7 +202,7 @@ they should never appear in the actual vault database or over the network.
    * :ref:`Player Info <vault_node_player_info>` = 23
    * :ref:`System <vault_node_system>` = 24
    * :ref:`Image <vault_node_image>` = 25
-   * Text Note = 26
+   * :ref:`Text Note <vault_node_text_note>` = 26
    * SDL = 27
    * Age Link = 28
    * Chronicle = 29
@@ -366,11 +366,11 @@ The System node should have the following children:
   
   * :ref:`vault_node_folder`: FolderType = UserDefinedNode, FolderName = "Journals"
     
-    * Text Note: Type = Generic, SubType = Generic, Title = "Sharper", Text = *contents of Douglas Sharper's journal*
+    * :ref:`vault_node_text_note`: Type = Generic, SubType = Generic, Title = "Sharper", Text = *contents of Douglas Sharper's journal*
   
   * :ref:`vault_node_folder`: FolderType = UserDefinedNode, FolderName = "MemorialImager"
     
-    * Text Note: Type = Generic, SubType = Generic, Title = "MemorialImager", Text = *list of names to be displayed on the Kahlo Pub memorial imager*
+    * :ref:`vault_node_text_note`: Type = Generic, SubType = Generic, Title = "MemorialImager", Text = *list of names to be displayed on the Kahlo Pub memorial imager*
   
   * *additional nodes that will be displayed in every avatar's Incoming folder*
 
@@ -404,6 +404,56 @@ Image
   The image's raw data in the format indicated by ImageType.
 
 An Image node should never have any child nodes.
+
+.. _vault_node_text_note:
+
+Text Note
+^^^^^^^^^
+
+* ``NodeType`` = 26
+* ``Int32_1`` = **NoteType:**
+  The text note's general purpose/meaning.
+  May be one of:
+  
+  * Generic = 0: Default type,
+    used for text notes containing human-readable text
+    with no specific meaning to the game.
+  * CCRPetition = 1: Not used by the open-sourced client code.
+  * Device = 2: Stores the contents of an imager.
+    Unlike other text note types,
+    the NoteText field isn't relevant and usually left empty.
+    The imager's contents are instead stored inside a device inbox child node (see below).
+  * Invite = 3: Not used by the open-sourced client code.
+  * Visit = 4: An invitation to another avatar's age instance.
+  * UnVisit = 5: An un-invitation that revokes a previous invitation for an age instance.
+* ``Int32_2`` = **NoteSubType:**
+  The open-sourced client code only defines a single subtype: Generic = 0.
+  All text notes have this field set to 0 or left unset.
+  This field is otherwise not actively used.
+* ``String64_1`` = **NoteTitle:**
+  Human-readable title for the text note.
+  For text notes stored in the KI,
+  it can be edited by the player.
+  Left unset if NoteType is Visit or UnVisit.
+* ``Text_1`` = **NoteText:**
+  The text note's contents,
+  normally human-readable text.
+  For text notes stored in the KI,
+  it can be edited by the player.
+  For Device notes,
+  this field is left unset.
+  For Visit and UnVisit notes,
+  this is a machine-readable string in the format
+  :samp:`{AgeFilename}|{AgeInstanceName}|{AgeUserDefinedName}|{AgeDescription}|{AgeInstanceGuid}|{AgeLanguage}|{AgeSequenceNumber}`,
+  with all values taken from the Age Info node of the age instance being invited to.
+
+Most Text Note nodes should never have any child nodes.
+The only exception are notes with NoteType Device,
+which should have a single child node:
+
+* :ref:`vault_node_folder`: FolderType = DeviceInboxFolder, FolderName = "DevInbox"
+  
+  * *any nodes stored in the imager*
 
 .. _vault_folder_list_types:
 
