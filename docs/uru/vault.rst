@@ -203,7 +203,7 @@ they should never appear in the actual vault database or over the network.
    * :ref:`vault_node_system` = 24
    * :ref:`vault_node_image` = 25
    * :ref:`vault_node_text_note` = 26
-   * SDL = 27
+   * :ref:`vault_node_sdl` = 27
    * Age Link = 28
    * Chronicle = 29
    * Player Info List = 30
@@ -454,6 +454,38 @@ which should have a single child node:
 * :ref:`vault_node_folder`: FolderType = DeviceInboxFolder, FolderName = "DevInbox"
   
   * *any nodes stored in the imager*
+
+.. _vault_node_sdl:
+
+SDL
+^^^
+
+* ``NodeType`` = 27
+* ``Int32_1`` = **SDLIdent:**
+  Practically unused.
+  When initializing the SDL node in an Age Info node,
+  the server sets this field to 0.
+  The open-sourced client code never sets it or uses it for anything.
+* ``String64_1`` = **SDLName:**
+  Name of the state descriptor (.sdl file) to use for this node.
+  This field is only relevant when the SDLData field is unset or empty.
+  Otherwise the SDLData itself indicates which state descriptor to use
+  and this field is ignored.
+  When initializing the SDL node in an Age Info node,
+  the server sets this field to the age file name.
+  The open-sourced client code never sets this field
+  and only uses it in one case (see below).
+* ``Blob_1`` = **SDLData:**
+  The serialized state data record ("SDL blob").
+  When initializing the SDL node in an Age Info node,
+  the server leaves this field unset.
+  When the client finds this field unset or empty,
+  it looks up the state descriptor named by the SDLName field
+  and uses that to initialize this field with a default state data record.
+  If no state descriptor with that name could be found,
+  the client leaves this field unset/empty.
+
+An SDL node should never have any child nodes.
 
 .. _vault_folder_list_types:
 
