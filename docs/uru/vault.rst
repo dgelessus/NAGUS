@@ -239,6 +239,8 @@ they should never appear in the actual vault database or over the network.
 Player
 ^^^^^^
 
+Top-level node for all data related to an avatar.
+
 * ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
   Not supported by MOSS for this node type.
 * ``NodeType`` = 2
@@ -276,6 +278,9 @@ In practice this doesn't make a difference,
 because the affected fields should never change anyway ---
 the explorer flag is effectively unused and should always be 1,
 and there's no way for the player to change the name or gender of an existing avatar.
+
+A Player node should never appear as the child of another node.
+Other nodes should instead reference the Player node indirectly via the corresponding :ref:`vault_node_player_info` node.
 
 A Player node should always have the following children:
 
@@ -324,6 +329,10 @@ A Player node should always have the following children:
 Age
 ^^^
 
+Top-level node for all data related to an age instance.
+The name is somewhat misleading ---
+no data is shared between different instances of the same age.
+
 * ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
   Not supported by MOSS for this node type.
 * ``NodeType`` = 3
@@ -331,6 +340,9 @@ Age
 * ``Uuid_2`` = **ParentAgeInstanceGuid:** The AgeInstanceGuid of this age instance's parent instance,
   or unset if this age is not a sub-age or child age.
 * ``String64_1`` = **AgeName:** Internal name of the age that this is an instance of.
+
+An Age node should never appear as the child of another node.
+Other nodes should instead reference the Age node indirectly via the corresponding :ref:`vault_node_age_info` node.
 
 An Age node should always have the following children:
 
@@ -350,6 +362,9 @@ An Age node should always have the following children:
 Folder
 ^^^^^^
 
+A generic collection of other nodes.
+Stores almost no data of its own.
+
 * ``NodeType`` = 22
 * ``Int32_1`` = **FolderType:** The folder's general meaning/purpose.
   See :ref:`vault_folder_list_types` for details.
@@ -362,10 +377,19 @@ Folder
   this field is left unset
   and it's expected that the type alone uniquely identifies the folder inside its parent.
 
+A Folder node has no fixed structure and may contain child nodes of almost any type.
+See the structure descriptions of the other node types for details.
+
 .. _vault_node_player_info:
 
 Player Info
 ^^^^^^^^^^^
+
+Lightweight reference to an avatar.
+Stores key information about the avatar,
+its current state in the game,
+and the corresponding :ref:`vault_node_player` node
+that stores further data related to the avatar.
 
 * ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
   Not supported by MOSS for this node type.
@@ -397,6 +421,8 @@ A Player Info node should never have any child nodes.
 
 System
 ^^^^^^
+
+Singleton node storing global data that can be accessed from any avatar and age.
 
 * ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
   Not supported by MOSS for this node type.
@@ -442,6 +468,9 @@ unlike nodes stored in the per-avatar inbox folder.
 Image
 ^^^^^
 
+A KI image/picture/screenshot,
+as seen in the KI interface or on imagers.
+
 * ``NodeType`` = 25
 * ``Int32_1`` = **ImageType:**
   Indicates the format of the ImageData field.
@@ -466,6 +495,12 @@ An Image node should never have any child nodes.
 Text Note
 ^^^^^^^^^
 
+Usually a KI note/message/journal entry,
+as seen in the KI interface or on imagers.
+Also used internally to represent imagers themselves,
+age instance visit (un)invitations,
+and miscellaneous text data.
+
 * ``NodeType`` = 26
 * ``Int32_1`` = **NoteType:**
   The text note's general purpose/meaning.
@@ -480,6 +515,7 @@ Text Note
     the NoteText field isn't relevant and usually left empty.
     The imager's contents are instead stored inside a device inbox child node (see below).
   * Invite = 3: Not used by the open-sourced client code.
+    (Text Note nodes under a PlayerInviteFolder have their NoteType unset.)
   * Visit = 4: An invitation to another avatar's age instance.
   * UnVisit = 5: An un-invitation that revokes a previous invitation for an age instance.
 * ``Int32_2`` = **NoteSubType:**
@@ -516,6 +552,10 @@ which should have a single child node:
 SDL
 ^^^
 
+A state data record in packed binary format,
+used to store an age instance's persistent state
+and an avatar's clothing.
+
 * ``NodeType`` = 27
 * ``Int32_1`` = **SDLIdent:**
   Practically unused.
@@ -547,6 +587,10 @@ An SDL node should never have any child nodes.
 
 Age Link
 ^^^^^^^^
+
+A link to an age instance.
+Usually visible to the player as a book on the Relto bookshelf or a Nexus link,
+but also used internally to reference an age's sub-ages and/or child ages.
 
 * ``NodeType`` = 28
 * ``Int32_1`` = **Unlocked:**
@@ -600,6 +644,11 @@ the :ref:`vault_node_age_info` node for the age instance that the link points to
 Chronicle
 ^^^^^^^^^
 
+A simple string key/value pair associated with an avatar,
+used to store persistent state
+that is needed across multiple age instances
+or not associated with any particular age.
+
 * ``NodeType`` = 29
 * ``Int32_1`` = **EntryType:**
   Appears to be meaningless and not actively used.
@@ -627,18 +676,26 @@ Most Chronicle nodes have no children at all.
 Player Info List
 ^^^^^^^^^^^^^^^^
 
+Collection of :ref:`vault_node_player_info` nodes.
+Stores no data of its own.
+
 * ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
   Not supported by MOSS for this node type.
 * ``NodeType`` = 30
 * ``Int32_1`` = **FolderType:** The player info list's meaning/purpose.
   See :ref:`vault_folder_list_types` for details.
 
-A Player Info List's children should all be Player Info nodes.
+A Player Info List's children should all be :ref:`vault_node_player_info` nodes.
 
 .. _vault_node_age_info:
 
 Age Info
 ^^^^^^^^
+
+A reference to an age instance.
+Stores key information identifying the instance
+and the corresponding :ref:`vault_node_age` node
+that stores further data related to the instance.
 
 * ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
   Not supported by MOSS for this node type.
@@ -721,6 +778,9 @@ An Age Info node should have the following children:
 Age Info List
 ^^^^^^^^^^^^^
 
+Collection of :ref:`vault_node_age_link` nodes.
+Stores no data of its own.
+
 * ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
   Not supported by MOSS for this node type.
 * ``NodeType`` = 34
@@ -735,6 +795,22 @@ despite the name).
 
 Marker Game
 ^^^^^^^^^^^
+
+A player-created marker game/mission,
+as seen in the KI interface.
+
+There are two incompatible internal representations of marker games,
+both of which use this node type.
+The original open-sourced client code,
+as well as current OpenUru clients,
+rely mainly on the :ref:`GameMgr <game_server>` to work with marker games
+and store almost no information about marker games in the vault.
+H'uru introduced a different implementation of marker games that isn't based on the GameMgr
+and as a result stores the entire marker game in its vault node.
+Currently,
+OpenUru clients only support GameMgr-based marker games
+and H'uru clients only support vault-based ones,
+but work is ongoing to re-add GameMgr marker game support to H'uru.
 
 * ``NodeType`` = 35
 * ``Uuid_1`` = **GameGuid:**
