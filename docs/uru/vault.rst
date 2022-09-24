@@ -211,7 +211,7 @@ they should never appear in the actual vault database or over the network.
    * *UNUSED01* = 32
    * :ref:`vault_node_age_info` = 33
    * :ref:`vault_node_age_info_list` = 34
-   * Marker Game = 35
+   * :ref:`vault_node_marker_game` = 35
 
 .. commented out - this is way too wide
    csv-table:: Vault node types and field meanings
@@ -675,6 +675,65 @@ Age Info List
 An Age Info List's children should all be :ref:`vault_node_age_link` nodes
 (not :ref:`vault_node_age_info`,
 despite the name).
+
+.. _vault_node_marker_game:
+
+Marker Game
+^^^^^^^^^^^
+
+* ``NodeType`` = 35
+* ``Uuid_1`` = **GameGuid:**
+  Internal identifier for this marker game in the :ref:`GameMgr <game_server>`.
+  Unset for H'uru vault-based marker games.
+* ``Text_1`` = **GameName:**
+  Name of the marker game,
+  chosen freely by the player.
+  Should always be set.
+* ``Text_2`` = **Reward:**
+  List of rewards to be granted to the avatar when completing this marker game.
+  Unset by default,
+  but can be set using the chat command ``/gamereward`` in internal H'uru clients.
+  Only used by H'uru clients and silently ignored by OpenUru clients.
+  Not supported by MOSS.
+  The value is a ``;``-separated string,
+  with each element having one of the following formats:
+  
+  * :samp:`chron:{name}`
+    or :samp:`chron:{name}:{value}` ---
+    Set the chronicle entry :samp:`{name}` to :samp:`{value}`
+    (defaults to ``1`` if omitted).
+    The chronicle entry's type is assumed to be 0.
+    If a chronicle entry with matching name and type already exists,
+    it is updated in-place,
+    otherwise a new chronicle entry is created.
+  * :samp:`clothing:{name}`,
+    :samp:`clothing:{name}:{tint1}`,
+    or :samp:`clothing:{name}:{tint1}:{tint2}` ---
+    Add the specified clothing item to the avatar's wardrobe.
+    The :samp:`{name}` is automatically prefixed with ``F`` or ``M`` based on the avatar's clothing group/gender.
+    :samp:`{tint1}` and :samp:`{tint2}` are in the format :samp:`{r},{g},{b}`,
+    with each RGB component in decimal from 0 to 255.
+    One or both tint colors may be omitted,
+    in which case they default to white.
+* ``Blob_1`` = **MarkerData:**
+  The game's markers in packed binary form.
+  Unset for GameMgr-based marker games.
+  Only set by H'uru clients for vault-based marker games.
+  Not understood by OpenUru clients.
+  Not supported by MOSS,
+  unless the database is updated using the script ``postgresql/UpdateForHuruGames.sql`` from the MOSS repository.
+  The data format is as follows,
+  with all values in little-endian byte order as usual:
+  
+  * **Marker count:** 4-byte unsigned integer.
+  * **Markers:** Variable-length array.
+    
+    * **ID:** 4-byte unsigned integer.
+    * **Age:** "Safe" string.
+    * **X, Y, Z:** Each a 4-byte floating-point number.
+    * **Description:** "Safe" string.
+
+A Marker Game node should never have any child nodes.
 
 .. _vault_folder_list_types:
 
