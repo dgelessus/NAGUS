@@ -38,7 +38,7 @@ There is no single root node or entry point from which all other nodes can be re
 In a usual vault database,
 the nodes form many different trees
 that usually share some nodes with each other
-(e. g. player info nodes),
+(e. g. the :ref:`vault_node_system` node),
 but are otherwise not connected.
 
 .. _vault_node_structure:
@@ -54,7 +54,8 @@ without requiring changes to the database schema
 or code that operates generically on vault nodes.
 
 Any of these fields may be unset,
-which is a distinct state and *not* the same as 0/empty.
+which is a distinct state and *not* the same as 0/empty
+(although some code treats them identically).
 In the client code and over the network,
 this is implemented using a set of bit flags indicating which fields are set/unset.
 In an SQL database (as used by servers to store the vault),
