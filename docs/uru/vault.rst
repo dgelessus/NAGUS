@@ -204,7 +204,7 @@ they should never appear in the actual vault database or over the network.
    * :ref:`vault_node_image` = 25
    * :ref:`vault_node_text_note` = 26
    * :ref:`vault_node_sdl` = 27
-   * Age Link = 28
+   * :ref:`vault_node_age_link` = 28
    * Chronicle = 29
    * Player Info List = 30
    * *UNUSED00* = 31
@@ -486,6 +486,58 @@ SDL
   the client leaves this field unset/empty.
 
 An SDL node should never have any child nodes.
+
+.. _vault_node_age_link:
+
+Age Link
+^^^^^^^^
+
+* ``NodeType`` = 28
+* ``Int32_1`` = **Unlocked:**
+  1 if the player has shared this link
+  by unlocking its tab on the Relto bookshelf,
+  or 0 or unset if the tab is currently locked.
+  For links that don't appear on the Relto bookshelf,
+  this field should never be set.
+  Unset by default.
+* ``Int32_2`` = **Volatile:**
+  1 if the age instance should be recreated the next time this link is used,
+  or 0 or unset otherwise.
+  This field is controlled using the delete buttons on the Relto bookshelf.
+  For other links,
+  this field should never be set.
+  Unset by default.
+* ``Blob_1`` = **SpawnPoints:**
+  List of link-in points that the avatar has collected for the age.
+  This usually corresponds to the pages of the corresponding book on the Relto bookshelf.
+  Unset by default.
+  If set,
+  the value is a sequence of semicolon-terminated entries
+  in the format :samp:`{Title}:{SpawnPoint}:{CameraStack};`,
+  with the following meanings:
+  
+  * :samp:`{Title}`: Identifier for the linking book page.
+    For the most part,
+    these identifiers can be chosen freely,
+    but the following ones have special meanings:
+    
+    * ``Default``: The age's primary linking panel/link-in point.
+      If present,
+      this should be the first entry in the list.
+      If not present,
+      the Relto bookshelf book will show a "broken link" panel on the first (non-bookmark) page.
+    * ``JCSavePoint``, ``SCSavePoint``: The Relto bookshelf book displays this link as a journey cloth bookmark instead of a regular linking panel
+      and makes it the first page of the book.
+      ``JCSavePoint`` represents a hand journey cloth and ``SCSavePoint`` a shell cloth.
+      A single Age Link should only contain at most one of these two cloth link types.
+  * :samp:`{SpawnPoint}`: Internal name of the spawn point in the age.
+  * :samp:`{CameraStack}`: A ``~``-separated sequence of camera names that should be restored when arriving at the link-in point.
+    Only used for cloth bookmark links.
+    For other links,
+    this part should always be empty.
+
+An Age Link node should always have exactly one child node:
+the Age Info node for the age instance that the link points to.
 
 .. _vault_folder_list_types:
 
