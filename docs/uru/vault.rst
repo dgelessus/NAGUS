@@ -206,7 +206,7 @@ they should never appear in the actual vault database or over the network.
    * :ref:`vault_node_sdl` = 27
    * :ref:`vault_node_age_link` = 28
    * :ref:`vault_node_chronicle` = 29
-   * Player Info List = 30
+   * :ref:`vault_node_player_info_list` = 30
    * *UNUSED00* = 31
    * *UNUSED01* = 32
    * Age Info = 33
@@ -567,12 +567,25 @@ Chronicle
 A Chronicle node's children should all be Chronicle nodes as well.
 Most Chronicle nodes have no children at all.
 
+.. _vault_node_player_info_list:
+
+Player Info List
+^^^^^^^^^^^^^^^^
+
+* ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
+  Not supported by MOSS for this node type.
+* ``NodeType`` = 30
+* ``Int32_1`` = **FolderType:** The player info list's meaning/purpose.
+  See :ref:`vault_folder_list_types` for details.
+
+A Player Info List's children should all be Player Info nodes.
+
 .. _vault_folder_list_types:
 
 Folder/list types
 -----------------
 
-The three node types :ref:`vault_node_folder`, Player Info List, and Age Info List use a common numbering scheme for their **FolderType** field (``Int32_1``).
+The three node types :ref:`vault_node_folder`, :ref:`vault_node_player_info_list`, and Age Info List use a common numbering scheme for their **FolderType** field (``Int32_1``).
 Below is a full list of all folder/list types defined in the open-sourced client code.
 Types in *italics* are effectively unused ---
 they are never added to the vault by the client or any known server implementation.
@@ -583,9 +596,9 @@ they are never added to the vault by the client or any known server implementati
    
    0,UserDefinedNode,:ref:`vault_node_folder`
    1,InboxFolder,:ref:`vault_node_folder`
-   2,BuddyListFolder,Player Info List
-   3,IgnoreListFolder,Player Info List
-   4,PeopleIKnowAboutFolder,Player Info List
+   2,BuddyListFolder,:ref:`vault_node_player_info_list`
+   3,IgnoreListFolder,:ref:`vault_node_player_info_list`
+   4,PeopleIKnowAboutFolder,:ref:`vault_node_player_info_list`
    5,*VaultMgrGlobalDataFolder*,*unused*
    6,ChronicleFolder,:ref:`vault_node_folder`
    7,AvatarOutfitFolder,:ref:`vault_node_folder`
@@ -593,14 +606,14 @@ they are never added to the vault by the client or any known server implementati
    9,SubAgesFolder,Age Info List
    10,DeviceInboxFolder,:ref:`vault_node_folder`
    11,*HoodMembersFolder*,*unused in vault*
-   12,AllPlayersFolder,Player Info List
+   12,AllPlayersFolder,:ref:`vault_node_player_info_list`
    13,*AgeMembersFolder*,*unused in vault*
    14,AgeJournalsFolder,:ref:`vault_node_folder`
    15,AgeDevicesFolder,:ref:`vault_node_folder`
    16,*AgeInstanceSDLNode*,*unused*
    17,*AgeGlobalSDLNode*,*unused*
-   18,CanVisitFolder,Player Info List
-   19,AgeOwnersFolder,Player Info List
+   18,CanVisitFolder,:ref:`vault_node_player_info_list`
+   19,AgeOwnersFolder,:ref:`vault_node_player_info_list`
    20,*AllAgeGlobalSDLNodesFolder*,*unused*
    21,*PlayerInfoNode*,*unused*
    22,*PublicAgesFolder*,*unused*
