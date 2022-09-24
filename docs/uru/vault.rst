@@ -329,7 +329,7 @@ Age
 * ``NodeType`` = 3
 * ``Uuid_1`` = **AgeInstanceGuid:** This age instance's unique ID.
 * ``Uuid_2`` = **ParentAgeInstanceGuid:** The AgeInstanceGuid of this age instance's parent instance,
-  or unset if this age is not a sub-age.
+  or unset if this age is not a sub-age or child age.
 * ``String64_1`` = **AgeName:** Internal name of the age that this is an instance of.
 
 An Age node should always have the following children:
@@ -670,7 +670,7 @@ Age Info
   Should always be identical to the AgeInstanceGuid of the corresponding :ref:`vault_node_age` node.
 * ``Uuid_2`` = **ParentAgeInstanceGuid:**
   The AgeInstanceGuid of this age instance's parent instance,
-  or unset if this age is not a sub-age.
+  or unset if this age is not a sub-age or child age.
   Should always be identical to the ParentAgeInstanceGuid of the corresponding :ref:`vault_node_age` node.
 * ``String64_2`` = **AgeFilename:**
   Internal name of the age that this is an instance of.
