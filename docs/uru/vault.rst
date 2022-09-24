@@ -209,7 +209,7 @@ they should never appear in the actual vault database or over the network.
    * :ref:`vault_node_player_info_list` = 30
    * *UNUSED00* = 31
    * *UNUSED01* = 32
-   * Age Info = 33
+   * :ref:`vault_node_age_info` = 33
    * Age Info List = 34
    * Marker Game = 35
 
@@ -327,7 +327,7 @@ Player Info
   i. e. the avatar's KI number.
 * ``String64_1`` = **AgeInstName:**
   Display name of the age instance that the avatar is currently in.
-  Should always be identical to the ``String64_3`` (AgeInstanceName) field of the Age Info node indicated by this node's AgeInstUuid field,
+  Should always be identical to the ``String64_3`` (AgeInstanceName) field of the :ref:`vault_node_age_info` node indicated by this node's AgeInstUuid field,
   or set to an empty string if the avatar is not currently in any instance.
 * ``IString64_1`` = **PlayerName:**
   The avatar's display name.
@@ -446,7 +446,7 @@ Text Note
   For Visit and UnVisit notes,
   this is a machine-readable string in the format
   :samp:`{AgeFilename}|{AgeInstanceName}|{AgeUserDefinedName}|{AgeDescription}|{AgeInstanceGuid}|{AgeLanguage}|{AgeSequenceNumber}`,
-  with all values taken from the Age Info node of the age instance being invited to.
+  with all values taken from the :ref:`vault_node_age_info` node of the age instance being invited to.
 
 Most Text Note nodes should never have any child nodes.
 The only exception are notes with NoteType Device,
@@ -464,7 +464,7 @@ SDL
 * ``NodeType`` = 27
 * ``Int32_1`` = **SDLIdent:**
   Practically unused.
-  When initializing the SDL node in an Age Info node,
+  When initializing the SDL node in an :ref:`vault_node_age_info` node,
   the server sets this field to 0.
   The open-sourced client code never sets it or uses it for anything.
 * ``String64_1`` = **SDLName:**
@@ -472,13 +472,13 @@ SDL
   This field is only relevant when the SDLData field is unset or empty.
   Otherwise the SDLData itself indicates which state descriptor to use
   and this field is ignored.
-  When initializing the SDL node in an Age Info node,
+  When initializing the SDL node in an :ref:`vault_node_age_info` node,
   the server sets this field to the age file name.
   The open-sourced client code never sets this field
   and only uses it in one case (see below).
 * ``Blob_1`` = **SDLData:**
   The serialized state data record ("SDL blob").
-  When initializing the SDL node in an Age Info node,
+  When initializing the SDL node in an :ref:`vault_node_age_info` node,
   the server leaves this field unset.
   When the client finds this field unset or empty,
   it looks up the state descriptor named by the SDLName field
@@ -538,7 +538,7 @@ Age Link
     this part should always be empty.
 
 An Age Link node should always have exactly one child node:
-the Age Info node for the age instance that the link points to.
+the :ref:`vault_node_age_info` node for the age instance that the link points to.
 
 .. _vault_node_chronicle:
 
@@ -579,6 +579,87 @@ Player Info List
   See :ref:`vault_folder_list_types` for details.
 
 A Player Info List's children should all be Player Info nodes.
+
+.. _vault_node_age_info:
+
+Age Info
+^^^^^^^^
+
+* ``CreateAgeName``, ``CreateAgeUuid``: Normally left unset.
+  Not supported by MOSS for this node type.
+* ``NodeType`` = 33
+* ``Int32_1`` = **AgeSequenceNumber:**
+  A sequential number identifying multiple different instances of the same age with the same owner.
+  The first instance has sequence number 0.
+  Each further instance receives a sequence number one higher than the previous one.
+* ``Int32_2`` = **IsPublic:**
+  1 if the age instance is public,
+  or 0 or unset otherwise.
+  When creating a new private age instance,
+  Cyan's server software and MOSS leave this field unset by default,
+  whereas DIRTSAND explicitly sets it to 0.
+* ``Int32_3`` = **AgeLanguage:**
+  Apparently not actively used.
+  In practice,
+  the open-sourced client code always sets this field to -1.
+* ``UInt32_1`` = **AgeId:**
+  ID of the corresponding :ref:`vault_node_age` node.
+* ``UInt32_2`` = **AgeCzarId:**
+  Not used by the open-sourced client code.
+  The server sets this field to 0 when creating a new age instance.
+* ``UInt32_3`` = **AgeInfoFlags:**
+  Not used by the open-sourced client code.
+  The server sets this field to 0 when creating a new age instance.
+* ``Uuid_1`` = **AgeInstanceGuid:**
+  This age instance's unique ID.
+  Should always be identical to the AgeInstanceGuid of the corresponding :ref:`vault_node_age` node.
+* ``Uuid_2`` = **ParentAgeInstanceGuid:**
+  The AgeInstanceGuid of this age instance's parent instance,
+  or unset if this age is not a sub-age.
+  Should always be identical to the ParentAgeInstanceGuid of the corresponding :ref:`vault_node_age` node.
+* ``String64_2`` = **AgeFilename:**
+  Internal name of the age that this is an instance of.
+  Should always be identical to the AgeName of the corresponding :ref:`vault_node_age` node.
+* ``String64_3`` = **AgeInstanceName:**
+  Display name of the age that this is an instance of.
+* ``String64_4`` = **AgeUserDefinedName:**
+  A prefix describing the owner of this age instance.
+  This is usually the owner's name in possessive form,
+  e. g. "Douglas Sharper's" (including the "'s").
+  For automatically created neighborhoods,
+  this is normally the string "DRC" (without "'s"),
+  although some shards change this.
+  Unset for age instances with no owner,
+  e. g. public age instances.
+  For neighborhoods,
+  this field can be edited by the instance's owners in the KI neighborhood settings screen
+  (although this only works in H'uru clients).
+* ``Text_1`` = **AgeDescription:**
+  For some age instances
+  (personal instances and some neighborhoods apparently),
+  this is set to the combination :samp:`{AgeUserDefinedName} {AgeInstanceName}`
+  (the sequence number is *not* included here).
+  For other instances,
+  this field is left unset.
+  For neighborhoods,
+  this field can be edited by the instance's owners in the KI neighborhood settings screen
+  (although this only works in H'uru clients).
+
+An Age Info node should have the following children:
+
+* :ref:`vault_node_player_info_list`: FolderType = CanVisitFolder
+  
+  * *Player Info nodes for all avatars invited to this age instance*
+* :ref:`vault_node_sdl`: SDLIdent = 0, SDLName = AgeFilename
+* :ref:`vault_node_player_info_list`: FolderType = AgeOwnersFolder
+  
+  * *Player Info nodes for all avatars that own this age instance*
+* Age Info List: FolderType = ChildAgesFolder
+  
+  * *Age Link nodes for all child age instances of this age instance*
+* (optional) :ref:`vault_node_folder`: FolderType = *unset*, FolderName = "AgeData"
+  
+  * *age-specific Chronicle nodes*
 
 .. _vault_folder_list_types:
 
