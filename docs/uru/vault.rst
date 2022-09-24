@@ -205,7 +205,7 @@ they should never appear in the actual vault database or over the network.
    * :ref:`vault_node_text_note` = 26
    * :ref:`vault_node_sdl` = 27
    * :ref:`vault_node_age_link` = 28
-   * Chronicle = 29
+   * :ref:`vault_node_chronicle` = 29
    * Player Info List = 30
    * *UNUSED00* = 31
    * *UNUSED01* = 32
@@ -298,6 +298,7 @@ Folder
 * ``NodeType`` = 22
 * ``Int32_1`` = **FolderType:** The folder's general meaning/purpose.
   See :ref:`vault_folder_list_types` for details.
+  The open-sourced client code sometimes leaves this field unset.
 * ``String64_1`` = **FolderName:** Name of the folder.
   If present,
   it's often (but not always) a human-readable name that is displayed to the player,
@@ -538,6 +539,33 @@ Age Link
 
 An Age Link node should always have exactly one child node:
 the Age Info node for the age instance that the link points to.
+
+.. _vault_node_chronicle:
+
+Chronicle
+^^^^^^^^^
+
+* ``NodeType`` = 29
+* ``Int32_1`` = **EntryType:**
+  Appears to be meaningless and not actively used.
+  All known chronicle entries use type 0, 1, or 2.
+  The open-sourced client code sometimes leaves this field unset
+  when creating Chronicle nodes manually instead of through the usual API.
+  This happens for Chronicle nodes nested inside other Chronicle nodes
+  or located outside of a ChronicleFolder.
+  This field shouldn't change after creation.
+* ``String64_1`` = **EntryName:**
+  Name of the chronicle entry.
+  Every Chronicle node's name should be unique within its parent node.
+  Should always be set
+  and shouldn't change after creation.
+* ``Text_1`` = **EntryValue:**
+  Value of the chronicle entry.
+  The format and meaning of this field depends on the EntryName.
+  Should always be set.
+
+A Chronicle node's children should all be Chronicle nodes as well.
+Most Chronicle nodes have no children at all.
 
 .. _vault_folder_list_types:
 
