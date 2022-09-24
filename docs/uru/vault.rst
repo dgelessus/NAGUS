@@ -376,7 +376,7 @@ The System node should have the following children:
   * *additional nodes that will be displayed in every avatar's Incoming folder*
 
 All child nodes of the global inbox folder,
-except for :ref:`vault_node_folder` or Chronicle nodes,
+except for :ref:`vault_node_folder` or :ref:`vault_node_chronicle` nodes,
 are displayed as the first entries in every avatar's KI Incoming folder,
 above any nodes from the per-avatar inbox folder.
 Players cannot delete nodes from the global inbox folder using the KI user interface,
