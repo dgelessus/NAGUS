@@ -114,7 +114,7 @@ not even their structure.
    32,:ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`,:ref:`VaultInitAgeReply <auth2cli_vault_init_age_reply>`,30
    33,:ref:`VaultNodeFind <cli2auth_vault_node_find>`,:ref:`VaultNodeFindReply <auth2cli_vault_node_find_reply>`,31
    34,:ref:`VaultSetSeen <cli2auth_vault_set_seen>`,,
-   35,VaultSendNode,,
+   35,:ref:`VaultSendNode <cli2auth_vault_send_node>`,,
 
 .. csv-table:: Ages
    :name: auth_messages_ages
@@ -1885,3 +1885,19 @@ no known fan server implementation supports this message.
 Cyan's server software seems to ignore it,
 or at least doesn't update the seen status properly
 (see :ref:`VaultNodeRefsFetched <auth2cli_vault_node_refs_fetched>` for details).
+
+.. _cli2auth_vault_send_node:
+
+Cli2Auth_VaultSendNode
+^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 35
+* **Node ID:** 4-byte unsigned int.
+  ID of the node to send.
+* **Receiver ID:** 4-byte unsigned int.
+  KI number of the avatar to send the node to.
+
+Send a node to another avatar.
+This creates a new node ref with the receiver's inbox as the parent,
+the sent node ID as the child,
+and the current avatar's KI number as the owner.
