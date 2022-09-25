@@ -246,9 +246,14 @@ Top-level node for all data related to an avatar.
   Not supported by MOSS for this node type.
 * ``NodeType`` = 2
 * ``Int32_1`` = **Disabled:** Not used by the open-sourced client code or fan servers.
-  (TODO Does Cyan's server software do anything with it?)
-  Normally left unset.
-  MOSS initializes it to 0 when creating a new avatar.
+  At some point in the past (at least 2011),
+  setting this field to a non-zero value made Cyan's server software permanently delete the avatar.
+  As of 2022,
+  this *seems* to be no longer the case.
+  (Don't quote me on that though.
+  I accept no responsibility for any lost avatars.)
+  Cyan's server software and MOSS initialize this field to 0 when creating a new avatar,
+  whereas DIRTSAND leaves it unset.
 * ``Int32_2`` = **Explorer:**
   1 if the avatar is a full :ref:`explorer <explorer>`,
   or 0 if it's just a :ref:`visitor <visitor>`.
