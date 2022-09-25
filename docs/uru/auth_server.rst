@@ -113,7 +113,7 @@ not even their structure.
    31,:ref:`VaultFetchNodeRefs <cli2auth_vault_fetch_node_refs>`,:ref:`VaultNodeRefsFetched <auth2cli_vault_node_refs_fetched>`,29
    32,:ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`,:ref:`VaultInitAgeReply <auth2cli_vault_init_age_reply>`,30
    33,:ref:`VaultNodeFind <cli2auth_vault_node_find>`,:ref:`VaultNodeFindReply <auth2cli_vault_node_find_reply>`,31
-   34,VaultSetSeen,,
+   34,:ref:`VaultSetSeen <cli2auth_vault_set_seen>`,,
    35,VaultSendNode,,
 
 .. csv-table:: Ages
@@ -1652,9 +1652,11 @@ Auth2Cli_VaultNodeRefsFetched
     Meant to be used as an unread/read flag for user-visible vault node refs
     (i. e. KI mail).
     The client semi-ignores this field though and considers all refs unread all the time.
-    Neither MOSS nor DIRTSAND persistently stores the seen status of refs ---
-    MOSS always sets this field to 0xcc (yes, really) and DIRTSAND always to 0.
-    (TODO What does Cyan's server software do?)
+    No known server implementation persistently stores the seen status of refs.
+    MOSS always sets this field to 0xcc (yes, really),
+    DIRTSAND always to 0,
+    and Cyan's server software sets it to unpredictable junk data
+    (apparently always non-zero).
 
 Reply to a :ref:`VaultFetchNodeRefs <cli2auth_vault_fetch_node_refs>` message.
 
@@ -1858,3 +1860,28 @@ The result is usually one of:
   (TODO What does Cyan's server software do?)
 * :cpp:enumerator:`kNetErrServiceForbidden`:
   Sent by MOSS when the template node doesn't fulfill the requirements described above.
+
+.. _cli2auth_vault_set_seen:
+
+Cli2Auth_VaultSetSeen
+^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 34
+* **Parent node ID:** 4-byte unsigned int.
+  Parent node of the node ref to set as seen.
+* **Child node ID:** 4-byte unsigned int.
+  Child node of the node ref to set as seen.
+* **Seen:** 1-byte boolean.
+  1 to set the node ref as seen
+  or 0 to set it as unseen.
+
+Change a vault node ref's seen status.
+
+In practice,
+the open-sourced client code never sends this message,
+because unread message handling is incomplete and somewhat broken.
+As a result,
+no known fan server implementation supports this message.
+Cyan's server software seems to ignore it,
+or at least doesn't update the seen status properly
+(see :ref:`VaultNodeRefsFetched <auth2cli_vault_node_refs_fetched>` for details).
