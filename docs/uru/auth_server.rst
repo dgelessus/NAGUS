@@ -112,7 +112,7 @@ not even their structure.
    30,:ref:`VaultNodeRemove <cli2auth_vault_node_remove>`,:ref:`VaultRemoveNodeReply <auth2cli_vault_remove_node_reply>`,34
    31,:ref:`VaultFetchNodeRefs <cli2auth_vault_fetch_node_refs>`,:ref:`VaultNodeRefsFetched <auth2cli_vault_node_refs_fetched>`,29
    32,:ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`,:ref:`VaultInitAgeReply <auth2cli_vault_init_age_reply>`,30
-   33,VaultNodeFind,VaultNodeFindReply,31
+   33,:ref:`VaultNodeFind <cli2auth_vault_node_find>`,:ref:`VaultNodeFindReply <auth2cli_vault_node_find_reply>`,31
    34,VaultSetSeen,,
    35,VaultSendNode,,
 
@@ -1790,3 +1790,71 @@ Auth2Cli_VaultInitAgeReply
   or 0 if age instance creation failed.
 
 Reply to a :ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`.
+
+.. _cli2auth_vault_node_find:
+
+Cli2Auth_VaultNodeFind
+^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 33
+* **Transaction ID:** 4-byte unsigned int.
+* **Template node data length:** 4-byte unsigned int.
+  Byte length of the following node data field.
+  Can be at most 1 MiB.
+* **Template node data:** Variable-length byte array in the format described in :ref:`vault_node_network_format`.
+
+Search for vault nodes whose field values match the given template node.
+For a node to match,
+it must have all fields set that are set in the template mode
+and they must have exactly equal values,
+except for ``IString64_1`` and ``IString64_2``,
+which are compared case-insensitively.
+Any fields not set in the template node are ignored and don't affect the match.
+
+In practice,
+the open-sourced client code only uses this message for one purpose:
+finding a :ref:`vault_node_player_info` node by the ID of its corresponding :ref:`vault_node_player` node,
+i. e. looking up an avatar by its KI number.
+In this case,
+the template node always has its ``NodeType`` set to 23 (PlayerInfo),
+the ``UInt32_1`` field (PlayerId) set to the desired KI number,
+and all other fields unset.
+
+MOSS places certain restrictions on the template node
+to disallow some overly broad find operations:
+
+* The template node must always have its ``NodeType`` field set,
+  due to :ref:`its internal database structure <moss_vault>`.
+* ``CreateTime`` and ``ModifyTime`` fields in the template node are silently ignored.
+* The template node must have at least one field other than the above set,
+  i. e. one cannot find all nodes of a single type with no other restrictions.
+
+DIRTSAND only requires that the template node has at least one field set
+and otherwise allows arbitrary find operations.
+(TODO What does Cyan's server software do?)
+
+.. _auth2cli_vault_node_find_reply:
+
+Auth2Cli_VaultNodeFindReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 31
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Found node ID count:** 4-byte unsigned int.
+  May be at most 512.
+* **Found node IDs:** Variable-length array of 4-byte unsigned ints.
+
+Reply to a :ref:`VaultNodeFind <cli2auth_vault_node_find>` message.
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrInternalError`:
+  Sent by DIRTSAND when the template node has no fields set.
+* :cpp:enumerator:`kNetErrVaultNodeNotFound`:
+  Sent by MOSS if no matching nodes were found.
+  DIRTSAND sends :cpp:enumerator:`kNetSuccess` in this case instead.
+  (TODO What does Cyan's server software do?)
+* :cpp:enumerator:`kNetErrServiceForbidden`:
+  Sent by MOSS when the template node doesn't fulfill the requirements described above.
