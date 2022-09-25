@@ -111,7 +111,7 @@ not even their structure.
    ,,:ref:`VaultNodeRemoved <auth2cli_vault_node_removed>`,28
    30,:ref:`VaultNodeRemove <cli2auth_vault_node_remove>`,:ref:`VaultRemoveNodeReply <auth2cli_vault_remove_node_reply>`,34
    31,:ref:`VaultFetchNodeRefs <cli2auth_vault_fetch_node_refs>`,:ref:`VaultNodeRefsFetched <auth2cli_vault_node_refs_fetched>`,29
-   32,VaultInitAgeRequest,VaultInitAgeReply,30
+   32,:ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`,:ref:`VaultInitAgeReply <auth2cli_vault_init_age_reply>`,30
    33,VaultNodeFind,VaultNodeFindReply,31
    34,VaultSetSeen,,
    35,VaultSendNode,,
@@ -1657,3 +1657,136 @@ Auth2Cli_VaultNodeRefsFetched
     (TODO What does Cyan's server software do?)
 
 Reply to a :ref:`VaultFetchNodeRefs <cli2auth_vault_fetch_node_refs>` message.
+
+.. _cli2auth_vault_init_age_request:
+
+Cli2Auth_VaultInitAgeRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 32
+* **Transaction ID:** 4-byte unsigned int.
+* **Instance ID:** 16-byte UUID.
+  AgeInstanceGuid of the new :ref:`vault_node_age` and :ref:`vault_node_age_info` nodes.
+  If this field is set to all zeroes,
+  the server automatically generates a random AgeInstanceGuid.
+  It seems that in practice,
+  the open-sourced client code doesn't rely on this behavior ---
+  it always generates a random UUID itself if necessary.
+* **Parent instance ID:** 16-byte UUID.
+  ParentAgeInstanceGuid of the new :ref:`vault_node_age` and :ref:`vault_node_age_info` nodes.
+  If this field is set to all zeroes,
+  the ParentAgeInstanceGuid will be left unset.
+* **File name:** :c:macro:`NET_MSG_FIELD_STRING`\(260).
+  AgeName of the new :ref:`vault_node_age` node
+  and AgeFilename of the new :ref:`vault_node_age_info` node.
+  This field must never be empty.
+* **Instance name:** :c:macro:`NET_MSG_FIELD_STRING`\(260).
+  AgeInstanceName of the new :ref:`vault_node_age_info` node.
+  If this field is empty,
+  the AgeInstanceName field will be left unset.
+* **User-defined name:** :c:macro:`NET_MSG_FIELD_STRING`\(260).
+  AgeUserDefinedName of the new :ref:`vault_node_age_info` node.
+  If this field is empty,
+  the AgeUserDefinedName field will be left unset.
+* **Description:** :c:macro:`NET_MSG_FIELD_STRING`\(1024).
+  AgeDescription of the new :ref:`vault_node_age_info` node.
+  If this field is empty,
+  the AgeDescription field will be left unset.
+* **Sequence number:** 4-byte signed int.
+  AgeSequenceNumber of the new :ref:`vault_node_age_info` node.
+  In practice,
+  the client always sets this field to 0.
+  If this field is negative,
+  DIRTSAND automatically assigns a free sequence number,
+  otherwise it stores the requested sequence number as-is.
+  MOSS ignores this field and instead changes behavior depending on the age:
+  when creating a DRC Neighborhood or a BahroCave or LiveBahroCaves instance,
+  it chooses the next free sequence number (starting at 1),
+  otherwise it sets the sequence number to 0.
+  (TODO What does Cyan's server software do?
+  It seems to automatically assign sequence numbers
+  even if the client sends 0.)
+* **Language:** 4-byte signed int.
+  AgeLanguage of the new :ref:`vault_node_age_info` node.
+  In practice,
+  the client always sets this field to -1.
+  MOSS ignores this field and instead always sets AgeLanguage to -1.
+
+Create a new age instance in the vault,
+if a matching one doesn't exist already.
+
+If the instance ID is not all zeroes
+and there is already a :ref:`vault_node_age`/:ref:`vault_node_age_info` node pair
+with a matching instance ID and file name,
+the server replies with the IDs of these nodes
+and doesn't create a new instance.
+
+DIRTSAND ignores the file name and matches only on the instance ID,
+but this makes no difference in practice,
+because random UUID collisions are extremely unlikely.
+
+If the parent instance ID is not all zeroes,
+MOSS ignores the instance ID and instead uses the *parent* instance ID to look for an existing instance.
+This ensures that within a single parent instance,
+there can only ever be at most one child/sub-age instance of the same age.
+
+If no matching existing instance was found,
+the server creates a new :ref:`vault_node_age` node,
+a corresponding :ref:`vault_node_age_info` node,
+and all appropriate child nodes.
+All of the newly created nodes have their ``CreatorAcct`` set to the instance ID
+and their ``CreatorId`` to the new :ref:`vault_node_age` node ID
+(except for the new :ref:`vault_node_age` node itself,
+whose ``CreatorId`` is set to 0).
+
+The newly created nodes have the following structure and fields:
+
+* :ref:`vault_node_age`:
+  
+  * ``Uuid_1`` = **AgeInstanceGuid** = *instance ID*
+  * ``Uuid_2`` = **ParentAgeInstanceGuid** = *parent instance ID*
+  * ``String64_1`` = **AgeName** = *file name*
+  * Child nodes:
+    
+    * :ref:`vault_node_system` (the single System node)
+    * :ref:`vault_node_age_info`:
+      
+      * ``Int32_1`` = **AgeSequenceNumber** = *sequence number*
+      * ``Int32_2`` = **Public** = 0 (DIRTSAND only, others leave it unset)
+      * ``Int32_3`` = **AgeLanguage** = *language*
+      * ``UInt32_1`` = **AgeId** = *new Age node ID*
+      * ``UInt32_2`` = **AgeCzarId** = 0
+      * ``UInt32_3`` = **AgeInfoFlags** = 0
+      * ``Uuid_1`` = **AgeInstanceGuid** = *instance ID*
+      * ``Uuid_2`` = **ParentAgeInstanceGuid** = *parent instance ID*
+      * ``String64_2`` = **AgeFilename** = *file name*
+      * ``String64_3`` = **AgeInstanceName** = *instance name*
+      * ``String64_4`` = **AgeUserDefinedName** = *user-defined name*
+      * ``Text_1`` = **AgeDescription** = *description*
+      * Child nodes:
+        
+        * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 18 (CanVisitFolder)
+        * :ref:`vault_node_sdl`: ``Int32_1`` = **SDLIdent** = 0, ``String64_1`` = **SDLName** = *file name*, ``Blob_1`` = **SDLData** = *default state data record* (DIRTSAND only, others leave it unset)
+        * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 19 (AgeOwnersFolder)
+        * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 31 (ChildAgesFolder)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 6 (ChronicleFolder)
+    * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 4 (PeopleIKnowAboutFolder)
+    * :ref:`vault_node_age_info_list`: ``Int32_1`` = **FolderType** = 9 (SubAgesFolder)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 15 (AgeDevicesFolder)
+
+.. _auth2cli_vault_init_age_reply:
+
+Auth2Cli_VaultInitAgeReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 30
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Age node ID:** 4-byte unsigned int.
+  ID of the newly created :ref:`vault_node_age` node,
+  or 0 if age instance creation failed.
+* **Age info node ID:** 4-byte unsigned int.
+  ID of the newly created :ref:`vault_node_age_info` node,
+  or 0 if age instance creation failed.
+
+Reply to a :ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`.
