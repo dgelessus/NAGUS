@@ -57,22 +57,6 @@ class StatusServerRequestHandler(http.server.BaseHTTPRequestHandler):
 		else:
 			return None
 	
-	def get_response(self) -> typing.Tuple[typing.Union[http.HTTPStatus, int], str, bytes]:
-		if self.path in {"/serverstatus/moullive.php", "/welcome"}:
-			status_text = self.format_status_text()
-			return http.HTTPStatus.OK, "text/plain", status_text.encode("ascii")
-		elif self.path == "/serverstatus/moulbeta.php":
-			status_text = self.format_status_text(beta=True)
-			return http.HTTPStatus.OK, "text/plain", status_text.encode("ascii")
-		elif self.path == "/status":
-			status_obj = {
-				"online": True,
-				"welcome": self.format_status_text(),
-			}
-			return http.HTTPStatus.OK, "application/json", json.dumps(status_obj).encode("utf-8")
-		else:
-			return http.HTTPStatus.NOT_FOUND, "text/plain", b"404 Not Found"
-	
 	def respond(self, content_type: str, data: bytes) -> None:
 		self.send_response(http.HTTPStatus.OK)
 		self.send_header("Content-Type", content_type)
