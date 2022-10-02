@@ -1125,8 +1125,14 @@ The newly created nodes have the following structure and fields:
     
     * :ref:`vault_node_system` (the single System node)
     * :ref:`vault_node_player_info`: ``UInt32_1`` = **PlayerId** = *new Player node ID*, ``IString64_1`` = **PlayerName** = *player name*
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 1 (InboxFolder)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 14 (AgeJournalsFolder)
     * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 2 (BuddyListFolder)
     * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 3 (IgnoreListFolder)
+    * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 4 (PeopleIKnowAboutFolder)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 6 (ChronicleFolder)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 7 (AvatarOutfitFolder)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 25 (AvatarClosetFolder)
     * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 28 (PlayerInviteFolder)
     * :ref:`vault_node_age_info_list`: ``Int32_1`` = **FolderType** = 23 (AgesIOwnFolder)
       
@@ -1139,13 +1145,7 @@ The newly created nodes have the following structure and fields:
       * :ref:`vault_node_age_link`: ``Blob_1`` = **SpawnPoints** = "Ferry Terminal:LinkInPointFerry:;"
         
         * :ref:`vault_node_age_info` (for the public City/Ae'gura)
-    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 14 (AgeJournalsFolder)
-    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 6 (ChronicleFolder)
     * :ref:`vault_node_age_info_list`: ``Int32_1`` = **FolderType** = 24 (AgesICanVisitFolder)
-    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 7 (AvatarOutfitFolder)
-    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 25 (AvatarClosetFolder)
-    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 1 (InboxFolder)
-    * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 4 (PeopleIKnowAboutFolder)
 
 The avatar's new Personal/Relto instance is created
 as if by a :ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`
@@ -1875,12 +1875,12 @@ The newly created nodes have the following structure and fields:
       * ``Text_1`` = **AgeDescription** = *description*
       * Child nodes:
         
-        * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 18 (CanVisitFolder)
         * :ref:`vault_node_sdl`: ``Int32_1`` = **SDLIdent** = 0, ``String64_1`` = **SDLName** = *file name*, ``Blob_1`` = **SDLData** = *default state data record* (DIRTSAND only, others leave it unset)
         * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 19 (AgeOwnersFolder)
+        * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 18 (CanVisitFolder)
         * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 31 (ChildAgesFolder)
-    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 6 (ChronicleFolder)
     * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 4 (PeopleIKnowAboutFolder)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 6 (ChronicleFolder)
     * :ref:`vault_node_age_info_list`: ``Int32_1`` = **FolderType** = 9 (SubAgesFolder)
     * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 15 (AgeDevicesFolder)
 

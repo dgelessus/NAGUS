@@ -292,12 +292,28 @@ A Player node should always have the following children:
 
 * :ref:`vault_node_system` (the single System node)
 * :ref:`vault_node_player_info` (corresponding to this Player node)
+* :ref:`vault_node_folder`: FolderType = InboxFolder
+* :ref:`vault_node_folder`: FolderType = AgeJournalsFolder
+  
+  * (for every age journal) :ref:`vault_node_folder`: FolderType = AgeTypeJournalFolder, FolderName = *the age's display name*
 * :ref:`vault_node_player_info_list`: FolderType = BuddyListFolder
   
   * *Player Info nodes for all buddies*
 * :ref:`vault_node_player_info_list`: FolderType = IgnoreListFolder
   
   * *Player Info nodes for all ignored avatars*
+* :ref:`vault_node_player_info_list`: FolderType = PeopleIKnowAboutFolder
+  
+  * *Player Info nodes for all recently seen avatars*
+* :ref:`vault_node_folder`: FolderType = ChronicleFolder
+  
+  * *Chronicle nodes for the avatar's chronicle entries*
+* :ref:`vault_node_folder`: FolderType = AvatarOutfitFolder
+  
+  * (for every currently worn clothing item) :ref:`vault_node_sdl`: SDLData = *state data record of type clothingItem*
+* :ref:`vault_node_folder`: FolderType = AvatarClosetFolder
+  
+  * (for every owned clothing item) :ref:`vault_node_sdl`: SDLData = *state data record of type clothingItem*
 * :ref:`vault_node_folder`: FolderType = PlayerInviteFolder
   
   * (for every invite key) :ref:`vault_node_text_note`: NoteType = *unset*, NoteSubType = *unset*, NoteTitle = *invite key*, NoteText = *unset*
@@ -307,25 +323,9 @@ A Player node should always have the following children:
   * :ref:`vault_node_age_link` (for the avatar's Neighborhood)
   * :ref:`vault_node_age_link` (for the public Ae'gura/city, with SpawnPoints storing the Ae'gura Nexus links collected by the avatar)
   * *Age Link nodes for all other personal age instances*
-* :ref:`vault_node_folder`: FolderType = AgeJournalsFolder
-  
-  * (for every age journal) :ref:`vault_node_folder`: FolderType = AgeTypeJournalFolder, FolderName = *the age's display name*
-* :ref:`vault_node_folder`: FolderType = ChronicleFolder
-  
-  * *Chronicle nodes for the avatar's chronicle entries*
 * :ref:`vault_node_age_info_list`: FolderType = AgesICanVisitFolder
   
   * *Age Link nodes for all age instances that the avatar is invited to*
-* :ref:`vault_node_folder`: FolderType = AvatarOutfitFolder
-  
-  * (for every currently worn clothing item) :ref:`vault_node_sdl`: SDLData = *state data record of type clothingItem*
-* :ref:`vault_node_folder`: FolderType = AvatarClosetFolder
-  
-  * (for every owned clothing item) :ref:`vault_node_sdl`: SDLData = *state data record of type clothingItem*
-* :ref:`vault_node_folder`: FolderType = InboxFolder
-* :ref:`vault_node_player_info_list`: FolderType = PeopleIKnowAboutFolder
-  
-  * *Player Info nodes for all recently seen avatars*
 * (optional, DIRTSAND only) :ref:`vault_node_player_info_list`: FolderType = AllPlayersFolder (the single All Players list)
   
   * *Player Info nodes for all currently online avatars*
@@ -354,8 +354,8 @@ An Age node should always have the following children:
 
 * :ref:`vault_node_system` (the single System node)
 * :ref:`vault_node_age_info` (corresponding to this Age node)
-* :ref:`vault_node_folder`: FolderType = ChronicleFolder (apparently never has any children?)
 * :ref:`vault_node_player_info_list`: FolderType = PeopleIKnowAboutFolder (apparently never has any children?)
+* :ref:`vault_node_folder`: FolderType = ChronicleFolder (apparently never has any children?)
 * :ref:`vault_node_age_info_list`: FolderType = SubAgesFolder
   
   * *Age Link nodes for all sub-ages*
@@ -766,13 +766,13 @@ that stores further data related to the instance.
 
 An Age Info node should have the following children:
 
-* :ref:`vault_node_player_info_list`: FolderType = CanVisitFolder
-  
-  * *Player Info nodes for all avatars invited to this age instance*
 * :ref:`vault_node_sdl`: SDLIdent = 0, SDLName = AgeFilename
 * :ref:`vault_node_player_info_list`: FolderType = AgeOwnersFolder
   
   * *Player Info nodes for all avatars that own this age instance*
+* :ref:`vault_node_player_info_list`: FolderType = CanVisitFolder
+  
+  * *Player Info nodes for all avatars invited to this age instance*
 * :ref:`vault_node_age_info_list`: FolderType = ChildAgesFolder
   
   * *Age Link nodes for all child age instances of this age instance*
