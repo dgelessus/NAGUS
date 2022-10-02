@@ -680,6 +680,21 @@ class VaultNodeData(object):
 			columns["Blob_2"] = self.blob_2
 		
 		return columns
+	
+	def __repr__(self) -> str:
+		parts = []
+		for attr in type(self).__slots__:
+			value = getattr(self, attr)
+			if value is not None:
+				if isinstance(value, str):
+					rep = repr(value)
+				else:
+					rep = str(value)
+				
+				parts.append(attr + "=" + rep)
+		
+		args = ", ".join(parts)
+		return f"{type(self).__qualname__}({args})"
 
 
 class VaultNodeRef(object):
@@ -705,6 +720,18 @@ class VaultNodeRef(object):
 	
 	def pack(self) -> bytes:
 		return VAULT_NODE_REF.pack(self.parent_id, self.child_id, self.owner_id, self.seen)
+	
+	def __str__(self) -> str:
+		desc = f"{self.parent_id} -> {self.child_id}"
+		if self.owner_id:
+			desc += f", owner: {self.owner_id}"
+		if not self.seen:
+			desc += f", seen: {self.seen}"
+		
+		return f"<ref {desc}>"
+	
+	def __repr__(self) -> str:
+		return f"{type(self).__qualname__}(parent_id={self.parent_id}, child_id={self.child_id}, owner_id={self.owner_id}, seen={self.seen})"
 
 
 class VaultNodeFolderType(enum.IntEnum):
@@ -1023,6 +1050,8 @@ class ServerState(object):
 	async def create_vault_node(self, data: VaultNodeData) -> int:
 		data.create_time = data.modify_time = int(datetime.datetime.now().timestamp())
 		
+		logger.debug("Creating vault node: %r", data)
+		
 		fields = data.to_db_named_values()
 		names = ", ".join(fields.keys())
 		placeholders = ", ".join("?" * len(fields))
@@ -1035,6 +1064,8 @@ class ServerState(object):
 	
 	async def update_vault_node(self, node_id: int, data: VaultNodeData) -> None:
 		data.modify_time = int(datetime.datetime.now().timestamp())
+		
+		logger.debug("Updating vault node %d: %s", node_id, data)
 		
 		fields = data.to_db_named_values()
 		assignment_parts = []
@@ -1054,6 +1085,8 @@ class ServerState(object):
 		# TODO Notify all relevant clients
 	
 	async def delete_vault_node(self, node_id: int) -> None:
+		logger.debug("Deleting vault node %d", node_id)
+		
 		async with self.db, await self.db.cursor() as cursor:
 			await cursor.execute("delete from VaultNodes where NodeId = ?", (node_id,))
 			if cursor.rowcount == 0:
@@ -1099,6 +1132,8 @@ class ServerState(object):
 				yield VaultNodeRef(parent_id, child_id, owner_id, seen)
 	
 	async def add_vault_node_ref(self, ref: VaultNodeRef) -> None:
+		logger.debug("Adding vault node ref: %r", ref)
+		
 		async with self.db, await self.db.cursor() as cursor:
 			try:
 				await cursor.execute(
@@ -1117,6 +1152,8 @@ class ServerState(object):
 		# TODO Notify all relevant clients
 	
 	async def remove_vault_node_ref(self, parent_id: int, child_id: int) -> None:
+		logger.debug("Removing vault node ref: %d -> %d", parent_id, child_id)
+		
 		async with self.db, await self.db.cursor() as cursor:
 			await cursor.execute(
 				"delete from VaultNodeRefs where ParentId = ? and ChildId = ?",
@@ -1138,6 +1175,8 @@ class ServerState(object):
 		
 		if await anext(aiter(self.find_vault_nodes(VaultNodeData(node_type=VaultNodeType.player, istring64_1=name))), None) is not None:
 			raise AvatarAlreadyExists(f"An avatar named {name!r} already exists")
+		
+		logger.info("Creating avatar %r, avatar shape %r, explorer? %d, account UUID %s", name, shape, explorer, account_id)
 		
 		system_id = await self.find_system_vault_node()
 		all_players_id = await self.find_all_players_vault_node()
