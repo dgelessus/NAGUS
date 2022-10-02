@@ -913,7 +913,7 @@ class ServerState(object):
 			values.append(value)
 		
 		if cond_parts:
-			cond = " & ".join(cond_parts)
+			cond = " and ".join(cond_parts)
 		else:
 			cond = "1=1"
 		
