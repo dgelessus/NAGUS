@@ -296,6 +296,10 @@ class AuthConnection(base.BaseMOULConnection):
 			await self.disconnect_with_reason(base.NetError.service_forbidden, "Client attempted to log in without sending a client register request first")
 		
 		# TODO Implement actual authentication
+		
+		async for avatar in self.server_state.find_avatars(state.ZERO_UUID):
+			await self.account_player_info(trans_id, avatar.player_node_id, avatar.name, avatar.shape, avatar.explorer)
+		
 		await self.account_login_reply(trans_id, base.NetError.success, state.ZERO_UUID, AccountFlags.user, AccountBillingType.paid_subscriber, (0, 0, 0, 0))
 	
 	async def account_set_player_reply(self, trans_id: int, result: base.NetError) -> None:
@@ -348,18 +352,28 @@ class AuthConnection(base.BaseMOULConnection):
 		avatar_shape = await self.read_string_field(260)
 		friend_invite_code = await self.read_string_field(260)
 		logger.debug("Player create request: transaction ID %d, avatar name %r, avatar shape %r", trans_id, avatar_name, avatar_shape)
-		if avatar_shape not in {"female", "male"}:
-			logger.error("Unsupported avatar shape %r")
-			# More correct would be invalid_parameter,
-			# but the client assumes that means an invalid invite code.
-			await self.player_create_reply(trans_id, base.NetError.not_supported, 0, 0, "", "")
-			return
+		
 		if friend_invite_code:
 			logger.error("Player create request with friend invite code, we don't support this: %r", friend_invite_code)
 			await self.player_create_reply(trans_id, base.NetError.invalid_parameter, 0, 0, "", "")
 			return
-		# TODO Actually implement this
-		await self.player_create_reply(trans_id, base.NetError.success, 1337, 1, avatar_name, avatar_shape)
+		
+		try:
+			ki_number, _ = await self.server_state.create_avatar(avatar_name, avatar_shape, 1, state.ZERO_UUID)
+		except ValueError:
+			# More correct would be invalid_parameter,
+			# but the client assumes that means an invalid invite code.
+			await self.player_create_reply(trans_id, base.NetError.not_supported, 0, 0, "", "")
+		except state.AvatarAlreadyExists:
+			await self.player_create_reply(trans_id, base.NetError.player_already_exists, 0, 0, "", "")
+		except state.VaultNodeNotFound:
+			logger.error("Vault node not found while creating avatar", exc_info=True)
+			await self.player_create_reply(trans_id, base.NetError.vault_node_not_found, 0, 0, "", "")
+		except Exception:
+			logger.error("Unhandled exception while creating avatar", exc_info=True)
+			await self.player_create_reply(trans_id, base.NetError.internal_error, 0, 0, "", "")
+		else:
+			await self.player_create_reply(trans_id, base.NetError.success, ki_number, 1, avatar_name, avatar_shape)
 	
 	async def upgrade_visitor_reply(self, trans_id: int, result: base.NetError) -> None:
 		logger.debug("Sending upgrade visitor reply: transaction ID %d, result %r", trans_id, result)

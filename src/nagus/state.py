@@ -707,6 +707,57 @@ class VaultNodeRef(object):
 		return VAULT_NODE_REF.pack(self.parent_id, self.child_id, self.owner_id, self.seen)
 
 
+class VaultNodeFolderType(enum.IntEnum):
+	user_defined = 0
+	inbox = 1
+	buddy_list = 2
+	ignore_list = 3
+	people_i_know_about = 4
+	vault_mgr_global_data = 5
+	chronicle = 6
+	avatar_outfit = 7
+	age_type_journal = 8
+	sub_ages = 9
+	device_inbox = 10
+	hood_members = 11
+	all_players = 12
+	age_members = 13
+	age_journals = 14
+	age_devices = 15
+	age_instance_sdl = 16
+	age_global_sdl = 17
+	can_visit = 18
+	age_owners = 19
+	all_age_global_sdl_nodes = 20
+	player_info = 21
+	public_ages = 22
+	ages_i_own = 23
+	ages_i_can_visit = 24
+	avatar_closet = 25
+	age_info = 26
+	system = 27
+	player_invite = 28
+	ccr_players = 29
+	global_inbox = 30
+	child_ages = 31
+	game_scores = 32
+
+
+class AvatarInfo(object):
+	player_node_id: int
+	name: str
+	shape: str
+	explorer: int
+	
+	def __init__(self, player_node_id: int, name: str, shape: str, explorer: int) -> None:
+		super().__init__()
+		
+		self.player_node_id = player_node_id
+		self.name = name
+		self.shape = shape
+		self.explorer = explorer
+
+
 class Cursor(typing.AsyncContextManager["Cursor"], typing.AsyncIterable[sqlite3.Row]):
 	"""Basic async wrapper around the synchronous :class:`sqlite3.Cursor` API."""
 	
@@ -816,6 +867,14 @@ class VaultNodeAlreadyExists(Exception):
 	pass
 
 
+class AvatarNotFound(Exception):
+	pass
+
+
+class AvatarAlreadyExists(Exception):
+	pass
+
+
 class ServerState(object):
 	loop: asyncio.AbstractEventLoop
 	db: Database
@@ -890,8 +949,14 @@ class ServerState(object):
 		except VaultNodeNotFound:
 			logger.info("No system node found in vault! Assuming this is a fresh database, so creating a new one.")
 			system = await self.create_vault_node(VaultNodeData(node_type=VaultNodeType.system))
-			global_inbox_folder = await self.create_vault_node(VaultNodeData(node_type=VaultNodeType.folder, int32_1=30))
+			global_inbox_folder = await self.create_vault_node(VaultNodeData(node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.global_inbox))
 			await self.add_vault_node_ref(VaultNodeRef(system, global_inbox_folder))
+		
+		try:
+			await self.find_all_players_vault_node()
+		except VaultNodeNotFound:
+			logger.info("No All Players list node found in vault! Creating a new one.")
+			await self.create_vault_node(VaultNodeData(node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.all_players))
 		
 		logger.debug("Finished setting up the NAGUS database. System vault node ID is %d", system)
 	
@@ -936,6 +1001,22 @@ class ServerState(object):
 			pass
 		else:
 			logger.warning("Found multiple system nodes in vault: %d and %d (and possibly more)! Ignoring all except the first one.", node_id, node_id_2)
+		
+		return node_id
+	
+	async def find_all_players_vault_node(self) -> int:
+		it = aiter(self.find_vault_nodes(VaultNodeData(node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.all_players)))
+		try:
+			node_id = await anext(it)
+		except StopAsyncIteration:
+			raise VaultNodeNotFound("Couldn't find the All Players vault node!")
+		
+		try:
+			node_id_2 = await anext(it)
+		except StopAsyncIteration:
+			pass
+		else:
+			logger.warning("Found multiple All Players nodes in vault: %d and %d (and possibly more)! Ignoring all except the first one.", node_id, node_id_2)
 		
 		return node_id
 	
@@ -1048,3 +1129,33 @@ class ServerState(object):
 				raise VaultNodeNotFound(f"Couldn't remove vault node ref {parent_id} -> {child_id} as id doesn't exist")
 		
 		# TODO Notify all relevant clients
+	
+	async def find_avatars(self, account_id: uuid.UUID) -> typing.AsyncIterable[AvatarInfo]:
+		async for player_id in self.find_vault_nodes(VaultNodeData(node_type=VaultNodeType.player, uuid_1=account_id)):
+			player_node = await self.fetch_vault_node(player_id)
+			yield AvatarInfo(player_id, player_node.istring64_1, player_node.string64_1, player_node.int32_2)
+	
+	async def create_avatar(self, name: str, shape: str, explorer: int, account_id: uuid.UUID) -> typing.Tuple[int, int]:
+		if shape not in {"female", "male"}:
+			raise ValueError(f"Unsupported avatar shape {shape!r}")
+		
+		if await anext(aiter(self.find_vault_nodes(VaultNodeData(node_type=VaultNodeType.player, istring64_1=name))), None) is not None:
+			raise AvatarAlreadyExists(f"An avatar named {name!r} already exists")
+		
+		system_id = await self.find_system_vault_node()
+		all_players_id = await self.find_all_players_vault_node()
+		
+		player_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=0, node_type=VaultNodeType.player, int32_1=0, int32_2=explorer, uuid_1=account_id, string64_1=shape, istring64_1=name))
+		player_info_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.player_info, uint32_1=player_id, istring64_1=name))
+		
+		await self.add_vault_node_ref(VaultNodeRef(player_id, system_id))
+		await self.add_vault_node_ref(VaultNodeRef(player_id, player_info_id))
+		
+		# TODO Create and add all the folders!
+		# TODO Create Personal/Relto instance
+		# TODO Find/create hood
+		# TODO Add public city/Ae'gura link
+		
+		await self.add_vault_node_ref(VaultNodeRef(all_players_id, player_info_id))
+		
+		return player_id, player_info_id
