@@ -355,7 +355,7 @@ An Age node should always have the following children:
 * :ref:`vault_node_system` (the single System node)
 * :ref:`vault_node_age_info` (corresponding to this Age node)
 * :ref:`vault_node_folder`: FolderType = ChronicleFolder (apparently never has any children?)
-* :ref:`vault_node_player_info_list`: FolderType = PeopleIKnowAboutFolder  (apparently never has any children?)
+* :ref:`vault_node_player_info_list`: FolderType = PeopleIKnowAboutFolder (apparently never has any children?)
 * :ref:`vault_node_age_info_list`: FolderType = SubAgesFolder
   
   * *Age Link nodes for all sub-ages*
