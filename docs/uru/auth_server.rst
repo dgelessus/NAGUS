@@ -1066,6 +1066,20 @@ Cli2Auth_PlayerCreateRequest
 Create a new avatar in the current account.
 Sent by the client after the player selects an empty slot in the avatar selection screen
 and enters all the necessary information.
+The server will do roughly the following:
+
+* Create :ref:`vault_node_player` and :ref:`vault_node_player_info` vault nodes for the new avatar,
+  along with all appropriate child nodes.
+  The ID of the new :ref:`vault_node_player` node serves as the avatar's KI number.
+* Add the new :ref:`vault_node_player_info` node to the AllPlayersFolder
+  (if the server supports/uses it).
+* Create a Personal/Relto age instance for the new avatar,
+  make the avatar the instance's owner,
+  and add the avatar's AgesIOwnFolder to the Personal/Relto :ref:`vault_node_age` node.
+* Find or create a default Neighborhood for the new avatar
+  and make the avatar a member/owner of the instance.
+* Add an entry in the table of avatars returned by :ref:`AcctPlayerInfo <auth2cli_acct_player_info>`
+  (if the server tracks it separately from :ref:`vault_node_player` vault nodes, e. g. DIRTSAND).
 
 The client only allows avatar names containing at least three non-space characters.
 OpenUru clients also reject non-ASCII names.
@@ -1090,6 +1104,100 @@ and the client always sends an empty invite code.
 
 The Cleft/Relto start path choice isn't passed as part of this message ---
 the client instead writes it into a vault chronicle after avatar creation.
+
+All of the newly created nodes have their ``CreatorAcct`` set to the current account's UUID
+and their ``CreatorId`` to the new :ref:`vault_node_player` node ID.
+The only exceptions are the new :ref:`vault_node_player` node itself,
+whose ``CreatorId`` is set to 0,
+and :ref:`vault_node_age` nodes and their children,
+which have their ``CreatorAcct`` and ``CreatorId`` set as described in :ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`.
+The newly created nodes have the following structure and fields:
+
+* :ref:`vault_node_player`:
+  
+  * ``Int32_1`` = **Disabled** = 0 (or unset for DIRTSAND)
+  * ``Int32_2`` = **Explorer** = 1 (usually, or 0 if not a "paid" account --- see :ref:`account_flags`)
+  * ``UInt32_1`` = **OnlineTime** = 0 (MOSS only?)
+  * ``Uuid_1`` = **AccountUuid** = *the current account's UUID*
+  * ``String64_1`` = **AvatarShapeName** = *avatar shape*
+  * ``IString64_1`` = **PlayerName** = *player name*
+  * Child nodes:
+    
+    * :ref:`vault_node_system` (the single System node)
+    * :ref:`vault_node_player_info`: ``UInt32_1`` = **PlayerId** = *new Player node ID*, ``IString64_1`` = **PlayerName** = *player name*
+    * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 2 (BuddyListFolder)
+    * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 3 (IgnoreListFolder)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 28 (PlayerInviteFolder)
+    * :ref:`vault_node_age_info_list`: ``Int32_1`` = **FolderType** = 23 (AgesIOwnFolder)
+      
+      * :ref:`vault_node_age_link`: ``Blob_1`` = **SpawnPoints** = "Default:LinkInPointDefault:;"
+        
+        * :ref:`vault_node_age_info` (for the avatar's newly created Personal/Relto age instance)
+      * :ref:`vault_node_age_link`: ``Blob_1`` = **SpawnPoints** = "Default:LinkInPointDefault:;"
+        
+        * :ref:`vault_node_age_info` (for the avatar's automatically assigned/created Neighborhood)
+      * :ref:`vault_node_age_link`: ``Blob_1`` = **SpawnPoints** = "Ferry Terminal:LinkInPointFerry:;"
+        
+        * :ref:`vault_node_age_info` (for the public City/Ae'gura)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 14 (AgeJournalsFolder)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 6 (ChronicleFolder)
+    * :ref:`vault_node_age_info_list`: ``Int32_1`` = **FolderType** = 24 (AgesICanVisitFolder)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 7 (AvatarOutfitFolder)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 25 (AvatarClosetFolder)
+    * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 1 (InboxFolder)
+    * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 4 (PeopleIKnowAboutFolder)
+
+The avatar's new Personal/Relto instance is created
+as if by a :ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`
+with no instance and parent instance ID,
+file name ``Personal``,
+instance name ``Relto``,
+user-defined name :samp:`{PlayerName}'s`,
+description :samp:`{PlayerName}'s Relto`,
+sequence number 0 (TODO Does Cyan's server software also do this?),
+and language -1.
+
+If there is an existing automatically created Neighborhood instance with less than 20 members
+(DIRTSAND allows configuring this limit),
+the new avatar is made a member/owner of that neighborhood.
+If there is no neighborhood with room left,
+then a new Neighborhood instance is created
+as if by a :ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`
+with no instance and parent instance ID,
+file name ``Neighborhood``,
+description :samp:`{UserDefinedName} {InstanceName}`,
+and language -1.
+
+The instance and user-defined names of auto-created hoods
+and the exact logic for assigning their sequence numbers
+vary depending on the server implementation and shard:
+
+* Cyan's server software uses the instance name ``Hood``
+  and the user-defined name ``DRC``.
+  Until October (?) 2021,
+  it used the instance name ``Bevin``,
+  but this was changed to ``Hood`` for lore accuracy reasons.
+  Before this server-side update,
+  there have been efforts to manually rename existing hoods from ``Bevin`` to ``Hood``,
+  but this wasn't a complete fix
+  as new hoods auto-created after the rename were named ``Bevin`` again.
+  As a result,
+  exising auto-created hoods from before the permanent fix
+  may be named either ``Hood`` or ``Bevin``.
+  Sequence numbers start at 0
+  and seem to be tracked separately for each name combination,
+  so e. g. there can be both a "DRC (123) Bevin" and "DRC (123) Hood".
+* MOSS uses the instance name ``Bevin``,
+  the user-defined name ``DRC``,
+  and an empty description rather than ``DRC Bevin``.
+  Sequence numbers start at 1
+  and a new auto-created hood is assigned one sequence number higher than the highest existing one.
+* DIRTSAND by default uses the instance name ``Neighborhood``
+  and the user-defined name ``DS``,
+  but both can be configured at compile time.
+  For example,
+  Gehn uses ``GoW`` as the user-defined name.
+  Sequence numbers start at 1 and increment sequentially.
 
 .. _auth2cli_player_create_reply:
 
