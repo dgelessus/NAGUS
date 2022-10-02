@@ -362,6 +362,7 @@ An Age node should always have the following children:
 * :ref:`vault_node_folder`: FolderType = AgeDevicesFolder
   
   * (for every device) :ref:`vault_node_text_note`: NoteType = Device, NoteTitle = *device name*
+* (Personal/Relto only) :ref:`vault_node_player_info_list` (AgesIOwnFolder of the avatar who owns this Relto)
 
 .. _vault_node_folder:
 
