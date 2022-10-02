@@ -1187,7 +1187,59 @@ class ServerState(object):
 		await self.add_vault_node_ref(VaultNodeRef(player_id, system_id))
 		await self.add_vault_node_ref(VaultNodeRef(player_id, player_info_id))
 		
-		# TODO Create and add all the folders!
+		await self.add_vault_node_ref(VaultNodeRef(
+			player_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.inbox)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			player_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.age_journals)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			player_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.buddy_list)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			player_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.ignore_list)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			player_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.people_i_know_about)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			player_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.chronicle)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			player_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.avatar_outfit)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			player_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.avatar_closet)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			player_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.player_invite)),
+		))
+		
+		ages_i_own_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_info_list, int32_1=VaultNodeFolderType.ages_i_own))
+		await self.add_vault_node_ref(VaultNodeRef(player_id, ages_i_own_id))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			player_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_info_list, int32_1=VaultNodeFolderType.ages_i_can_visit)),
+		))
+		
 		# TODO Create Personal/Relto instance
 		# TODO Find/create hood
 		# TODO Add public city/Ae'gura link
