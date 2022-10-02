@@ -54,9 +54,10 @@ PLAYER_CREATE_REQUEST_HEADER = struct.Struct("<I")
 UPGRADE_VISITOR_REQUEST = struct.Struct("<II")
 UPGRADE_VISITOR_REPLY = struct.Struct("<II")
 KICKED_OFF = struct.Struct("<I")
-
-
-ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
+VAULT_NODE_FETCH = struct.Struct("<II")
+VAULT_NODE_FETCHED_HEADER = struct.Struct("<III")
+VAULT_FETCH_NODE_REFS = struct.Struct("<II")
+VAULT_NODE_REFS_FETCHED_HEADER = struct.Struct("<III")
 
 
 SYSTEM_RANDOM = random.SystemRandom()
@@ -131,7 +132,7 @@ class AuthConnection(base.BaseMOULConnection):
 			raise base.ProtocolError(f"Client sent client-to-auth connect data with unexpected length {data_length} (should be {CONNECT_DATA.size})")
 		
 		token = uuid.UUID(bytes_le=token)
-		if token != ZERO_UUID:
+		if token != state.ZERO_UUID:
 			logger.info("Client reconnected using token %s", token)
 			try:
 				# When client reconnects with a token,
@@ -295,7 +296,7 @@ class AuthConnection(base.BaseMOULConnection):
 			await self.disconnect_with_reason(base.NetError.service_forbidden, "Client attempted to log in without sending a client register request first")
 		
 		# TODO Implement actual authentication
-		await self.account_login_reply(trans_id, base.NetError.success, ZERO_UUID, AccountFlags.user, AccountBillingType.paid_subscriber, (0, 0, 0, 0))
+		await self.account_login_reply(trans_id, base.NetError.success, state.ZERO_UUID, AccountFlags.user, AccountBillingType.paid_subscriber, (0, 0, 0, 0))
 	
 	async def account_set_player_reply(self, trans_id: int, result: base.NetError) -> None:
 		logger.debug("Sending set player reply: transaction ID %d, result %r", trans_id, result)
@@ -369,3 +370,53 @@ class AuthConnection(base.BaseMOULConnection):
 		(trans_id, ki_number) = await self.read_unpack(UPGRADE_VISITOR_REQUEST)
 		# TODO Actually implement this
 		await self.upgrade_visitor_reply(trans_id, base.NetError.success)
+	
+	async def vault_node_fetched(self, trans_id: int, result: base.NetError, node_data: typing.Optional[state.VaultNodeData]) -> None:
+		packed_node_data = None if node_data is None else node_data.pack()
+		logger.debug("Sending fetched vault node: transaction ID %d, result %r, node data %r", trans_id, result, packed_node_data)
+		await self.write_message(24, VAULT_NODE_FETCHED_HEADER.pack(trans_id, result, len(packed_node_data)) + packed_node_data)
+	
+	@base.message_handler(26)
+	async def vault_node_fetch(self) -> None:
+		(trans_id, node_id) = await self.read_unpack(VAULT_NODE_FETCH)
+		logger.debug("Vault node fetch: transaction ID %d, node ID %d", trans_id, node_id)
+		
+		try:
+			node_data = await self.server_state.fetch_vault_node(node_id)
+		except state.VaultNodeNotFound:
+			await self.vault_node_fetched(trans_id, base.NetError.vault_node_not_found, None)
+		except Exception:
+			logger.error("Unhandled exception while fetching vault node", exc_info=True)
+			await self.vault_node_fetched(trans_id, base.NetError.internal_error, None)
+		else:
+			await self.vault_node_fetched(trans_id, base.NetError.success, node_data)
+	
+	async def vault_node_refs_fetched(self, trans_id: int, result: base.NetError, refs: typing.Sequence[state.VaultNodeRef]) -> None:
+		logger.debug("Sending fetched vault node refs: transaction ID %d, result %r, refs %r", trans_id, result, refs)
+		if len(refs) > 1048576:
+			raise ValueError(f"Attempted to reply with {len(refs)} vault node refs - that's too many for the client")
+		
+		message = bytearray(VAULT_NODE_REFS_FETCHED_HEADER.pack(trans_id, result, len(refs)))
+		for ref in refs:
+			message.extend(ref.pack())
+		
+		await self.write_message(29, message)
+	
+	@base.message_handler(31)
+	async def vault_fetch_node_refs(self) -> None:
+		(trans_id, node_id) = await self.read_unpack(VAULT_FETCH_NODE_REFS)
+		logger.debug("Vault node refs fetch: transaction ID %d, node ID %d", trans_id, node_id)
+		
+		try:
+			refs = []
+			async for ref in self.server_state.fetch_vault_node_refs_recursive(node_id):
+				refs.append(ref)
+				if len(refs) > 1048576:
+					raise ValueError(f"There are more than 1048576 node refs under node ID {node_id} - that's too many for the client")
+		except state.VaultNodeNotFound:
+			await self.vault_node_refs_fetched(trans_id, base.NetError.vault_node_not_found, [])
+		except Exception:
+			logger.error("Unhandled exception while fetching vault node refs", exc_info=True)
+			await self.vault_node_refs_fetched(trans_id, base.NetError.internal_error, [])
+		else:
+			await self.vault_node_refs_fetched(trans_id, base.NetError.success, refs)

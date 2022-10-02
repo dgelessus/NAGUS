@@ -109,13 +109,15 @@ async def moul_server_main(host: str, port: int, server_state: state.ServerState
 
 
 async def async_main() -> None:
-	async with state.Database("nagus.sqlite") as db:
-		await db.setup()
-		
+	db = await state.Database.connect("nagus.sqlite")
+	try:
 		server_state = state.ServerState(asyncio.get_event_loop(), db)
+		await server_state.setup_database()
 		moul_task = asyncio.create_task(moul_server_main("", 14617, server_state))
 		status_task = asyncio.create_task(status_server.run_status_server("", 8080))
 		await asyncio.gather(moul_task, status_task)
+	finally:
+		await db.close()
 
 
 def main() -> typing.NoReturn:
