@@ -1033,10 +1033,7 @@ class ServerState(object):
 			(node_id,) = await cursor.fetchone()
 			return node_id
 	
-	async def update_vault_node(self, data: VaultNodeData) -> None:
-		if data.node_id is None:
-			raise ValueError("Node ID field is required when updating a vault node")
-		
+	async def update_vault_node(self, node_id: int, data: VaultNodeData) -> None:
 		data.modify_time = int(datetime.datetime.now().timestamp())
 		
 		fields = data.to_db_named_values()
@@ -1050,9 +1047,9 @@ class ServerState(object):
 		assignment = ", ".join(assignment_parts)
 		
 		async with self.db, await self.db.cursor() as cursor:
-			await cursor.execute(f"update VaultNodes set {assignment} where NodeId = ?", values + [data.node_id])
+			await cursor.execute(f"update VaultNodes set {assignment} where NodeId = ?", values + [node_id])
 			if cursor.rowcount == 0:
-				raise VaultNodeNotFound(f"Couldn't update vault node with ID {data.node_id} as it doesn't exist")
+				raise VaultNodeNotFound(f"Couldn't update vault node with ID {node_id} as it doesn't exist")
 		
 		# TODO Notify all relevant clients
 	

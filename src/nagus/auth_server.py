@@ -54,8 +54,14 @@ PLAYER_CREATE_REQUEST_HEADER = struct.Struct("<I")
 UPGRADE_VISITOR_REQUEST = struct.Struct("<II")
 UPGRADE_VISITOR_REPLY = struct.Struct("<II")
 KICKED_OFF = struct.Struct("<I")
+VAULT_NODE_CREATE_HEADER = struct.Struct("<II")
+VAULT_NODE_CREATED = struct.Struct("<III")
 VAULT_NODE_FETCH = struct.Struct("<II")
 VAULT_NODE_FETCHED_HEADER = struct.Struct("<III")
+VAULT_NODE_CHANGED = struct.Struct("<I16s")
+VAULT_NODE_SAVE_HEADER = struct.Struct("<II16sI")
+VAULT_SAVE_NODE_REPLY = struct.Struct("<II")
+VAULT_NODE_DELETED = struct.Struct("<I")
 VAULT_FETCH_NODE_REFS = struct.Struct("<II")
 VAULT_NODE_REFS_FETCHED_HEADER = struct.Struct("<III")
 
@@ -385,6 +391,24 @@ class AuthConnection(base.BaseMOULConnection):
 		# TODO Actually implement this
 		await self.upgrade_visitor_reply(trans_id, base.NetError.success)
 	
+	async def vault_node_created(self, trans_id: int, result: base.NetError, node_id: int) -> None:
+		logger.debug("Sending vault node created: transaction ID %d, result %r, node ID %d", trans_id, result, node_id)
+		await self.write_message(23, VAULT_NODE_CREATED.pack(trans_id, result, node_id))
+	
+	@base.message_handler(25)
+	async def vault_node_create(self) -> None:
+		trans_id, packed_node_data_length = await self.read_unpack(VAULT_NODE_CREATE_HEADER)
+		packed_node_data = await self.read(packed_node_data_length)
+		logger.debug("Vault node create: transaction ID %d, node data %r", trans_id, packed_node_data)
+		try:
+			node_data = state.VaultNodeData.unpack(packed_node_data)
+			node_id = await self.server_state.create_vault_node(node_data)
+		except Exception:
+			logger.error("Unhandled exception while creating vault node", exc_info=True)
+			await self.vault_node_created(trans_id, base.NetError.internal_error, 0)
+		else:
+			await self.vault_node_created(trans_id, base.NetError.success, node_id)
+	
 	async def vault_node_fetched(self, trans_id: int, result: base.NetError, node_data: typing.Optional[state.VaultNodeData]) -> None:
 		packed_node_data = None if node_data is None else node_data.pack()
 		logger.debug("Sending fetched vault node: transaction ID %d, result %r, node data %r", trans_id, result, packed_node_data)
@@ -404,6 +428,36 @@ class AuthConnection(base.BaseMOULConnection):
 			await self.vault_node_fetched(trans_id, base.NetError.internal_error, None)
 		else:
 			await self.vault_node_fetched(trans_id, base.NetError.success, node_data)
+	
+	async def vault_node_changed(self, node_id: int, revision_id: uuid.UUID) -> None:
+		logger.debug("Sending vault node changed: node ID %d, revision ID %s", node_id, revision_id)
+		await self.write_message(25, VAULT_NODE_CHANGED.pack(node_id, revision_id.bytes_le))
+	
+	async def vault_save_node_reply(self, trans_id: int, result: base.NetError) -> None:
+		logger.debug("Sending vault save node reply: transaction ID %d, result %r", trans_id, result)
+		await self.write_message(32, VAULT_SAVE_NODE_REPLY.pack(trans_id, result))
+	
+	@base.message_handler(27)
+	async def vault_node_save(self) -> None:
+		trans_id, node_id, revision_id, packed_node_data_length = await self.read_unpack(VAULT_NODE_SAVE_HEADER)
+		revision_id = uuid.UUID(bytes_le=revision_id)
+		packed_node_data = await self.read(packed_node_data_length)
+		logger.debug("Vault node save: transaction ID %d, node ID %d, revision ID %s, node data %r", trans_id, node_id, revision_id, packed_node_data)
+		try:
+			node_data = state.VaultNodeData.unpack(packed_node_data)
+			await self.server_state.update_vault_node(node_id, node_data)
+		except state.VaultNodeNotFound:
+			await self.vault_save_node_reply(trans_id, base.NetError.vault_node_not_found)
+		except Exception:
+			logger.error("Unhandled exception while creating vault node", exc_info=True)
+			await self.vault_save_node_reply(trans_id, base.NetError.internal_error)
+		else:
+			await self.vault_node_changed(node_id, revision_id)
+			await self.vault_save_node_reply(trans_id, base.NetError.success)
+	
+	async def vault_node_deleted(self, node_id: int) -> None:
+		logger.debug("Sending vault node deleted: node ID %d", node_id)
+		await self.write_message(26, VAULT_NODE_DELETED.pack(node_id))
 	
 	async def vault_node_refs_fetched(self, trans_id: int, result: base.NetError, refs: typing.Sequence[state.VaultNodeRef]) -> None:
 		logger.debug("Sending fetched vault node refs: transaction ID %d, result %r, refs %r", trans_id, result, refs)
