@@ -34,10 +34,14 @@ CONNECT_DATA = struct.Struct("<I16s16s")
 
 PING_REQUEST = struct.Struct("<I")
 PING_REPLY = struct.Struct("<I")
+JOIN_AGE_REQUEST = struct.Struct("<II16sI")
+JOIN_AGE_REPLY = struct.Struct("<II")
 
 
 class GameClientState(object):
-	pass
+	mcp_id: int
+	account_uuid: uuid.UUID
+	ki_number: int
 
 
 class GameConnection(base.BaseMOULConnection):
@@ -65,3 +69,27 @@ class GameConnection(base.BaseMOULConnection):
 		(ping_time,) = await self.read_unpack(PING_REQUEST)
 		logger.debug("Ping request: time %d", ping_time)
 		await self.write_message(0, PING_REPLY.pack(ping_time))
+	
+	async def join_age_reply(self, trans_id: int, result: base.NetError) -> None:
+		logger.debug("Sending join age reply: transaction ID %d, result %r", trans_id, result)
+		await self.write_message(1, JOIN_AGE_REPLY.pack(trans_id, result))
+	
+	@base.message_handler(1)
+	async def join_age_request(self) -> None:
+		trans_id, mcp_id, account_uuid, ki_number = await self.read_unpack(JOIN_AGE_REQUEST)
+		account_uuid = uuid.UUID(bytes_le=account_uuid)
+		logger.debug("Join age request: transaction ID %d, MCP ID %d, account UUID %s, KI number %d", trans_id, mcp_id, account_uuid, ki_number)
+		
+		try:
+			self.client_state.mcp_id
+		except AttributeError:
+			pass
+		else:
+			await self.join_age_reply(trans_id, base.NetError.invalid_parameter)
+			raise base.ProtocolError(f"Client attempted to join another age instance ({mcp_id}) with an already established game server connection (for age instance {self.client_state.mcp_id})")
+		
+		self.client_state.mcp_id = mcp_id
+		self.client_state.account_uuid = account_uuid
+		self.client_state.ki_number = ki_number
+		
+		await self.join_age_reply(trans_id, base.NetError.success)
