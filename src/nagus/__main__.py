@@ -31,6 +31,7 @@ import typing
 
 from . import auth_server
 from . import base
+from . import game_server
 from . import state
 from . import status_server
 
@@ -41,8 +42,9 @@ logger = logging.getLogger(__name__)
 CONNECTION_CLASSES: typing.Dict[base.ConnectionType, typing.Type[base.BaseMOULConnection]] = {}
 
 for cls in [
-	# TODO Add all the other server types here once implemented
+	# TODO Add gatekeeper and file servers once implemented
 	auth_server.AuthConnection,
+	game_server.GameConnection,
 ]:
 	CONNECTION_CLASSES[cls.CONNECTION_TYPE] = cls
 
