@@ -39,14 +39,14 @@ from . import status_server
 logger = logging.getLogger(__name__)
 
 
-CONNECTION_CLASSES: typing.Dict[base.ConnectionType, typing.Type[base.BaseMOULConnection]] = {}
-
-for cls in [
+CONNECTION_CLASSES: typing.Sequence[typing.Type[base.BaseMOULConnection]] = [
 	# TODO Add gatekeeper and file servers once implemented
 	auth_server.AuthConnection,
 	game_server.GameConnection,
-]:
-	CONNECTION_CLASSES[cls.CONNECTION_TYPE] = cls
+]
+CONNECTION_CLASSES_BY_TYPE: typing.Dict[base.ConnectionType, typing.Type[base.BaseMOULConnection]] = {
+	cls.CONNECTION_TYPE: cls for cls in CONNECTION_CLASSES
+}
 
 
 async def client_connected_inner(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, server_state: state.ServerState) -> None:
@@ -68,7 +68,7 @@ async def client_connected_inner(reader: asyncio.StreamReader, writer: asyncio.S
 	logger.info("Client %s requests connection type %s", client_address, conn_type)
 	
 	try:
-		conn_class = CONNECTION_CLASSES[conn_type]
+		conn_class = CONNECTION_CLASSES_BY_TYPE[conn_type]
 	except KeyError:
 		raise base.ProtocolError(f"Unsupported connection type {conn_type}")
 	
