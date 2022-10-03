@@ -428,7 +428,7 @@ class AuthConnection(base.BaseMOULConnection):
 			await self.vault_node_created(trans_id, base.NetError.success, node_id)
 	
 	async def vault_node_fetched(self, trans_id: int, result: base.NetError, node_data: typing.Optional[state.VaultNodeData]) -> None:
-		packed_node_data = None if node_data is None else node_data.pack()
+		packed_node_data = b"" if node_data is None else node_data.pack()
 		logger.debug("Sending fetched vault node: transaction ID %d, result %r, node data %r", trans_id, result, packed_node_data)
 		await self.write_message(24, VAULT_NODE_FETCHED_HEADER.pack(trans_id, result, len(packed_node_data)) + packed_node_data)
 	
@@ -565,9 +565,9 @@ class AuthConnection(base.BaseMOULConnection):
 		instance_uuid = uuid.UUID(bytes_le=instance_uuid)
 		parent_instance_uuid = uuid.UUID(bytes_le=parent_instance_uuid)
 		age_file_name = await self.read_string_field(260)
-		instance_name = await self.read_string_field(260)
-		user_defined_name = await self.read_string_field(260)
-		description = await self.read_string_field(1024)
+		instance_name: typing.Optional[str] = await self.read_string_field(260)
+		user_defined_name: typing.Optional[str] = await self.read_string_field(260)
+		description: typing.Optional[str] = await self.read_string_field(1024)
 		sequence_number, language = await self.read_unpack(VAULT_INIT_AGE_REQUEST_FOOTER)
 		logger.debug("Vault init age request: transaction ID %d, instance UUID %s, parent instance UUID %s, age %r, instance name %r, user-defined name %r, description %r", trans_id, instance_uuid, parent_instance_uuid, age_file_name, instance_name, user_defined_name, description)
 		

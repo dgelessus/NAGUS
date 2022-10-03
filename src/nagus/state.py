@@ -1092,7 +1092,9 @@ class ServerState(object):
 		
 		async with self.db, await self.db.cursor() as cursor:
 			await cursor.execute(f"insert into VaultNodes ({names}) values ({placeholders}) returning NodeId", values)
-			(node_id,) = await cursor.fetchone()
+			row = await cursor.fetchone()
+			assert row is not None
+			(node_id,) = row
 			return node_id
 	
 	async def update_vault_node(self, node_id: int, data: VaultNodeData) -> None:
@@ -1299,7 +1301,16 @@ class ServerState(object):
 	async def find_avatars(self, account_id: uuid.UUID) -> typing.AsyncIterable[AvatarInfo]:
 		async for player_id in self.find_vault_nodes(VaultNodeData(node_type=VaultNodeType.player, uuid_1=account_id)):
 			player_node = await self.fetch_vault_node(player_id)
-			yield AvatarInfo(player_id, player_node.istring64_1, player_node.string64_1, player_node.int32_2)
+			name = player_node.istring64_1
+			if name is None:
+				raise VaultSemanticError(f"Avatar with KI number {player_id} has no name")
+			shape = player_node.string64_1
+			if shape is None:
+				raise VaultSemanticError(f"Avatar with KI number {player_id} has no shape")
+			explorer = player_node.int32_2
+			if explorer is None:
+				raise VaultSemanticError(f"Avatar with KI number {player_id} has no explorer flag")
+			yield AvatarInfo(player_id, name, shape, explorer)
 	
 	async def create_avatar(self, name: str, shape: str, explorer: int, account_id: uuid.UUID) -> typing.Tuple[int, int]:
 		if shape not in {"female", "male"}:
