@@ -1058,20 +1058,21 @@ class ServerState(object):
 				yield node_id
 	
 	async def find_unique_vault_node(self, template: VaultNodeData, *, parent_id: typing.Optional[int] = None) -> int:
-		it = aiter(self.find_vault_nodes(template, parent_id=parent_id))
-		try:
-			node_id = await anext(it)
-		except StopAsyncIteration:
+		found_node_id = None
+		async for node_id in self.find_vault_nodes(template, parent_id=parent_id):
+			if found_node_id is not None:
+				logger.warning( # type: ignore # mypy thinks this is unreachable for some reason
+					"Found multiple vault nodes matching the template %r with parent %r: %d and %d (and possibly more)! Ignoring all except the first one.",
+					template, parent_id, found_node_id, node_id,
+				)
+				break
+			
+			found_node_id = node_id
+		
+		if found_node_id is None:
 			raise VaultNodeNotFound(f"Found no vault node matching the template {template!r} with parent {parent_id}")
-		
-		try:
-			node_id_2 = await anext(it)
-		except StopAsyncIteration:
-			pass
 		else:
-			logger.warning("Found multiple vault nodes matching the template %r with parent %r: %d and %d (and possibly more)! Ignoring all except the first one.", template, parent_id, node_id, node_id_2)
-		
-		return node_id
+			return found_node_id
 	
 	async def find_system_vault_node(self) -> int:
 		return await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.system))
@@ -1304,7 +1305,7 @@ class ServerState(object):
 		if shape not in {"female", "male"}:
 			raise ValueError(f"Unsupported avatar shape {shape!r}")
 		
-		if await anext(aiter(self.find_vault_nodes(VaultNodeData(node_type=VaultNodeType.player, istring64_1=name))), None) is not None:
+		async for _ in self.find_vault_nodes(VaultNodeData(node_type=VaultNodeType.player, istring64_1=name)):
 			raise AvatarAlreadyExists(f"An avatar named {name!r} already exists")
 		
 		logger.info("Creating avatar %r, avatar shape %r, explorer? %d, account UUID %s", name, shape, explorer, account_id)
