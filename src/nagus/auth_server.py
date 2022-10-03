@@ -70,6 +70,9 @@ VAULT_NODE_REMOVE = struct.Struct("<III")
 VAULT_REMOVE_NODE_REPLY = struct.Struct("<II")
 VAULT_FETCH_NODE_REFS = struct.Struct("<II")
 VAULT_NODE_REFS_FETCHED_HEADER = struct.Struct("<III")
+VAULT_INIT_AGE_REQUEST_HEADER = struct.Struct("<I16s16s")
+VAULT_INIT_AGE_REQUEST_FOOTER = struct.Struct("<ii")
+VAULT_INIT_AGE_REPLY = struct.Struct("<IIII")
 
 
 SYSTEM_RANDOM = random.SystemRandom()
@@ -542,3 +545,61 @@ class AuthConnection(base.BaseMOULConnection):
 			await self.vault_node_refs_fetched(trans_id, base.NetError.internal_error, [])
 		else:
 			await self.vault_node_refs_fetched(trans_id, base.NetError.success, refs)
+	
+	async def vault_init_age_reply(self, trans_id: int, result: base.NetError, age_node_id: int, age_info_node_id: int) -> None:
+		logger.debug("Sending vault init age reply: transaction ID %d, result %r, Age node ID %d, Age Info node ID %d", trans_id, result, age_node_id, age_info_node_id)
+		await self.write_message(30, VAULT_INIT_AGE_REPLY.pack(trans_id, result, age_node_id, age_info_node_id))
+	
+	@base.message_handler(32)
+	async def vault_init_age_request(self) -> None:
+		trans_id, instance_uuid, parent_instance_uuid = await self.read_unpack(VAULT_INIT_AGE_REQUEST_HEADER)
+		instance_uuid = uuid.UUID(bytes_le=instance_uuid)
+		parent_instance_uuid = uuid.UUID(bytes_le=parent_instance_uuid)
+		age_file_name = await self.read_string_field(260)
+		instance_name = await self.read_string_field(260)
+		user_defined_name = await self.read_string_field(260)
+		description = await self.read_string_field(1024)
+		sequence_number, language = await self.read_unpack(VAULT_INIT_AGE_REQUEST_FOOTER)
+		logger.debug("Vault init age request: transaction ID %d, instance UUID %s, parent instance UUID %s, age %r, instance name %r, user-defined name %r, description %r", trans_id, instance_uuid, parent_instance_uuid, age_file_name, instance_name, user_defined_name, description)
+		
+		if instance_uuid == state.ZERO_UUID:
+			logger.error("Received init age request with zero UUID, this isn't supposed to happen!")
+			await self.vault_init_age_reply(trans_id, base.NetError.invalid_parameter, 0, 0)
+		if parent_instance_uuid == state.ZERO_UUID:
+			parent_instance_uuid = None
+		if not age_file_name:
+			logger.error("Received init age request with empty age file name, this isn't supposed to happen!")
+			await self.vault_init_age_reply(trans_id, base.NetError.invalid_parameter, 0, 0)
+			return
+		if not instance_name:
+			instance_name = None
+		if not user_defined_name:
+			user_defined_name = None
+		if not description:
+			description = None
+		if sequence_number != 0:
+			logger.warning("Received init age request with sequence number %d instead of 0", sequence_number)
+		if language != -1:
+			logger.warning("Received init age request with language %d instead of -1", language)
+		
+		try:
+			age_node_id, age_info_node_id = await self.server_state.create_age_instance(
+				age_file_name,
+				instance_uuid,
+				parent_instance_uuid,
+				instance_name,
+				user_defined_name,
+				description,
+				sequence_number,
+				language,
+				allow_existing=True,
+			)
+		except state.VaultNodeNotFound:
+			await self.vault_init_age_reply(trans_id, base.NetError.vault_node_not_found, 0, 0)
+		except state.VaultNodeAlreadyExists:
+			await self.vault_init_age_reply(trans_id, base.NetError.invalid_parameter, 0, 0)
+		except Exception:
+			logger.error("Unhandled exception while finding/creating age instance", exc_info=True)
+			await self.vault_init_age_reply(trans_id, base.NetError.internal_error, 0, 0)
+		else:
+			await self.vault_init_age_reply(trans_id, base.NetError.success, age_node_id, age_info_node_id)

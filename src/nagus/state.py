@@ -38,6 +38,13 @@ _T = typing.TypeVar("_T")
 
 ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
 
+# This is the instance UUID for the public Ae'gura from DIRTSAND's default static_ages.ini.
+# It seems that nothing actually depends on this specific UUID,
+# and in fact MOSS uses a random UUID instead.
+# I'm only using a fixed UUID for now
+# so I don't have to implement any special logic for finding public age instances yet.
+PUBLIC_AEGURA_UUID = uuid.UUID("7e0facea-dae1-4aec-a4ca-e76c05fdcfcf")
+
 VAULT_NODE_DATA_HEADER = struct.Struct("<Q")
 VAULT_NODE_DATA_INT32 = struct.Struct("<i")
 VAULT_NODE_DATA_UINT32 = struct.Struct("<I")
@@ -894,6 +901,10 @@ class VaultNodeAlreadyExists(Exception):
 	pass
 
 
+class VaultSemanticError(Exception):
+	pass
+
+
 class AvatarNotFound(Exception):
 	pass
 
@@ -979,13 +990,25 @@ class ServerState(object):
 			global_inbox_folder = await self.create_vault_node(VaultNodeData(node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.global_inbox))
 			await self.add_vault_node_ref(VaultNodeRef(system, global_inbox_folder))
 		
+		logger.debug("System node: %d", system)
+		
 		try:
-			await self.find_all_players_vault_node()
+			all_players_id = await self.find_all_players_vault_node()
 		except VaultNodeNotFound:
 			logger.info("No All Players list node found in vault! Creating a new one.")
-			await self.create_vault_node(VaultNodeData(node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.all_players))
+			all_players_id = await self.create_vault_node(VaultNodeData(node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.all_players))
 		
-		logger.debug("Finished setting up the NAGUS database. System vault node ID is %d", system)
+		logger.debug("All Players list node: %d", all_players_id)
+		
+		aegura_id, aegura_info_id = await self.create_age_instance(
+			age_file_name="city",
+			instance_uuid=PUBLIC_AEGURA_UUID,
+			instance_name="Ae'gura",
+			allow_existing=True,
+		)
+		logger.debug("Public Ae'gura instance: Age %d, Age Info %d", aegura_id, aegura_info_id)
+		
+		logger.debug("Finished setting up the NAGUS database")
 	
 	async def fetch_vault_node(self, node_id: int) -> VaultNodeData:
 		async with await self.db.cursor() as cursor:
@@ -996,7 +1019,7 @@ class ServerState(object):
 			else:
 				return VaultNodeData.from_db_row(row)
 	
-	async def find_vault_nodes(self, template: VaultNodeData) -> typing.AsyncIterable[int]:
+	async def find_vault_nodes(self, template: VaultNodeData, *, parent_id: typing.Optional[int] = None) -> typing.AsyncIterable[int]:
 		fields = template.to_db_named_values()
 		cond_parts = []
 		values = []
@@ -1010,42 +1033,43 @@ class ServerState(object):
 			cond = "1=1"
 		
 		async with await self.db.cursor() as cursor:
-			await cursor.execute(f"select NodeId from VaultNodes where {cond}", values)
+			if parent_id is None:
+				await cursor.execute(f"select NodeId from VaultNodes where {cond}", values)
+			else:
+				await cursor.execute(
+					f"""
+					select NodeId
+					from VaultNodes
+					join VaultNodeRefs on NodeId = ChildId
+					where ParentId = ? and {cond}
+					""",
+					[parent_id] + values,
+				)
 			
 			async for (node_id,) in cursor:
 				yield node_id
 	
-	async def find_system_vault_node(self) -> int:
-		it = aiter(self.find_vault_nodes(VaultNodeData(node_type=VaultNodeType.system)))
+	async def find_unique_vault_node(self, template: VaultNodeData, *, parent_id: typing.Optional[int] = None) -> int:
+		it = aiter(self.find_vault_nodes(template, parent_id=parent_id))
 		try:
 			node_id = await anext(it)
 		except StopAsyncIteration:
-			raise VaultNodeNotFound("Couldn't find the system vault node!")
+			raise VaultNodeNotFound(f"Found no vault node matching the template {template!r} with parent {parent_id}")
 		
 		try:
 			node_id_2 = await anext(it)
 		except StopAsyncIteration:
 			pass
 		else:
-			logger.warning("Found multiple system nodes in vault: %d and %d (and possibly more)! Ignoring all except the first one.", node_id, node_id_2)
+			logger.warning("Found multiple vault nodes matching the template %r with parent %r: %d and %d (and possibly more)! Ignoring all except the first one.", template, parent_id, node_id, node_id_2)
 		
 		return node_id
 	
+	async def find_system_vault_node(self) -> int:
+		return await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.system))
+	
 	async def find_all_players_vault_node(self) -> int:
-		it = aiter(self.find_vault_nodes(VaultNodeData(node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.all_players)))
-		try:
-			node_id = await anext(it)
-		except StopAsyncIteration:
-			raise VaultNodeNotFound("Couldn't find the All Players vault node!")
-		
-		try:
-			node_id_2 = await anext(it)
-		except StopAsyncIteration:
-			pass
-		else:
-			logger.warning("Found multiple All Players nodes in vault: %d and %d (and possibly more)! Ignoring all except the first one.", node_id, node_id_2)
-		
-		return node_id
+		return await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.all_players))
 	
 	async def create_vault_node(self, data: VaultNodeData) -> int:
 		data.create_time = data.modify_time = int(datetime.datetime.now().timestamp())
@@ -1164,6 +1188,101 @@ class ServerState(object):
 		
 		# TODO Notify all relevant clients
 	
+	async def find_age_instance(self, age_file_name: str, instance_uuid: uuid.UUID) -> typing.Tuple[int, int]:
+		age_info_id = await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.age_info, uuid_1=instance_uuid, string64_2=age_file_name))
+		age_info = await self.fetch_vault_node(age_info_id)
+		if age_info.uint32_1 is None:
+			raise VaultSemanticError(f"Age Info node {age_info_id} doesn't have its AgeId (UInt32_1) set")
+		return age_info.uint32_1, age_info_id
+	
+	async def create_age_instance(
+		self,
+		age_file_name: str,
+		instance_uuid: uuid.UUID,
+		parent_instance_uuid: typing.Optional[uuid.UUID] = None,
+		instance_name: typing.Optional[str] = None,
+		user_defined_name: typing.Optional[str] = None,
+		description: typing.Optional[str] = None,
+		sequence_number: int = 0,
+		language: int = -1,
+		*,
+		allow_existing: bool = False,
+	) -> typing.Tuple[int, int]:
+		try:
+			age_id, age_info_id = await self.find_age_instance(age_file_name, instance_uuid)
+		except VaultNodeNotFound:
+			logger.info("Creating new age instance of age %r with instance UUID %s", age_file_name, instance_uuid)
+		else:
+			if allow_existing:
+				return age_id, age_info_id
+			else:
+				raise VaultNodeAlreadyExists(f"There is already an instance of age {age_file_name!r} with UUID {instance_uuid}")
+		
+		system_id = await self.find_system_vault_node()
+		
+		age_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=instance_uuid, node_type=VaultNodeType.age, uuid_1=instance_uuid, uuid_2=parent_instance_uuid, string64_1=age_file_name))
+		age_info_id = await self.create_vault_node(VaultNodeData(
+			creator_account_uuid=instance_uuid,
+			creator_id=age_id,
+			node_type=VaultNodeType.age_info,
+			int32_1=sequence_number, # TODO Auto-increment sequence number where necessary?
+			int32_3=language,
+			uint32_1=age_id,
+			uint32_2=0,
+			uint32_3=0,
+			uuid_1=instance_uuid,
+			uuid_2=parent_instance_uuid,
+			string64_2=age_file_name,
+			string64_3=instance_name,
+			string64_4=user_defined_name,
+			text_1=description,
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(age_id, system_id))
+		await self.add_vault_node_ref(VaultNodeRef(age_id, age_info_id))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			age_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=instance_uuid, creator_id=age_id, node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.people_i_know_about)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			age_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=instance_uuid, creator_id=age_id, node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.chronicle)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			age_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=instance_uuid, creator_id=age_id, node_type=VaultNodeType.age_info_list, int32_1=VaultNodeFolderType.sub_ages)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			age_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=instance_uuid, creator_id=age_id, node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.age_devices)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			age_info_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=instance_uuid, creator_id=age_id, node_type=VaultNodeType.sdl, int32_1=0, string64_1=age_file_name)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			age_info_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=instance_uuid, creator_id=age_id, node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.age_owners)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			age_info_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=instance_uuid, creator_id=age_id, node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.can_visit)),
+		))
+		
+		await self.add_vault_node_ref(VaultNodeRef(
+			age_info_id,
+			await self.create_vault_node(VaultNodeData(creator_account_uuid=instance_uuid, creator_id=age_id, node_type=VaultNodeType.age_info_list, int32_1=VaultNodeFolderType.child_ages)),
+		))
+		
+		return age_id, age_info_id
+	
 	async def find_avatars(self, account_id: uuid.UUID) -> typing.AsyncIterable[AvatarInfo]:
 		async for player_id in self.find_vault_nodes(VaultNodeData(node_type=VaultNodeType.player, uuid_1=account_id)):
 			player_node = await self.fetch_vault_node(player_id)
@@ -1180,6 +1299,7 @@ class ServerState(object):
 		
 		system_id = await self.find_system_vault_node()
 		all_players_id = await self.find_all_players_vault_node()
+		_, aegura_info_id = await self.find_age_instance("city", PUBLIC_AEGURA_UUID)
 		
 		player_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=0, node_type=VaultNodeType.player, int32_1=0, int32_2=explorer, uuid_1=account_id, string64_1=shape, istring64_1=name))
 		player_info_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.player_info, uint32_1=player_id, istring64_1=name))
@@ -1235,13 +1355,40 @@ class ServerState(object):
 		ages_i_own_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_info_list, int32_1=VaultNodeFolderType.ages_i_own))
 		await self.add_vault_node_ref(VaultNodeRef(player_id, ages_i_own_id))
 		
+		# Create the avatar's Relto.
+		relto_id, relto_info_id = await self.create_age_instance(
+			age_file_name="Personal",
+			instance_uuid=uuid.uuid4(),
+			instance_name="Relto",
+			user_defined_name=f"{name}'s",
+			description=f"{name}'s Relto",
+		)
+		
+		# Make the avatar the owner of its Relto.
+		relto_owners_id = await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.age_owners), parent_id=relto_info_id)
+		await self.add_vault_node_ref(VaultNodeRef(relto_owners_id, player_info_id))
+		
+		# Add the avatar's Ages I Own list to its Relto Age node.
+		# This is a special case that applies only for Relto instances.
+		await self.add_vault_node_ref(VaultNodeRef(relto_id, ages_i_own_id))
+		
+		# Add a link to the avatar's Relto to its Ages I Own list.
+		relto_link_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_link, blob_1=b"Default:LinkInPointDefault:;"))
+		await self.add_vault_node_ref(VaultNodeRef(relto_link_id, relto_info_id))
+		await self.add_vault_node_ref(VaultNodeRef(ages_i_own_id, relto_link_id))
+		
+		# TODO Find/create hood
+		
+		# Add a link to the public Ae'gura to the avatar's Ages I Own list.
+		aegura_link_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_link, blob_1=b"Ferry Terminal:LinkInPointFerry:;"))
+		await self.add_vault_node_ref(VaultNodeRef(aegura_link_id, aegura_info_id))
+		await self.add_vault_node_ref(VaultNodeRef(ages_i_own_id, aegura_link_id))
+		
 		await self.add_vault_node_ref(VaultNodeRef(
 			player_id,
 			await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_info_list, int32_1=VaultNodeFolderType.ages_i_can_visit)),
 		))
 		
-		# TODO Create Personal/Relto instance
-		# TODO Find/create hood
 		# TODO Add public city/Ae'gura link
 		
 		await self.add_vault_node_ref(VaultNodeRef(all_players_id, player_info_id))
