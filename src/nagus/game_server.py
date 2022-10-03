@@ -32,6 +32,9 @@ logger = logging.getLogger(__name__)
 
 CONNECT_DATA = struct.Struct("<I16s16s")
 
+PING_REQUEST = struct.Struct("<I")
+PING_REPLY = struct.Struct("<I")
+
 
 class GameClientState(object):
 	pass
@@ -56,3 +59,9 @@ class GameConnection(base.BaseMOULConnection):
 		age_instance_uuid = uuid.UUID(bytes_le=age_instance_uuid)
 		if account_uuid != state.ZERO_UUID or age_instance_uuid != state.ZERO_UUID:
 			logger.warning("Client connected to game server with non-zero UUIDs: account UUID %s, age instance UUID %s", account_uuid, age_instance_uuid)
+	
+	@base.message_handler(0)
+	async def ping_request(self) -> None:
+		(ping_time,) = await self.read_unpack(PING_REQUEST)
+		logger.debug("Ping request: time %d", ping_time)
+		await self.write_message(0, PING_REPLY.pack(ping_time))
