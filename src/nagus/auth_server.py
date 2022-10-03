@@ -62,6 +62,12 @@ VAULT_NODE_CHANGED = struct.Struct("<I16s")
 VAULT_NODE_SAVE_HEADER = struct.Struct("<II16sI")
 VAULT_SAVE_NODE_REPLY = struct.Struct("<II")
 VAULT_NODE_DELETED = struct.Struct("<I")
+VAULT_NODE_ADDED = struct.Struct("<III")
+VAULT_NODE_ADD = struct.Struct("<IIII")
+VAULT_ADD_NODE_REPLY = struct.Struct("<II")
+VAULT_NODE_REMOVED = struct.Struct("<II")
+VAULT_NODE_REMOVE = struct.Struct("<III")
+VAULT_REMOVE_NODE_REPLY = struct.Struct("<II")
 VAULT_FETCH_NODE_REFS = struct.Struct("<II")
 VAULT_NODE_REFS_FETCHED_HEADER = struct.Struct("<III")
 
@@ -458,6 +464,54 @@ class AuthConnection(base.BaseMOULConnection):
 	async def vault_node_deleted(self, node_id: int) -> None:
 		logger.debug("Sending vault node deleted: node ID %d", node_id)
 		await self.write_message(26, VAULT_NODE_DELETED.pack(node_id))
+	
+	async def vault_node_added(self, parent_id: int, child_id: int, owner_id: int) -> None:
+		logger.debug("Sending vault node added: parent ID %d, child ID %d, owner ID %d", parent_id, child_id, owner_id)
+		await self.write_message(27, VAULT_NODE_ADDED.pack(parent_id, child_id, owner_id))
+	
+	async def vault_add_node_reply(self, trans_id: int, result: base.NetError) -> None:
+		logger.debug("Sending vault add node reply: transaction ID %d, result %r", trans_id, result)
+		await self.write_message(33, VAULT_ADD_NODE_REPLY.pack(trans_id, result))
+	
+	@base.message_handler(29)
+	async def vault_node_add(self) -> None:
+		trans_id, parent_id, child_id, owner_id = await self.read_unpack(VAULT_NODE_ADD)
+		logger.debug("Vault node add: transaction ID %d, parent ID %d, child ID %d, owner ID %d", trans_id, parent_id, child_id, owner_id)
+		try:
+			await self.server_state.add_vault_node_ref(state.VaultNodeRef(parent_id, child_id, owner_id))
+		except state.VaultNodeNotFound:
+			await self.vault_add_node_reply(trans_id, base.NetError.vault_node_not_found)
+		except state.VaultNodeAlreadyExists:
+			await self.vault_add_node_reply(trans_id, base.NetError.invalid_parameter)
+		except Exception:
+			logger.error("Unhandled exception while adding vault node", exc_info=True)
+			await self.vault_add_node_reply(trans_id, base.NetError.internal_error)
+		else:
+			await self.vault_node_added(parent_id, child_id, owner_id)
+			await self.vault_add_node_reply(trans_id, base.NetError.success)
+	
+	async def vault_node_removed(self, parent_id: int, child_id: int) -> None:
+		logger.debug("Sending vault node removed: parent ID %d, child ID %d", parent_id, child_id)
+		await self.write_message(28, VAULT_NODE_REMOVED.pack(parent_id, child_id))
+	
+	async def vault_remove_node_reply(self, trans_id: int, result: base.NetError) -> None:
+		logger.debug("Sending vault remove node reply: transaction ID %d, result %r", trans_id, result)
+		await self.write_message(34, VAULT_REMOVE_NODE_REPLY.pack(trans_id, result))
+	
+	@base.message_handler(30)
+	async def vault_node_remove(self) -> None:
+		trans_id, parent_id, child_id = await self.read_unpack(VAULT_NODE_REMOVE)
+		logger.debug("Vault node remove: transaction ID %d, parent ID %d, child ID %d", trans_id, parent_id, child_id)
+		try:
+			await self.server_state.remove_vault_node_ref(parent_id, child_id)
+		except state.VaultNodeNotFound:
+			await self.vault_remove_node_reply(trans_id, base.NetError.vault_node_not_found)
+		except Exception:
+			logger.error("Unhandled exception while removing vault node", exc_info=True)
+			await self.vault_remove_node_reply(trans_id, base.NetError.internal_error)
+		else:
+			await self.vault_node_removed(parent_id, child_id)
+			await self.vault_remove_node_reply(trans_id, base.NetError.success)
 	
 	async def vault_node_refs_fetched(self, trans_id: int, result: base.NetError, refs: typing.Sequence[state.VaultNodeRef]) -> None:
 		logger.debug("Sending fetched vault node refs: transaction ID %d, result %r, refs %r", trans_id, result, refs)
