@@ -27,6 +27,15 @@ and the remaining 8 bytes are not swapped.
 For example,
 the UUID ``12345678-1234-5678-1234-567812345678`` is stored as bytes ``78 56 34 12  34 12 78 56  12 34 56 78  12 34 56 78``.
 
+IPv4 addresses are sometimes represented in packed integer form
+instead of a string in the more common "dotted quad" format.
+Like all other integers,
+they are transmitted in little-endian byte order,
+so they will be in reverse order compared to the "network byte order" (big-endian) used in IPv4 packets.
+For example,
+the address 184.73.198.22 would be represented as the integer 0xb849c616 (= 3091842582 in decimal)
+and transmitted as bytes ``16 c6 49 b8``.
+
 .. note::
    
    The MOULa client code internally uses C ``struct``\s to encode/decode network data.

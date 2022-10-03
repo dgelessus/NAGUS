@@ -121,7 +121,7 @@ not even their structure.
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
-   36,AgeRequest,AgeReply,35
+   36,:ref:`AgeRequest <cli2auth_age_request>`,:ref:`AgeReply <auth2cli_age_reply>`,35
 
 .. csv-table:: File-related
    :name: auth_messages_file_related
@@ -210,12 +210,8 @@ Auth2Cli_ServerAddr
 ^^^^^^^^^^^^^^^^^^^
 
 * *Message type* = 1
-* **Server IP address:** 4-byte unsigned int.
-  This is an IPv4 address in packed integer form instead of the more common "dotted quad" format.
-  For example,
-  the address 184.73.198.22 would be represented as the integer 0xb849c616 (= 3091842582 in decimal).
-  Keep in mind that Uru uses little-endian byte order,
-  so the address will be in reverse order compared to "network byte order" (big-endian).
+* **Server IP address:** 4-byte packed IPv4 address.
+  Auth server address to use when reconnecting.
 * **Token:** 16-byte UUID.
   The client remembers this token as long as it remains running
   and sends it back to the auth server if it has to reconnect.
@@ -2009,3 +2005,48 @@ Send a node to another avatar.
 This creates a new node ref with the receiver's inbox as the parent,
 the sent node ID as the child,
 and the current avatar's KI number as the owner.
+
+.. _cli2auth_age_request:
+
+Cli2Auth_AgeRequest
+^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 36
+* **Transaction ID:** 4-byte unsigned int.
+* **File name:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
+  Internal file name of the age to join.
+* **Instance UUID:** 16-byte UUID.
+  Identifies the specific age instance to join.
+
+Request all necessary information to join the game server for the given age instance.
+
+.. _auth2cli_age_reply:
+
+Auth2Cli_AgeReply
+^^^^^^^^^^^^^^^^^
+
+* *Message type* = 35
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **MCP ID:** 4-byte unsigned int.
+  The client sends this ID to the game server to identify the age instance to join.
+* **Instance UUID:** 16-byte UUID.
+  In practice,
+  this seems to be always identical to the instance UUID previously sent by the client,
+  although the open-sourced client code can apparently handle the server returning a different UUID.
+* **Age vault node ID:** 4-byte unsigned int.
+  ID of the :ref:`vault_node_age` vault node for the age instance.
+* **Server IP address:** 4-byte packed IPv4 address.
+  The game server for the age instance.
+
+Reply to an :ref:`AgeRequest <cli2auth_age_request>`.
+Upon receiving this message,
+if the result is successful,
+the client fetches the entire tree of vault nodes under the :ref:`vault_node_age` node
+and connects to the instance's game server.
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrVaultNodeNotFound`: For some reason,
+  the open-sourced client code considers this a success.
