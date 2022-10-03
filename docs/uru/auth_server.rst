@@ -1826,7 +1826,7 @@ Create a new age instance in the vault,
 if a matching one doesn't exist already.
 
 If the instance ID is not all zeroes
-and there is already a :ref:`vault_node_age`/:ref:`vault_node_age_info` node pair
+and there is already an :ref:`vault_node_age`/:ref:`vault_node_age_info` node pair
 with a matching instance ID and file name,
 the server replies with the IDs of these nodes
 and doesn't create a new instance.
@@ -1878,7 +1878,7 @@ The newly created nodes have the following structure and fields:
         * :ref:`vault_node_sdl`: ``Int32_1`` = **SDLIdent** = 0, ``String64_1`` = **SDLName** = *file name*, ``Blob_1`` = **SDLData** = *default state data record* (DIRTSAND only, others leave it unset)
         * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 19 (AgeOwnersFolder)
         * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 18 (CanVisitFolder)
-        * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 31 (ChildAgesFolder)
+        * :ref:`vault_node_age_info_list`: ``Int32_1`` = **FolderType** = 31 (ChildAgesFolder)
     * :ref:`vault_node_player_info_list`: ``Int32_1`` = **FolderType** = 4 (PeopleIKnowAboutFolder)
     * :ref:`vault_node_folder`: ``Int32_1`` = **FolderType** = 6 (ChronicleFolder)
     * :ref:`vault_node_age_info_list`: ``Int32_1`` = **FolderType** = 9 (SubAgesFolder)
