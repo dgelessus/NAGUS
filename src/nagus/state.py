@@ -905,6 +905,14 @@ class VaultSemanticError(Exception):
 	pass
 
 
+class AgeInstanceNotFound(Exception):
+	pass
+
+
+class AgeInstanceAlreadyExists(Exception):
+	pass
+
+
 class AvatarNotFound(Exception):
 	pass
 
@@ -1189,8 +1197,12 @@ class ServerState(object):
 		# TODO Notify all relevant clients
 	
 	async def find_age_instance(self, age_file_name: str, instance_uuid: uuid.UUID) -> typing.Tuple[int, int]:
-		age_info_id = await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.age_info, uuid_1=instance_uuid, string64_2=age_file_name))
-		age_info = await self.fetch_vault_node(age_info_id)
+		try:
+			age_info_id = await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.age_info, uuid_1=instance_uuid, string64_2=age_file_name))
+			age_info = await self.fetch_vault_node(age_info_id)
+		except VaultNodeNotFound:
+			raise AgeInstanceNotFound(f"There is no instance of age {age_file_name!r} with UUID {instance_uuid}")
+		
 		if age_info.uint32_1 is None:
 			raise VaultSemanticError(f"Age Info node {age_info_id} doesn't have its AgeId (UInt32_1) set")
 		return age_info.uint32_1, age_info_id
@@ -1210,13 +1222,13 @@ class ServerState(object):
 	) -> typing.Tuple[int, int]:
 		try:
 			age_id, age_info_id = await self.find_age_instance(age_file_name, instance_uuid)
-		except VaultNodeNotFound:
+		except AgeInstanceNotFound:
 			logger.info("Creating new age instance of age %r with instance UUID %s", age_file_name, instance_uuid)
 		else:
 			if allow_existing:
 				return age_id, age_info_id
 			else:
-				raise VaultNodeAlreadyExists(f"There is already an instance of age {age_file_name!r} with UUID {instance_uuid}")
+				raise AgeInstanceAlreadyExists(f"There is already an instance of age {age_file_name!r} with UUID {instance_uuid}")
 		
 		system_id = await self.find_system_vault_node()
 		

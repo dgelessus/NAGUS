@@ -73,6 +73,8 @@ VAULT_NODE_REFS_FETCHED_HEADER = struct.Struct("<III")
 VAULT_INIT_AGE_REQUEST_HEADER = struct.Struct("<I16s16s")
 VAULT_INIT_AGE_REQUEST_FOOTER = struct.Struct("<ii")
 VAULT_INIT_AGE_REPLY = struct.Struct("<IIII")
+AGE_REQUEST_HEADER = struct.Struct("<I")
+AGE_REPLY = struct.Struct("<III16sII")
 
 
 SYSTEM_RANDOM = random.SystemRandom()
@@ -111,6 +113,16 @@ class AuthConnection(base.BaseMOULConnection):
 		super().__init__(reader, writer, server_state)
 		
 		self.client_state = AuthClientState()
+	
+	def _get_own_ipv4_address(self) -> ipaddress.IPv4Address:
+		sockname = self.writer.get_extra_info("sockname")
+		if sockname is None:
+			raise ValueError("Couldn't determine own IP address")
+		elif len(sockname) != 2:
+			raise ValueError(f"Own address has unexpected format (probably IPv6): {sockname!r}")
+		else:
+			(addr, port) = sockname
+			return ipaddress.IPv4Address(addr)
 	
 	async def handle_disconnect(self) -> None:
 		try:
@@ -246,14 +258,11 @@ class AuthConnection(base.BaseMOULConnection):
 		self.client_state.server_challenge = SYSTEM_RANDOM.randrange(0x100000000)
 		await self.client_register_reply(self.client_state.server_challenge)
 		
-		sockname = self.writer.get_extra_info("sockname")
-		if sockname is None:
-			logger.warning("Unable to send a ServerAddr message to client - couldn't determine own IP address")
-		elif len(sockname) != 2:
-			logger.warning("Unable to send a ServerAddr message to client - own address has unexpected format (probably IPv6): %r", sockname)
+		try:
+			ip_addr = self._get_own_ipv4_address()
+		except ValueError:
+			logger.warning("Unable to get own IPv4 address - won't send a ServerAddr message to the client", exc_info=True)
 		else:
-			(addr, port) = sockname
-			ip_addr = ipaddress.IPv4Address(addr)
 			await self.server_address(ip_addr, self.client_state.token)
 	
 	@base.message_handler(2)
@@ -596,10 +605,31 @@ class AuthConnection(base.BaseMOULConnection):
 			)
 		except state.VaultNodeNotFound:
 			await self.vault_init_age_reply(trans_id, base.NetError.vault_node_not_found, 0, 0)
-		except state.VaultNodeAlreadyExists:
+		except (state.VaultNodeAlreadyExists, state.AgeInstanceAlreadyExists):
 			await self.vault_init_age_reply(trans_id, base.NetError.invalid_parameter, 0, 0)
 		except Exception:
 			logger.error("Unhandled exception while finding/creating age instance", exc_info=True)
 			await self.vault_init_age_reply(trans_id, base.NetError.internal_error, 0, 0)
 		else:
 			await self.vault_init_age_reply(trans_id, base.NetError.success, age_node_id, age_info_node_id)
+	
+	async def age_reply(self, trans_id: int, result: base.NetError, mcp_id: int, instance_uuid: uuid.UUID, age_node_id: int, server_ip: ipaddress.IPv4Address) -> None:
+		logger.debug("Sending age reply: transaction ID %d, result %r, MCP ID %d, instance UUID %s, Age node ID %d, server IP %s", trans_id, result, mcp_id, instance_uuid, age_node_id, server_ip)
+		await self.write_message(35, AGE_REPLY.pack(trans_id, result, mcp_id, instance_uuid.bytes_le, age_node_id, int(server_ip)))
+	
+	@base.message_handler(36)
+	async def age_request(self) -> None:
+		(trans_id,) = await self.read_unpack(AGE_REQUEST_HEADER)
+		age_file_name = await self.read_string_field(64)
+		instance_uuid = uuid.UUID(bytes_le=await self.read(16))
+		logger.debug("Age request: transaction ID %d, age %r, instance UUID %s", trans_id, age_file_name, instance_uuid)
+		
+		try:
+			age_node_id, _ = await self.server_state.find_age_instance(age_file_name, instance_uuid)
+		except state.AgeInstanceNotFound:
+			await self.age_reply(trans_id, base.NetError.age_not_found, 0, state.ZERO_UUID, 0, ipaddress.IPv4Address(0))
+		except Exception:
+			logger.error("Unhandled exception while finding age instance for age request", exc_info=True)
+			await self.age_reply(trans_id, base.NetError.internal_error, 0, state.ZERO_UUID, 0, ipaddress.IPv4Address(0))
+		else:
+			await self.age_reply(trans_id, base.NetError.success, age_node_id, instance_uuid, age_node_id, self._get_own_ipv4_address())
