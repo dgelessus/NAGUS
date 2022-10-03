@@ -74,22 +74,11 @@ These are all the server types used by the open-sourced MOULa client code:
   which is then responsible for all intra-age interaction.
   There is only one auth server per shard for all clients.
 
-* .. index:: game server
-     single: server; game
-     single: GameSrv
-     single: game manager
-     single: GameMgr
-     :name: game_server
-  
-  **Game server (GameSrv):**
+* :doc:`game_server` **(GameSrv):**
   Provides communication within a single age instance
   by relaying Plasma messages over the network.
   It also provides the "game manager" (GameMgr),
-  a different mechanism used for some multiplayer activities,
-  like Ayoheek, marker games, and the hood garden age puzzle.
-  To reduce complexity of the server side,
-  the H'uru client no longer uses the game manager
-  and the DIRTSAND server has never implemented it.
+  although some servers don't implement it (specifically DIRTSAND).
   There can theoretically be multiple game server instances,
   but in practice all MOULa servers use a single game server for all age instances.
 

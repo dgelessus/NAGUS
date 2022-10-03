@@ -40,6 +40,7 @@ Contents
    uru/protocol
    uru/vault
    uru/auth_server
+   uru/game_server
 
 .. toctree::
    :maxdepth: 1
