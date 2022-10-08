@@ -2036,14 +2036,15 @@ Auth2Cli_AgeReply
   although the open-sourced client code can apparently handle the server returning a different UUID.
 * **Age vault node ID:** 4-byte unsigned int.
   ID of the :ref:`vault_node_age` vault node for the age instance.
+  The open-sourced client code also accepts 0 for no age vault.
 * **Server IP address:** 4-byte packed IPv4 address.
   The game server for the age instance.
 
 Reply to an :ref:`AgeRequest <cli2auth_age_request>`.
 Upon receiving this message,
 if the result is successful,
-the client fetches the entire tree of vault nodes under the :ref:`vault_node_age` node
-and connects to the instance's game server.
+the client connects to the instance's game server
+and sends it a :ref:`cli2game_join_age_request`.
 
 The result is usually one of:
 

@@ -87,6 +87,11 @@ Game2Cli_JoinAgeReply
 * **Result:** 4-byte :cpp:enum:`ENetError`.
 
 Reply to a :ref:`JoinAgeRequest <cli2game_join_age_request>`.
+Upon receiving this message,
+if the result is successful,
+the client fetches the entire tree of vault nodes under the age instance's :ref:`vault_node_age` node
+(whose node ID was previously sent to the client in the :ref:`auth2cli_age_reply`)
+and then begins loading the age.
 
 .. _cli2game_propagate_buffer:
 
