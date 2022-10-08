@@ -182,6 +182,9 @@ and not supported by MOSS or DIRTSAND
   * ``plNetMsgRelevanceRegions`` = 0x03ac = 940 (client -> server)
   * ``plNetMsgPlayerPage`` = 0x03b4 = 948 (client -> server)
 
+:cpp:class:`plNetMessage`
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. cpp:class:: plNetMessage : public plCreatable
    
    *Class index = 0x025e = 606*
