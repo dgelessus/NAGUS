@@ -99,8 +99,8 @@ containing the Diffie-Hellman values for the respective server type:
 .. cpp:var:: static const unsigned kDhGValue
    
    The value of *g*.
-   Shouldn't need to be changed,
-   because all MOULa shards use the same *g* values for each server.
+   Usually doesn't need to be changed,
+   because almost all MOULa shards use the same *g* values for each server type.
 
 .. cpp:var::
    static const byte kDhNData[64]
@@ -248,8 +248,8 @@ The following commands are supported:
    
    If any of these commands is omitted,
    the standard *g* value for that server type is used.
-   Because all MOULa shards (that I know of) use these standard values,
-   there should never be any need to set these explicitly.
+   Most MOULa shards use these standard values,
+   so there's usually no need to set these explicitly.
 
 .. _server_bypass:
 

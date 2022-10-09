@@ -106,7 +106,8 @@ The following values are used in the key exchange:
 * A 512-bit client public key *y* (known as capital *B* in some literature)
 
 Each :ref:`server type <server_types>` uses a separate set of Diffie-Hellman values.
-The *g* value for each server type is the same across all MOULa-based shards.
+The *g* value for each server type is the same across almost all MOULa-based shards
+(although e. g. Minkata changes them).
 The *n*, *a*, and *x* values are unique for every shard.
 When setting up a shard,
 for each server type,
@@ -119,7 +120,7 @@ see :ref:`connection_encryption` for details.
 
 The following *g*, *n*, and *x* values are used by Cyan's MOULa shard.
 As mentioned above,
-other MOULa-based shards use the same *g* values,
+other MOULa-based shards use the same *g* values (usually),
 but different *n* and *x* values.
 The private keys *a* are not publicly known,
 for obvious reasons.
