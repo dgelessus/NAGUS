@@ -152,7 +152,7 @@ and not supported by MOSS or DIRTSAND
 
 * :cpp:class:`plNetMessage` = 0x025e = 606 (abstract)
   
-  * ``plNetMsgRoomsList`` = 0x0263 = 611 (abstract)
+  * :cpp:class:`plNetMsgRoomsList` = 0x0263 = 611 (abstract)
     
     * ``plNetMsgPagingRoom`` = 0x0218 = 536 (client -> server)
     * ``plNetMsgGameStateRequest`` = 0x0265 = 613 (client -> server)
@@ -186,6 +186,23 @@ and not supported by MOSS or DIRTSAND
   * ``plNetMsgListenListUpdate`` = 0x02c8 = 712 (client <-> server, unused, but client theoretically handles it)
   * ``plNetMsgRelevanceRegions`` = 0x03ac = 940 (client -> server)
   * ``plNetMsgPlayerPage`` = 0x03b4 = 948 (client -> server)
+
+Common data types
+^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plLocation
+   
+   * **Sequence number:** 4-byte unsigned int.
+   * **Flags:** 2-byte unsigned int.
+     See :cpp:enum:`LocFlags` for details.
+   
+   .. cpp:enum:: LocFlags
+      
+      .. cpp:enumerator:: kLocalOnly = 1 << 0
+      .. cpp:enumerator:: kVolatile = 1 << 1
+      .. cpp:enumerator:: kReserved = 1 << 2
+      .. cpp:enumerator:: kBuiltIn = 1 << 3
+      .. cpp:enumerator:: kItinerant = 1 << 4
 
 :cpp:class:`plNetMessage`
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -364,7 +381,7 @@ and not supported by MOSS or DIRTSAND
       
       .. cpp:enumerator:: kIsSystemMessage = 1 << 17
          
-         Set for all ``plNetMsgRoomsList``, ``plNetMsgObjStateRequest``, ``plNetMsgMembersListReq``, and ``plNetMsgServerToClient`` messages
+         Set for all :cpp:class:`plNetMsgRoomsList`, ``plNetMsgObjStateRequest``, ``plNetMsgMembersListReq``, and ``plNetMsgServerToClient`` messages
          (including subclasses, if any).
          DIRTSAND also sets it for some ``plNetMsgSDLStateBCast`` messages.
          MOSS, DIRTSAND, and the client never use this flag for anything.
@@ -392,3 +409,22 @@ and not supported by MOSS or DIRTSAND
          but only respects it if the sender is permitted to send unsafe messages
          (i. e. if the sender's account has the :cpp:var:`kAccountRoleAdmin` flag set).
          MOSS doesn't implement this flag at all and always ignores it.
+
+:cpp:class:`plNetMsgRoomsList`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgRoomsList : public plNetMessage
+   
+   *Class index = 0x0263 = 611*
+   
+   * **Header:** :cpp:class:`plNetMessage`.
+   * **Room count:** 4-byte unsigned int
+     (or signed in the original/OpenUru code for some reason).
+     Element count for the following array of rooms.
+   * **Rooms:** Variable-length array.
+     Each element has the following structure:
+     
+     * **Location:** 6-byte :cpp:class:`plLocation`.
+     * **Name length:** 2-byte unsigned int.
+       Byte count for the following name string.
+     * **Name:** Variable-length byte string.
