@@ -154,8 +154,8 @@ and not supported by MOSS or DIRTSAND
   
   * :cpp:class:`plNetMsgRoomsList` = 0x0263 = 611 (abstract)
     
-    * ``plNetMsgPagingRoom`` = 0x0218 = 536 (client -> server)
-    * ``plNetMsgGameStateRequest`` = 0x0265 = 613 (client -> server)
+    * :cpp:class:`plNetMsgPagingRoom` = 0x0218 = 536 (client -> server)
+    * :cpp:class:`plNetMsgGameStateRequest` = 0x0265 = 613 (client -> server)
   * ``plNetMsgObject`` = 0x0268 = 616 (abstract)
     
     * ``plNetMsgStreamedObject`` = 0x027b = 635 (abstract)
@@ -343,7 +343,7 @@ Common data types
       
       .. cpp:enumerator:: kInitialAgeStateRequest = 1 << 11
          
-         Set by the client for all ``plNetMsgGameStateRequest`` messages.
+         Set by the client for all :cpp:class:`plNetMsgGameStateRequest` messages.
          Should never be set for other message types.
          Ignored by MOSS and DIRTSAND.
       
@@ -428,3 +428,30 @@ Common data types
      * **Name length:** 2-byte unsigned int.
        Byte count for the following name string.
      * **Name:** Variable-length byte string.
+
+:cpp:class:`plNetMsgPagingRoom`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgPagingRoom : public plNetMsgRoomsList
+   
+   *Class index = 0x0218 = 536*
+   
+   * **Header:** :cpp:class:`plNetMsgRoomsList`.
+   * **Flags:** 1-byte unsigned int.
+     See :cpp:enum:`PageFlags` for details.
+   
+   .. cpp:enum:: PageFlags
+      
+      .. cpp:enumerator:: kPagingOut = 1 << 0
+      .. cpp:enumerator:: kResetList = 1 << 1
+      .. cpp:enumerator:: kRequestState = 1 << 2
+      .. cpp:enumerator:: kFinalRoomInAge = 1 << 3
+
+:cpp:class:`plNetMsgGameStateRequest`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgGameStateRequest : public plNetMsgRoomsList
+   
+   *Class index = 0x0265 = 613*
+   
+   Identical structure to its superclass :cpp:class:`plNetMsgRoomsList`.
