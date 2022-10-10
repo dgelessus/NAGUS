@@ -137,6 +137,8 @@ Cyan MOULa build IDs
   Released `2010-02-17 <https://mystonline.com/forums/viewtopic.php?f=36&t=19753>`__.
 * Build 1.887:
   Released `2010-04-02 <https://web.archive.org/web/20110515133633/http://www.atomicgamer.com:80/games/1835/myst-online-uru-live/files>`__.
+* Build 1.893:
+  Released `2010-05-21 <https://distfiles.macports.org/mystonline/UruLauncher.exe-1.893.zip>`__ (or earlier?).
 * Build 1.897:
   Released ???.
   CWE Git commit `30bbdbd3 <https://foundry.openuru.org/gitblit/commit/?r=CWE.git&h=30bbdbd327c2ea6832b88e40ceca2a6707a3a0d5>`__ (2011-03-12).
