@@ -156,9 +156,9 @@ and not supported by MOSS or DIRTSAND
     
     * :cpp:class:`plNetMsgPagingRoom` = 0x0218 = 536 (client -> server)
     * :cpp:class:`plNetMsgGameStateRequest` = 0x0265 = 613 (client -> server)
-  * ``plNetMsgObject`` = 0x0268 = 616 (abstract)
+  * :cpp:class:`plNetMsgObject` = 0x0268 = 616 (abstract)
     
-    * ``plNetMsgStreamedObject`` = 0x027b = 635 (abstract)
+    * :cpp:class:`plNetMsgStreamedObject` = 0x027b = 635 (abstract)
       
       * ``plNetMsgSharedState`` = 0x027c = 636 (abstract)
         
@@ -190,6 +190,49 @@ and not supported by MOSS or DIRTSAND
 Common data types
 ^^^^^^^^^^^^^^^^^
 
+.. index:: SafeString
+   single: safe string
+   :name: safe_string
+
+.. object:: SafeString
+   
+   * **Count:** 2-byte unsigned int.
+     Number of 8-bit characters in the string.
+     The high 4 bits of this field are masked out when reading and should always be set when writing.
+     As a result,
+     a single SafeString can contain at most 4095 characters.
+   * **Ignored:** 2-byte unsigned int.
+     Only present if the count field has none of its high 4 bits set.
+     The open-sourced client code calls this a "backward compat hack" that should have been removed in July 2003.
+   * **String:** Variable-length string of 8-bit characters.
+     If the first character has its high bit set,
+     then the string is obfuscated by bitwise negating every character,
+     otherwise the string is stored literally.
+     When writing,
+     the open-sourced client code always uses this obfuscation.
+     None of the characters should be 0.
+
+.. index:: SafeWString
+   single: safe string; wide
+   :name: safe_w_string
+
+.. object:: SafeWString
+   
+   * **Count:** 2-byte unsigned int.
+     Number of UTF-16 code units in the string.
+     The high 4 bits of this field are masked out when reading and should always be set when writing.
+     As a result,
+     a single SafeWString can contain at most 4095 UTF-16 code units.
+   * **String:** Variable-length string of UTF-16 code units.
+     The string is obfuscated by bitwise negating every code unit.
+     (Unlike with non-wide SafeStrings,
+     there is no support for un-obfuscated SafeWStrings.)
+     None of the characters should be 0.
+   * **Terminator:** 2-byte unsigned int.
+     Should always be 0.
+     This string terminator is stored in the data,
+     but not counted in the count field.
+
 .. cpp:class:: plLocation
    
    * **Sequence number:** 4-byte unsigned int.
@@ -203,6 +246,46 @@ Common data types
       .. cpp:enumerator:: kReserved = 1 << 2
       .. cpp:enumerator:: kBuiltIn = 1 << 3
       .. cpp:enumerator:: kItinerant = 1 << 4
+
+.. cpp:class:: plLoadMask
+   
+   * **Quality and capability:** 1-byte unsigned int.
+     Decoded as follows
+     (where *qc* is the value of this field)
+     into separate quality and capability fields,
+     each of which is a 1-byte unsigned int after decoding:
+     
+     * **Quality** = (*qc* >> 4 & 0xf) | 0xf0
+     * **Capability** = (*qc* >> 0 & 0xf) | 0xf0
+   
+   .. cpp:var:: static const plLoadMask kAlways
+      
+      Has both quality and capability set to 0xff.
+
+.. cpp:class:: plUoid
+   
+   * **Flags:** 1-byte unsigned int.
+     See :cpp:enum:`ContentsFlags` for details.
+   * **Location:** 6-byte :cpp:class:`plLocation`.
+   * **Load mask:** 1-byte :cpp:class:`plLoadMask`.
+     Only present if the :cpp:enumerator:`~ContentsFlags::kHasLoadMask` flag is set,
+     otherwise defaults to :cpp:var:`plLoadMask::kAlways`.
+   * **Class type:** 2-byte unsigned int.
+   * **Object ID:** 4-byte unsigned int.
+   * **Object name:** :ref:`SafeWString <safe_w_string>`.
+   * **Clone ID:** 2-byte unsigned int.
+     Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
+     otherwise defaults to 0.
+   * **Ignored:** 2-byte unsigned int.
+     Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set.
+   * **Clone player ID:** 4-byte unsigned int.
+     Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
+     otherwise defaults to 0.
+   
+   .. cpp:enum:: ContentsFlags
+      
+      .. cpp:enumerator:: kHasCloneIDs = 1 << 0
+      .. cpp:enumerator:: kHasLoadMask = 1 << 1
 
 :cpp:class:`plNetMessage`
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -409,6 +492,31 @@ Common data types
          but only respects it if the sender is permitted to send unsafe messages
          (i. e. if the sender's account has the :cpp:var:`kAccountRoleAdmin` flag set).
          MOSS doesn't implement this flag at all and always ignores it.
+   
+   .. cpp:enum:: CompressionType
+      
+      Only used within the subclass :cpp:class:`plNetMsgStreamedObject`.
+      
+      .. cpp:enumerator:: kCompressionNone = 0
+         
+         The stream data is not compressed
+         because it didn't meet the length threshold for compression.
+      
+      .. cpp:enumerator:: kCompressionFailed = 1
+         
+         This is an internal error value used when the stream data could not be (de)compressed.
+         It should never appear in a serialized message.
+      
+      .. cpp:enumerator:: kCompressionZlib = 2
+         
+         The stream data is zlib-compressed.
+         The open-sourced client code uses zlib compression iff the stream data is at least 256 bytes long.
+      
+      .. cpp:enumerator:: kCompressionDont = 3
+         
+         The stream data is not compressed
+         because compression has been explicitly disabled.
+         The open-sourced client code does this iff the :cpp:enumerator:`~BitVectorFlags::kHasGameMsgRcvrs` flag is set on the message.
 
 :cpp:class:`plNetMsgRoomsList`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -455,3 +563,31 @@ Common data types
    *Class index = 0x0265 = 613*
    
    Identical structure to its superclass :cpp:class:`plNetMsgRoomsList`.
+
+:cpp:class:`plNetMsgObject`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgObject : public plNetMessage
+   
+   *Class index = 0x0268 = 616*
+   
+   * **Header:** :cpp:class:`plNetMessage`.
+   * **UOID:** :cpp:class:`plUoid`.
+
+:cpp:class:`plNetMsgStreamedObject`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgStreamedObject : public plNetMsgObject
+   
+   *Class index = 0x027b = 635*
+   
+   * **Header:** :cpp:class:`plNetMsgObject`.
+   * **Uncompressed length:** 4-byte unsigned int.
+     Byte length of the stream data after decompression.
+     If the stream data is not compressed,
+     this is identical to the stream length.
+   * **Compression type:** 1-byte :cpp:enum:`plNetMessage::CompressionType`.
+   * **Stream length:** 4-byte unsigned int.
+     Byte length of the following stream data field.
+   * **Stream data:** Variable-length byte array.
+     The format of this data depends on the subclass.
