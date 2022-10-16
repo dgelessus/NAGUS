@@ -21,6 +21,7 @@
 import asyncio
 import datetime
 import enum
+import io
 import logging
 import struct
 import typing
@@ -45,6 +46,27 @@ NET_MESSAGE_HEADER = struct.Struct("<HI")
 NET_MESSAGE_VERSION = struct.Struct("<BB")
 NET_MESSAGE_TIME_SENT = struct.Struct("<II")
 NET_MESSAGE_UINT32 = struct.Struct("<I")
+
+
+def _read_exact(stream: typing.BinaryIO, byte_count: int) -> bytes:
+	"""Read byte_count bytes from the stream and raise an exception if too few bytes are read
+	(i. e. if EOF was hit prematurely).
+	"""
+	
+	data = stream.read(byte_count)
+	if len(data) != byte_count:
+		raise EOFError(f"Attempted to read {byte_count} bytes of data, but only got {len(data)} bytes")
+	return data
+
+
+def _stream_unpack(stream: typing.BinaryIO, st: struct.Struct) -> tuple:
+	"""Unpack data from the stream according to the struct st.
+	
+	The number of bytes to read is determined using st.size,
+	so variable-sized structs cannot be used with this method.
+	"""
+	
+	return st.unpack(_read_exact(stream, st.size))
 
 
 class NetMessageClassIndex(enum.IntEnum):
@@ -127,95 +149,87 @@ class NetMessage(object):
 	ki_number: typing.Optional[int]
 	account_uuid: typing.Optional[uuid.UUID]
 	
-	@classmethod
-	def unpack_header(cls, data: bytes) -> typing.Tuple["NetMessage", bytes]:
-		self = cls()
-		
-		class_index, flags = NET_MESSAGE_HEADER.unpack_from(data)
-		data = data[NET_MESSAGE_HEADER.size:]
+	def read(self, stream: typing.BinaryIO) -> None:
+		class_index, flags = _stream_unpack(stream, NET_MESSAGE_HEADER)
 		self.class_index = NetMessageClassIndex(class_index)
 		self.flags = NetMessageFlags(flags)
 		
 		if NetMessageFlags.has_version in self.flags:
-			major, minor = NET_MESSAGE_VERSION.unpack_from(data)
+			major, minor = _stream_unpack(stream, NET_MESSAGE_VERSION)
 			self.protocol_version = (major, minor)
-			data = data[NET_MESSAGE_VERSION.size:]
 		else:
 			self.protocol_version = None
 		
 		if NetMessageFlags.has_time_sent in self.flags:
-			timestamp, micros = NET_MESSAGE_TIME_SENT.unpack_from(data)
+			timestamp, micros = _stream_unpack(stream, NET_MESSAGE_TIME_SENT)
 			self.time_sent = datetime.datetime.fromtimestamp(timestamp) + datetime.timedelta(microseconds=micros)
-			data = data[NET_MESSAGE_TIME_SENT.size:]
 		else:
 			self.time_sent = None
 		
 		if NetMessageFlags.has_context in self.flags:
-			(self.context,) = NET_MESSAGE_UINT32.unpack_from(data)
-			data = data[NET_MESSAGE_UINT32.size:]
+			(self.context,) = _stream_unpack(stream, NET_MESSAGE_UINT32)
 		else:
 			self.context = None
 		
 		if NetMessageFlags.has_transaction_id in self.flags:
-			(self.trans_id,) = NET_MESSAGE_UINT32.unpack_from(data)
-			data = data[NET_MESSAGE_UINT32.size:]
+			(self.trans_id,) = _stream_unpack(stream, NET_MESSAGE_UINT32)
 		else:
 			self.trans_id = None
 		
 		if NetMessageFlags.has_player_id in self.flags:
-			(self.ki_number,) = NET_MESSAGE_UINT32.unpack_from(data)
-			data = data[NET_MESSAGE_UINT32.size:]
+			(self.ki_number,) = _stream_unpack(stream, NET_MESSAGE_UINT32)
 		else:
 			self.ki_number = None
 		
 		if NetMessageFlags.has_account_uuid in self.flags:
-			self.account_uuid = uuid.UUID(bytes_le=data[:16])
-			data = data[16:]
+			self.account_uuid = uuid.UUID(bytes_le=_read_exact(stream, 16))
 		else:
 			self.account_uuid = None
-		
-		return self, data
 	
-	def pack(self) -> bytes:
-		data = bytearray(NET_MESSAGE_HEADER.pack(self.class_index, self.flags))
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "NetMessage":
+		self = cls() # TODO Select correct subclass based on class index
+		self.read(stream)
+		return self
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		stream.write(NET_MESSAGE_HEADER.pack(self.class_index, self.flags))
 		
 		if NetMessageFlags.has_version in self.flags:
 			assert self.protocol_version is not None
-			data.extend(NET_MESSAGE_VERSION.pack(*self.protocol_version))
+			stream.write(NET_MESSAGE_VERSION.pack(*self.protocol_version))
 		else:
 			assert self.protocol_version is None
 		
 		if NetMessageFlags.has_time_sent in self.flags:
 			assert self.time_sent is not None
-			data.extend(NET_MESSAGE_VERSION.pack(int(self.time_sent.timestamp()), self.time_sent.microsecond))
+			stream.write(NET_MESSAGE_VERSION.pack(int(self.time_sent.timestamp()), self.time_sent.microsecond))
 		else:
 			assert self.time_sent is None
 		
 		if NetMessageFlags.has_context in self.flags:
 			assert self.context is not None
-			data.extend(NET_MESSAGE_UINT32.pack(self.context))
+			stream.write(NET_MESSAGE_UINT32.pack(self.context))
 		else:
 			assert self.context is None
 		
 		if NetMessageFlags.has_transaction_id in self.flags:
 			assert self.trans_id is not None
-			data.extend(NET_MESSAGE_UINT32.pack(self.trans_id))
+			stream.write(NET_MESSAGE_UINT32.pack(self.trans_id))
 		else:
 			assert self.trans_id is None
 		
 		if NetMessageFlags.has_player_id in self.flags:
 			assert self.ki_number is not None
-			data.extend(NET_MESSAGE_UINT32.pack(self.ki_number))
+			stream.write(NET_MESSAGE_UINT32.pack(self.ki_number))
 		else:
 			assert self.ki_number is None
 		
 		if NetMessageFlags.has_account_uuid in self.flags:
 			assert self.account_uuid is not None
-			data.extend(NET_MESSAGE_UINT32.pack(self.account_uuid))
+			stream.write(NET_MESSAGE_UINT32.pack(self.account_uuid))
 		else:
 			assert self.account_uuid is None
-		
-		return data
 
 
 class GameClientState(object):
@@ -278,13 +292,13 @@ class GameConnection(base.BaseMOULConnection):
 	async def receive_propagate_buffer(self) -> None:
 		buffer_type, buffer_length = await self.read_unpack(PROPAGATE_BUFFER_HEADER)
 		buffer_type = NetMessageClassIndex(buffer_type)
-		buffer = await self.read(buffer_length)
+		buffer = io.BytesIO(await self.read(buffer_length))
 		
-		header, subclass_buffer = NetMessage.unpack_header(buffer)
+		header = NetMessage.from_stream(buffer)
 		if buffer_type != header.class_index:
 			raise base.ProtocolError(f"PropagateBuffer type {buffer_type!r} doesn't match class index in serialized message: {header.class_index!r}")
 		
-		logger.debug("Received propagate buffer: class index %r, flags %r, time sent %s, KI number %d, class-specific data %r", header.class_index, header.flags, header.time_sent, header.ki_number, subclass_buffer)
+		logger.debug("Received propagate buffer: class index %r, flags %r, time sent %s, KI number %d, class-specific data %r", header.class_index, header.flags, header.time_sent, header.ki_number, buffer.read())
 		
 		unsupported_flags = header.flags & ~NetMessageFlags.all_handled
 		if unsupported_flags:
