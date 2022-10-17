@@ -25,6 +25,10 @@ import uuid
 
 ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
 
+INT8 = struct.Struct("<b")
+INT16 = struct.Struct("<h")
+INT32 = struct.Struct("<i")
+INT64 = struct.Struct("<q")
 # No UINT8 - just do stream.read(1) instead!
 UINT16 = struct.Struct("<H")
 UINT32 = struct.Struct("<I")

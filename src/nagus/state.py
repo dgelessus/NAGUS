@@ -30,6 +30,7 @@ import typing
 import uuid
 
 from . import auth_server
+from . import structs
 
 
 logger = logging.getLogger(__name__)
@@ -44,8 +45,6 @@ _T = typing.TypeVar("_T")
 PUBLIC_AEGURA_UUID = uuid.UUID("7e0facea-dae1-4aec-a4ca-e76c05fdcfcf")
 
 VAULT_NODE_DATA_HEADER = struct.Struct("<Q")
-VAULT_NODE_DATA_INT32 = struct.Struct("<i")
-VAULT_NODE_DATA_UINT32 = struct.Struct("<I")
 VAULT_NODE_REF = struct.Struct("<III?")
 
 
@@ -255,14 +254,14 @@ class VaultNodeData(object):
 		
 		def _unpack_uint32() -> int:
 			nonlocal data
-			(x,) = VAULT_NODE_DATA_UINT32.unpack_from(data)
-			data = data[VAULT_NODE_DATA_UINT32.size:]
+			(x,) = structs.UINT32.unpack_from(data)
+			data = data[structs.UINT32.size:]
 			return x
 		
 		def _unpack_int32() -> int:
 			nonlocal data
-			(x,) = VAULT_NODE_DATA_UINT32.unpack_from(data)
-			data = data[VAULT_NODE_DATA_INT32.size:]
+			(x,) = structs.UINT32.unpack_from(data)
+			data = data[structs.INT32.size:]
 			return x
 		
 		def _unpack_uuid() -> uuid.UUID:
@@ -392,10 +391,10 @@ class VaultNodeData(object):
 		data = bytearray()
 		
 		def _pack_uint32(x: int) -> None:
-			data.extend(VAULT_NODE_DATA_UINT32.pack(x))
+			data.extend(structs.UINT32.pack(x))
 		
 		def _pack_int32(x: int) -> None:
-			data.extend(VAULT_NODE_DATA_INT32.pack(x))
+			data.extend(structs.INT32.pack(x))
 		
 		def _pack_uuid(uu: uuid.UUID) -> None:
 			data.extend(uu.bytes_le)
