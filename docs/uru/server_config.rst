@@ -152,7 +152,7 @@ H'uru clients load all server information at runtime from a configuration file.
 This allows changing all server information without having to recompile the client.
 By default,
 the file is called :file:`server.ini` and located next to the client executable.
-An different configuration file can be specified with a command line option
+A different configuration file can be specified with a command line option
 (supported by both the launcher and the main client):
 
 .. option:: /ServerIni=INI_FILE
@@ -163,93 +163,8 @@ Without a server.ini,
 a H'uru client will not run at all ---
 there is no compiled-in default server information.
 
-The server.ini is actually a Plasma console script,
-in the same basic format as .ini files in the user data folder or .fni files in the dat folder.
-Unless indicated otherwise,
-the argument/value of every command should be surrounded with double quotes,
-to avoid parsing issues with spaces or other symbols.
-The following commands are supported:
-
-.. object:: Server.DispName "Example Shard"
-   
-   A human-readable name for the shard.
-   Despite the command name,
-   this value is currently never displayed to the user.
-   It is actually used as an identifier for the shard when saving login information.
-   Can be omitted,
-   but this causes slightly odd naming in the registry
-   (last username is stored one key higher than it should be).
-
-.. object:: Server.Status "https://moula.example.net/status"
-   
-   The full URL of the status page on the status server.
-   Can be omitted,
-   in which case the default status message "Welcome to URU" is displayed forever.
-
-.. object:: Server.Signup "https://moula.example.net/signup"
-   
-   The URL that is opened by the "Need an account?" button in the login window.
-   Can be omitted,
-   but this causes slightly odd behavior when the button is clicked
-   (login window gets sent to background and nothing else happens).
-
-.. object:: Server.Port 14617
-   
-   (integer, not quoted)
-   
-   The default port number for server addresses,
-   used for server addresses that don't contain an explicit port number.
-   If omitted,
-   defaults to the standard MOUL server port 14617.
-
-.. object::
-   Server.Gate.Host "moula.example.net"
-   Server.File.Host "moula.example.net"
-   Server.Auth.Host "moula.example.net"
-   
-   The addresses of the gatekeeper, file, and auth servers,
-   respectively.
-   May include an explicit port number,
-   otherwise the default port from ``Server.Port`` is used.
-   
-   The file server address is normally obtained via the gatekeeper server
-   and doesn't need to be set in the server.ini.
-
-.. object::
-   Server.Gate.N "..."
-   Server.Gate.X "..."
-   Server.Auth.N "..."
-   Server.Auth.X "..."
-   Server.Game.N "..."
-   Server.Game.X "..."
-   
-   The Diffie-Hellman *n* and *x* values for the gatekeeper, auth, and game server connections,
-   respectively.
-   The values are packed big-endian integers encoded as base-64.
-   There are no corresponding commands for the file server,
-   because file server connections are never encrypted.
-   
-   Any pair of ``N``/``X`` commands may be omitted to disable encryption for that server type ---
-   see :ref:`disabling_connection_encryption`.
-   This is only supported when connecting to a server based on DIRTSAND,
-   not MOSS or Cyan's server software.
-
-.. object::
-   Server.Gate.G 4
-   Server.Auth.G 41
-   Server.Game.G 73
-   
-   (integers, not quoted)
-   
-   The Diffie-Hellman *g* values for the gatekeeper, auth, and game server connections,
-   respectively.
-   There is no corresponding command for the file server,
-   because file server connections are never encrypted.
-   
-   If any of these commands is omitted,
-   the standard *g* value for that server type is used.
-   Most MOULa shards use these standard values,
-   so there's usually no need to set these explicitly.
+For details about the syntax and supported options in :file:`server.ini` files,
+see `the corresponding H'uru documentation <https://github.com/H-uru/Plasma/blob/master/Docs/server.ini.md>`__.
 
 .. _server_bypass:
 
