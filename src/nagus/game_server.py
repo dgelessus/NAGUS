@@ -19,6 +19,7 @@
 
 
 import asyncio
+import collections
 import datetime
 import enum
 import io
@@ -34,6 +35,8 @@ from . import state
 logger = logging.getLogger(__name__)
 
 
+LOCATION = struct.Struct("<IH")
+
 CONNECT_DATA = struct.Struct("<I16s16s")
 
 PING_REQUEST = struct.Struct("<I")
@@ -45,6 +48,7 @@ PROPAGATE_BUFFER_HEADER = struct.Struct("<II")
 NET_MESSAGE_HEADER = struct.Struct("<HI")
 NET_MESSAGE_VERSION = struct.Struct("<BB")
 NET_MESSAGE_TIME_SENT = struct.Struct("<II")
+NET_MESSAGE_UINT16 = struct.Struct("<H")
 NET_MESSAGE_UINT32 = struct.Struct("<I")
 
 
@@ -67,6 +71,35 @@ def _stream_unpack(stream: typing.BinaryIO, st: struct.Struct) -> tuple:
 	"""
 	
 	return st.unpack(_read_exact(stream, st.size))
+
+
+class Location(object):
+	class Flags(enum.IntFlag):
+		local_only = 1 << 0
+		volatile = 1 << 1
+		reserved = 1 << 2
+		built_in = 1 << 3
+		itinerant = 1 << 4
+	
+	sequence_number: int
+	flags: "Location.Flags"
+	
+	def __init__(self, sequence_number: int, flags: "Location.Flags") -> None:
+		super().__init__()
+		
+		self.sequence_number = sequence_number
+		self.flags = flags
+	
+	def __repr__(self) -> str:
+		return f"{type(self).__qualname__}({self.sequence_number}, {self.flags!s})"
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "Location":
+		sequence_number, flags = _stream_unpack(stream, LOCATION)
+		return cls(sequence_number, Location.Flags(flags))
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		stream.write(LOCATION.pack(self.sequence_number, self.flags))
 
 
 class NetMessageClassIndex(enum.IntEnum):
@@ -149,6 +182,35 @@ class NetMessage(object):
 	ki_number: typing.Optional[int]
 	account_uuid: typing.Optional[uuid.UUID]
 	
+	def repr_fields(self) -> collections.OrderedDict[str, str]:
+		fields = collections.OrderedDict()
+		fields["class_index"] = repr(self.class_index)
+		fields["flags"] = repr(self.flags)
+		
+		if self.protocol_version is not None:
+			fields["protocol_version"] = repr(self.protocol_version)
+		
+		if self.time_sent is not None:
+			fields["time_sent"] = repr(self.time_sent)
+		
+		if self.context is not None:
+			fields["context"] = repr(self.context)
+		
+		if self.trans_id is not None:
+			fields["trans_id"] = repr(self.trans_id)
+		
+		if self.ki_number is not None:
+			fields["ki_number"] = repr(self.ki_number)
+		
+		if self.account_uuid is not None:
+			fields["account_uuid"] = repr(self.account_uuid)
+		
+		return fields
+	
+	def __repr__(self) -> str:
+		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
+		return f"<{type(self).__qualname__}: {joined_fields}>"
+	
 	def read(self, stream: typing.BinaryIO) -> None:
 		class_index, flags = _stream_unpack(stream, NET_MESSAGE_HEADER)
 		self.class_index = NetMessageClassIndex(class_index)
@@ -188,7 +250,24 @@ class NetMessage(object):
 	
 	@classmethod
 	def from_stream(cls, stream: typing.BinaryIO) -> "NetMessage":
-		self = cls() # TODO Select correct subclass based on class index
+		# Peek the class index from the beginning of the message
+		pos = stream.tell()
+		try:
+			class_index, _ = _stream_unpack(stream, NET_MESSAGE_HEADER)
+		finally:
+			stream.seek(pos)
+		
+		class_index = NetMessageClassIndex(class_index)
+		
+		if class_index == NetMessageClassIndex.rooms_list:
+			self = NetMessageRoomsList()
+		elif class_index == NetMessageClassIndex.paging_room:
+			self = NetMessagePagingRoom()
+		elif class_index == NetMessageClassIndex.game_state_request:
+			self = NetMessageGameStateRequest()
+		else:
+			self = cls()
+		
 		self.read(stream)
 		return self
 	
@@ -230,6 +309,63 @@ class NetMessage(object):
 			stream.write(NET_MESSAGE_UINT32.pack(self.account_uuid))
 		else:
 			assert self.account_uuid is None
+
+
+class NetMessageRoomsList(NetMessage):
+	rooms: typing.List[typing.Tuple[Location, bytes]]
+	
+	def repr_fields(self) -> collections.OrderedDict[str, str]:
+		fields = super().repr_fields()
+		fields["rooms"] = repr(self.rooms)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		
+		(room_count,) = _stream_unpack(stream, NET_MESSAGE_UINT32)
+		self.rooms = []
+		for _ in range(room_count):
+			location = Location.from_stream(stream)
+			(name_length,) = _stream_unpack(stream, NET_MESSAGE_UINT16)
+			name = _read_exact(stream, name_length)
+			self.rooms.append((location, name))
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		
+		stream.write(NET_MESSAGE_UINT32.pack(len(self.rooms)))
+		for location, name in self.rooms:
+			location.write(stream)
+			stream.write(NET_MESSAGE_UINT16.pack(len(name)))
+			stream.write(name)
+
+
+class NetMessagePagingRoom(NetMessageRoomsList):
+	class Flags(enum.IntFlag):
+		paging_out = 1 << 0
+		reset_list = 1 << 1
+		request_state = 1 << 2
+		final_room_in_age = 1 << 3
+	
+	page_flags: "NetMessagePagingRoom.Flags"
+	
+	def repr_fields(self) -> collections.OrderedDict[str, str]:
+		fields = super().repr_fields()
+		fields["page_flags"] = repr(self.page_flags)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		(flags,) = _read_exact(stream, 1)
+		self.page_flags = NetMessagePagingRoom.Flags(flags)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(bytes([self.page_flags]))
+
+
+class NetMessageGameStateRequest(NetMessageRoomsList):
+	pass
 
 
 class GameClientState(object):
@@ -294,20 +430,23 @@ class GameConnection(base.BaseMOULConnection):
 		buffer_type = NetMessageClassIndex(buffer_type)
 		buffer = io.BytesIO(await self.read(buffer_length))
 		
-		header = NetMessage.from_stream(buffer)
-		if buffer_type != header.class_index:
-			raise base.ProtocolError(f"PropagateBuffer type {buffer_type!r} doesn't match class index in serialized message: {header.class_index!r}")
+		message = NetMessage.from_stream(buffer)
+		extra_data = buffer.read()
+		if buffer_type != message.class_index:
+			raise base.ProtocolError(f"PropagateBuffer type {buffer_type!r} doesn't match class index in serialized message: {message.class_index!r}")
 		
-		logger.debug("Received propagate buffer: class index %r, flags %r, time sent %s, KI number %d, class-specific data %r", header.class_index, header.flags, header.time_sent, header.ki_number, buffer.read())
+		logger.debug("Received propagate buffer: %r", message)
 		
-		unsupported_flags = header.flags & ~NetMessageFlags.all_handled
+		unsupported_flags = message.flags & ~NetMessageFlags.all_handled
 		if unsupported_flags:
-			logger.warning("PropagateBuffer message %r has flags set that we can't handle yet: %r", header.class_index, unsupported_flags)
-		if header.protocol_version is not None:
-			logger.warning("PropagateBuffer message %r contains protocol version: %r", header.protocol_version)
-		if header.context is not None:
-			logger.warning("PropagateBuffer message %r contains context: %d", header.context)
-		if header.trans_id is not None:
-			logger.warning("PropagateBuffer message %r contains transaction ID: %d", header.trans_id)
-		if header.account_uuid is not None:
-			logger.warning("PropagateBuffer message %r contains account UUID: %s", header.account_uuid)
+			logger.warning("PropagateBuffer message %r has flags set that we can't handle yet: %r", message.class_index, unsupported_flags)
+		if message.protocol_version is not None:
+			logger.warning("PropagateBuffer message %r contains protocol version: %r", message.protocol_version)
+		if message.context is not None:
+			logger.warning("PropagateBuffer message %r contains context: %d", message.context)
+		if message.trans_id is not None:
+			logger.warning("PropagateBuffer message %r contains transaction ID: %d", message.trans_id)
+		if message.account_uuid is not None:
+			logger.warning("PropagateBuffer message %r contains account UUID: %s", message.account_uuid)
+		if extra_data:
+			logger.warning("PropagateBuffer message %r has extra trailing data: %r", message.class_index, extra_data)
