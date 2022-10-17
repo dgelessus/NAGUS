@@ -37,6 +37,8 @@ logger = logging.getLogger(__name__)
 
 
 LOCATION = struct.Struct("<IH")
+UOID_MID_PART = struct.Struct("<HI")
+UOID_CLONE_IDS = struct.Struct("<HHI")
 
 CONNECT_DATA = struct.Struct("<I16s16s")
 
@@ -68,6 +70,12 @@ class Location(object):
 		self.sequence_number = sequence_number
 		self.flags = flags
 	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, Location):
+			return NotImplemented
+		
+		return self.sequence_number == other.sequence_number and self.flags == other.flags
+	
 	def __repr__(self) -> str:
 		return f"{type(self).__qualname__}({self.sequence_number}, {self.flags!s})"
 	
@@ -78,6 +86,124 @@ class Location(object):
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		stream.write(LOCATION.pack(self.sequence_number, self.flags))
+
+
+class LoadMask(object):
+	ALWAYS: "LoadMask"
+	
+	quality: int
+	capability: int
+	
+	def __init__(self, quality: int, capability: int) -> None:
+		super().__init__()
+		
+		self.quality = quality
+		self.capability = capability
+	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, LoadMask):
+			return NotImplemented
+		
+		return self.quality == other.quality and self.capability == other.capability
+	
+	def __repr__(self) -> str:
+		return f"{type(self).__qualname__}({self.quality!r}, {self.capability!r})"
+	
+	@classmethod
+	def decode(cls, qc: int) -> "LoadMask":
+		return cls(
+			(qc >> 4 & 0xf) | 0xf0,
+			(qc >> 0 & 0xf) | 0xf0,
+		)
+	
+	def encode(self) -> int:
+		return (self.quality & 0xf) << 4 | (self.capability & 0xf) << 0
+
+
+LoadMask.ALWAYS = LoadMask(0xff, 0xff)
+
+
+class Uoid(object):
+	class Flags(enum.IntFlag):
+		has_clone_ids = 1 << 0
+		has_load_mask = 1 << 1
+		
+		supported = (
+			has_clone_ids
+			| has_load_mask
+		)
+	
+	location: Location
+	load_mask: LoadMask
+	class_type: int
+	object_id: int
+	object_name: bytes
+	clone_ids: typing.Optional[typing.Tuple[int, int]]
+	
+	def repr_fields(self) -> collections.OrderedDict[str, str]:
+		fields = collections.OrderedDict()
+		fields["location"] = repr(self.location)
+		if self.load_mask != LoadMask.ALWAYS:
+			fields["load_mask"] = repr(self.load_mask)
+		fields["class_type"] = f"0x{self.class_type:>04x}"
+		fields["object_id"] = repr(self.object_id)
+		fields["object_name"] = repr(self.object_name)
+		if self.clone_ids is not None:
+			fields["clone_ids"] = repr(self.clone_ids)
+		return fields
+	
+	def __repr__(self) -> str:
+		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
+		return f"{type(self).__qualname__}({joined_fields})"
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		(flags,) = structs.read_exact(stream, 1)
+		flags = Uoid.Flags(flags)
+		if flags & ~Uoid.Flags.supported:
+			raise ValueError(f"Uoid has unsupported flags set: {flags!r}")
+		
+		self.location = Location.from_stream(stream)
+		
+		if Uoid.Flags.has_load_mask in flags:
+			(load_mask,) = structs.read_exact(stream, 1)
+			self.load_mask = LoadMask.decode(load_mask)
+		else:
+			self.load_mask = LoadMask.ALWAYS
+		
+		self.class_type, self.object_id = structs.stream_unpack(stream, UOID_MID_PART)
+		self.object_name = structs.read_safe_string(stream)
+		
+		if Uoid.Flags.has_clone_ids in flags:
+			clone_id, ignored, clone_player_id = structs.stream_unpack(stream, UOID_CLONE_IDS)
+			self.clone_ids = clone_id, clone_player_id
+		else:
+			self.clone_ids = None
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "Uoid":
+		self = cls()
+		self.read(stream)
+		return self
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		flags = Uoid.Flags(0)
+		if self.load_mask != LoadMask.ALWAYS:
+			flags |= Uoid.Flags.has_load_mask
+		if self.clone_ids is not None:
+			flags |= Uoid.Flags.has_clone_ids
+		stream.write(bytes([flags]))
+		
+		self.location.write(stream)
+		
+		if self.load_mask != LoadMask.ALWAYS:
+			stream.write(bytes([self.load_mask.encode()]))
+		
+		stream.write(UOID_MID_PART.pack(self.class_type, self.object_id))
+		structs.write_safe_string(stream, self.object_name)
+		
+		if self.clone_ids is not None:
+			clone_id, clone_player_id = self.clone_ids
+			stream.write(UOID_CLONE_IDS.pack(clone_id, 0, clone_player_id))
 
 
 class NetMessageClassIndex(enum.IntEnum):
@@ -244,6 +370,17 @@ class NetMessage(object):
 			self = NetMessagePagingRoom()
 		elif class_index == NetMessageClassIndex.game_state_request:
 			self = NetMessageGameStateRequest()
+		elif class_index in {
+			NetMessageClassIndex.object,
+			NetMessageClassIndex.streamed_object,
+			NetMessageClassIndex.shared_state,
+			NetMessageClassIndex.test_and_set,
+			NetMessageClassIndex.sdl_state,
+			NetMessageClassIndex.sdl_state_broadcast,
+			NetMessageClassIndex.get_shared_state,
+			NetMessageClassIndex.object_state_request,
+		}:
+			self = NetMessageObject()
 		else:
 			self = cls()
 		
@@ -345,6 +482,25 @@ class NetMessagePagingRoom(NetMessageRoomsList):
 
 class NetMessageGameStateRequest(NetMessageRoomsList):
 	pass
+
+
+class NetMessageObject(NetMessage):
+	uoid: Uoid
+	
+	def repr_fields(self) -> collections.OrderedDict[str, str]:
+		fields = super().repr_fields()
+		fields["uoid"] = repr(self.uoid)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		
+		self.uoid = Uoid.from_stream(stream)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		
+		self.uoid.write(stream)
 
 
 class GameClientState(object):

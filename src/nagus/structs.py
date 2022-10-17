@@ -54,3 +54,52 @@ def stream_unpack(stream: typing.BinaryIO, st: struct.Struct) -> tuple:
 	"""
 	
 	return st.unpack(read_exact(stream, st.size))
+
+
+def _bit_flip(data: bytes) -> bytes:
+	return bytes(~b & 0xff for b in data)
+
+
+def read_safe_string(stream: typing.BinaryIO) -> bytes:
+	(count,) = stream_unpack(stream, UINT16)
+	if count & 0xf000:
+		count &= ~0xf000
+	else:
+		# Cyan's open-sourced client code says:
+		# "Backward compat hack - remove in a week or so (from 6/30/03)"
+		# So we prrrobably don't need this anymore in the year of our Lord 2022.
+		##read_exact(stream, 2)
+		raise ValueError(f"SafeString byte count ({count:#x}) doesn't have high 4 bits set!")
+	
+	string = read_exact(stream, count)
+	if string and string[0] & 0x80:
+		string = _bit_flip(string)
+	return string
+
+
+def write_safe_string(stream: typing.BinaryIO, s: bytes) -> None:
+	if len(s) > 0xfff:
+		raise ValueError(f"String of length {len(s)} is too long to be packed into a SafeString")
+	stream.write(UINT16.pack(len(s) | 0xf000))
+	stream.write(_bit_flip(s))
+
+
+def read_safe_wide_string(stream: typing.BinaryIO) -> str:
+	(count,) = stream_unpack(stream, UINT16)
+	count &= ~0xf000
+	string = _bit_flip(read_exact(stream, 2*count)).decode("utf-16-le")
+	(terminator,) = stream_unpack(stream, UINT16)
+	if terminator != 0:
+		raise ValueError(f"SafeWString terminator is non-zero: {terminator:#x}")
+	return string
+
+
+def write_safe_wide_string(stream: typing.BinaryIO, string: str) -> None:
+	encoded = string.encode("utf-16-le")
+	# Can't use len(string) - it will give the wrong result if the string contains code points above U+FFFF!
+	utf_16_length = len(encoded) // 2
+	if utf_16_length > 0xfff:
+		raise ValueError(f"String of length {utf_16_length} is too long to be packed into a SafeWString")
+	stream.write(UINT16.pack(utf_16_length | 0xf000))
+	stream.write(_bit_flip(encoded))
+	stream.write(b"\x00\x00")
