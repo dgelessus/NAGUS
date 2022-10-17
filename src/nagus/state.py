@@ -260,7 +260,7 @@ class VaultNodeData(object):
 		
 		def _unpack_int32() -> int:
 			nonlocal data
-			(x,) = structs.UINT32.unpack_from(data)
+			(x,) = structs.INT32.unpack_from(data)
 			data = data[structs.INT32.size:]
 			return x
 		
