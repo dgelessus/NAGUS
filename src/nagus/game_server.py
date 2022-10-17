@@ -441,12 +441,12 @@ class GameConnection(base.BaseMOULConnection):
 		if unsupported_flags:
 			logger.warning("PropagateBuffer message %r has flags set that we can't handle yet: %r", message.class_index, unsupported_flags)
 		if message.protocol_version is not None:
-			logger.warning("PropagateBuffer message %r contains protocol version: %r", message.protocol_version)
+			logger.warning("PropagateBuffer message %r contains protocol version: %r", message.class_index, message.protocol_version)
 		if message.context is not None:
-			logger.warning("PropagateBuffer message %r contains context: %d", message.context)
+			logger.warning("PropagateBuffer message %r contains context: %d", message.class_index, message.context)
 		if message.trans_id is not None:
-			logger.warning("PropagateBuffer message %r contains transaction ID: %d", message.trans_id)
+			logger.warning("PropagateBuffer message %r contains transaction ID: %d", message.class_index, message.trans_id)
 		if message.account_uuid is not None:
-			logger.warning("PropagateBuffer message %r contains account UUID: %s", message.account_uuid)
+			logger.warning("PropagateBuffer message %r contains account UUID: %s", message.class_index, message.account_uuid)
 		if extra_data:
 			logger.warning("PropagateBuffer message %r has extra trailing data: %r", message.class_index, extra_data)
