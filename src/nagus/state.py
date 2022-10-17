@@ -36,8 +36,6 @@ logger = logging.getLogger(__name__)
 
 _T = typing.TypeVar("_T")
 
-ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
-
 # This is the instance UUID for the public Ae'gura from DIRTSAND's default static_ages.ini.
 # It seems that nothing actually depends on this specific UUID,
 # and in fact MOSS uses a random UUID instead.

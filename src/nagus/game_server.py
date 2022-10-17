@@ -30,6 +30,7 @@ import uuid
 
 from . import base
 from . import state
+from . import structs
 
 
 logger = logging.getLogger(__name__)
@@ -48,29 +49,6 @@ PROPAGATE_BUFFER_HEADER = struct.Struct("<II")
 NET_MESSAGE_HEADER = struct.Struct("<HI")
 NET_MESSAGE_VERSION = struct.Struct("<BB")
 NET_MESSAGE_TIME_SENT = struct.Struct("<II")
-NET_MESSAGE_UINT16 = struct.Struct("<H")
-NET_MESSAGE_UINT32 = struct.Struct("<I")
-
-
-def _read_exact(stream: typing.BinaryIO, byte_count: int) -> bytes:
-	"""Read byte_count bytes from the stream and raise an exception if too few bytes are read
-	(i. e. if EOF was hit prematurely).
-	"""
-	
-	data = stream.read(byte_count)
-	if len(data) != byte_count:
-		raise EOFError(f"Attempted to read {byte_count} bytes of data, but only got {len(data)} bytes")
-	return data
-
-
-def _stream_unpack(stream: typing.BinaryIO, st: struct.Struct) -> tuple:
-	"""Unpack data from the stream according to the struct st.
-	
-	The number of bytes to read is determined using st.size,
-	so variable-sized structs cannot be used with this method.
-	"""
-	
-	return st.unpack(_read_exact(stream, st.size))
 
 
 class Location(object):
@@ -95,7 +73,7 @@ class Location(object):
 	
 	@classmethod
 	def from_stream(cls, stream: typing.BinaryIO) -> "Location":
-		sequence_number, flags = _stream_unpack(stream, LOCATION)
+		sequence_number, flags = structs.stream_unpack(stream, LOCATION)
 		return cls(sequence_number, Location.Flags(flags))
 	
 	def write(self, stream: typing.BinaryIO) -> None:
@@ -212,39 +190,39 @@ class NetMessage(object):
 		return f"<{type(self).__qualname__}: {joined_fields}>"
 	
 	def read(self, stream: typing.BinaryIO) -> None:
-		class_index, flags = _stream_unpack(stream, NET_MESSAGE_HEADER)
+		class_index, flags = structs.stream_unpack(stream, NET_MESSAGE_HEADER)
 		self.class_index = NetMessageClassIndex(class_index)
 		self.flags = NetMessageFlags(flags)
 		
 		if NetMessageFlags.has_version in self.flags:
-			major, minor = _stream_unpack(stream, NET_MESSAGE_VERSION)
+			major, minor = structs.stream_unpack(stream, NET_MESSAGE_VERSION)
 			self.protocol_version = (major, minor)
 		else:
 			self.protocol_version = None
 		
 		if NetMessageFlags.has_time_sent in self.flags:
-			timestamp, micros = _stream_unpack(stream, NET_MESSAGE_TIME_SENT)
+			timestamp, micros = structs.stream_unpack(stream, NET_MESSAGE_TIME_SENT)
 			self.time_sent = datetime.datetime.fromtimestamp(timestamp) + datetime.timedelta(microseconds=micros)
 		else:
 			self.time_sent = None
 		
 		if NetMessageFlags.has_context in self.flags:
-			(self.context,) = _stream_unpack(stream, NET_MESSAGE_UINT32)
+			(self.context,) = structs.stream_unpack(stream, structs.UINT32)
 		else:
 			self.context = None
 		
 		if NetMessageFlags.has_transaction_id in self.flags:
-			(self.trans_id,) = _stream_unpack(stream, NET_MESSAGE_UINT32)
+			(self.trans_id,) = structs.stream_unpack(stream, structs.UINT32)
 		else:
 			self.trans_id = None
 		
 		if NetMessageFlags.has_player_id in self.flags:
-			(self.ki_number,) = _stream_unpack(stream, NET_MESSAGE_UINT32)
+			(self.ki_number,) = structs.stream_unpack(stream, structs.UINT32)
 		else:
 			self.ki_number = None
 		
 		if NetMessageFlags.has_account_uuid in self.flags:
-			self.account_uuid = uuid.UUID(bytes_le=_read_exact(stream, 16))
+			self.account_uuid = uuid.UUID(bytes_le=structs.read_exact(stream, 16))
 		else:
 			self.account_uuid = None
 	
@@ -253,7 +231,7 @@ class NetMessage(object):
 		# Peek the class index from the beginning of the message
 		pos = stream.tell()
 		try:
-			class_index, _ = _stream_unpack(stream, NET_MESSAGE_HEADER)
+			class_index, _ = structs.stream_unpack(stream, NET_MESSAGE_HEADER)
 		finally:
 			stream.seek(pos)
 		
@@ -288,25 +266,25 @@ class NetMessage(object):
 		
 		if NetMessageFlags.has_context in self.flags:
 			assert self.context is not None
-			stream.write(NET_MESSAGE_UINT32.pack(self.context))
+			stream.write(structs.UINT32.pack(self.context))
 		else:
 			assert self.context is None
 		
 		if NetMessageFlags.has_transaction_id in self.flags:
 			assert self.trans_id is not None
-			stream.write(NET_MESSAGE_UINT32.pack(self.trans_id))
+			stream.write(structs.UINT32.pack(self.trans_id))
 		else:
 			assert self.trans_id is None
 		
 		if NetMessageFlags.has_player_id in self.flags:
 			assert self.ki_number is not None
-			stream.write(NET_MESSAGE_UINT32.pack(self.ki_number))
+			stream.write(structs.UINT32.pack(self.ki_number))
 		else:
 			assert self.ki_number is None
 		
 		if NetMessageFlags.has_account_uuid in self.flags:
 			assert self.account_uuid is not None
-			stream.write(NET_MESSAGE_UINT32.pack(self.account_uuid))
+			stream.write(structs.UINT32.pack(self.account_uuid))
 		else:
 			assert self.account_uuid is None
 
@@ -322,21 +300,21 @@ class NetMessageRoomsList(NetMessage):
 	def read(self, stream: typing.BinaryIO) -> None:
 		super().read(stream)
 		
-		(room_count,) = _stream_unpack(stream, NET_MESSAGE_UINT32)
+		(room_count,) = structs.stream_unpack(stream, structs.UINT32)
 		self.rooms = []
 		for _ in range(room_count):
 			location = Location.from_stream(stream)
-			(name_length,) = _stream_unpack(stream, NET_MESSAGE_UINT16)
-			name = _read_exact(stream, name_length)
+			(name_length,) = structs.stream_unpack(stream, structs.UINT16)
+			name = structs.read_exact(stream, name_length)
 			self.rooms.append((location, name))
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
 		
-		stream.write(NET_MESSAGE_UINT32.pack(len(self.rooms)))
+		stream.write(structs.UINT32.pack(len(self.rooms)))
 		for location, name in self.rooms:
 			location.write(stream)
-			stream.write(NET_MESSAGE_UINT16.pack(len(name)))
+			stream.write(structs.UINT16.pack(len(name)))
 			stream.write(name)
 
 
@@ -356,7 +334,7 @@ class NetMessagePagingRoom(NetMessageRoomsList):
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		super().read(stream)
-		(flags,) = _read_exact(stream, 1)
+		(flags,) = structs.read_exact(stream, 1)
 		self.page_flags = NetMessagePagingRoom.Flags(flags)
 	
 	def write(self, stream: typing.BinaryIO) -> None:
@@ -391,7 +369,7 @@ class GameConnection(base.BaseMOULConnection):
 		
 		account_uuid = uuid.UUID(bytes_le=account_uuid)
 		age_instance_uuid = uuid.UUID(bytes_le=age_instance_uuid)
-		if account_uuid != state.ZERO_UUID or age_instance_uuid != state.ZERO_UUID:
+		if account_uuid != structs.ZERO_UUID or age_instance_uuid != structs.ZERO_UUID:
 			logger.warning("Client connected to game server with non-zero UUIDs: account UUID %s, age instance UUID %s", account_uuid, age_instance_uuid)
 	
 	@base.message_handler(0)

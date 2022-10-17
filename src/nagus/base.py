@@ -27,15 +27,11 @@ import typing
 import uuid
 
 from . import state
+from . import structs
 
 
 logger = logging.getLogger(__name__)
 
-
-WORD = struct.Struct("<H")
-DWORD = struct.Struct("<I")
-QWORD = struct.Struct("<Q")
-# No BYTE - just do await self.read(1) instead!
 
 CONNECT_HEADER_TAIL = struct.Struct("<III16s")
 CONNECT_HEADER_LENGTH = struct.calcsize("<BH") + CONNECT_HEADER_TAIL.size
@@ -214,7 +210,7 @@ def pack_string_field(string: str, max_length: int = 0xffff) -> bytes:
 	utf_16_length = len(encoded) // 2
 	if utf_16_length >= max_length:
 		raise ValueError(f"Attempted to send string of length {utf_16_length} in string field with maximum length {max_length} - this would break the client")
-	return WORD.pack(utf_16_length) + encoded
+	return structs.UINT16.pack(utf_16_length) + encoded
 
 
 ConnT = typing.TypeVar("ConnT", bound="BaseMOULConnection")
@@ -335,13 +331,13 @@ class BaseMOULConnection(object):
 		return st.unpack(await self.read(st.size))
 	
 	async def read_string_field(self, max_length: int = 0xffff) -> str:
-		(length,) = await self.read_unpack(WORD)
+		(length,) = await self.read_unpack(structs.UINT16)
 		if length >= max_length:
 			raise ProtocolError(f"Client sent string of length {length} in string field with maximum length {max_length}")
 		return (await self.read(2 * length)).decode("utf-16-le")
 	
 	async def write_message(self, message_type: int, data: bytes) -> None:
-		await self.write(WORD.pack(message_type) + data)
+		await self.write(structs.UINT16.pack(message_type) + data)
 	
 	async def read_connect_packet_header(self) -> None:
 		"""Read and unpack the remaining connect packet header and store the unpacked information.
@@ -351,7 +347,7 @@ class BaseMOULConnection(object):
 		it was used to select the subclass of :class:`BaseMOULConnection` to be used.
 		"""
 		
-		(header_length,) = await self.read_unpack(WORD)
+		(header_length,) = await self.read_unpack(structs.UINT16)
 		if header_length != CONNECT_HEADER_LENGTH:
 			raise ProtocolError(f"Client sent connect header with unexpected length {header_length} (should be {CONNECT_HEADER_LENGTH})")
 		
@@ -442,7 +438,7 @@ class BaseMOULConnection(object):
 			
 			# TODO Is there any way for clients to disconnect cleanly without unceremoniously closing the socket?
 			while True:
-				(message_type,) = await self.read_unpack(WORD)
+				(message_type,) = await self.read_unpack(structs.UINT16)
 				await self.handle_message(message_type)
 		finally:
 			await self.handle_disconnect()

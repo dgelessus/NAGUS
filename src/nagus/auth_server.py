@@ -29,6 +29,7 @@ import uuid
 
 from . import base
 from . import state
+from . import structs
 
 
 logger = logging.getLogger(__name__)
@@ -159,7 +160,7 @@ class AuthConnection(base.BaseMOULConnection):
 			raise base.ProtocolError(f"Client sent client-to-auth connect data with unexpected length {data_length} (should be {CONNECT_DATA.size})")
 		
 		token = uuid.UUID(bytes_le=token)
-		if token != state.ZERO_UUID:
+		if token != structs.ZERO_UUID:
 			logger.info("Client reconnected using token %s", token)
 			try:
 				# When client reconnects with a token,
@@ -284,7 +285,7 @@ class AuthConnection(base.BaseMOULConnection):
 			ACCOUNT_PLAYER_INFO_HEADER.pack(trans_id, player_vault_node_id)
 			+ base.pack_string_field(player_name, 40)
 			+ base.pack_string_field(avatar_shape, 64)
-			+ base.DWORD.pack(explorer)
+			+ structs.UINT32.pack(explorer)
 		))
 	
 	async def account_login_reply(
@@ -321,10 +322,10 @@ class AuthConnection(base.BaseMOULConnection):
 		
 		# TODO Implement actual authentication
 		
-		async for avatar in self.server_state.find_avatars(state.ZERO_UUID):
+		async for avatar in self.server_state.find_avatars(structs.ZERO_UUID):
 			await self.account_player_info(trans_id, avatar.player_node_id, avatar.name, avatar.shape, avatar.explorer)
 		
-		await self.account_login_reply(trans_id, base.NetError.success, state.ZERO_UUID, AccountFlags.user, AccountBillingType.paid_subscriber, (0, 0, 0, 0))
+		await self.account_login_reply(trans_id, base.NetError.success, structs.ZERO_UUID, AccountFlags.user, AccountBillingType.paid_subscriber, (0, 0, 0, 0))
 	
 	async def account_set_player_reply(self, trans_id: int, result: base.NetError) -> None:
 		logger.debug("Sending set player reply: transaction ID %d, result %r", trans_id, result)
@@ -383,7 +384,7 @@ class AuthConnection(base.BaseMOULConnection):
 			return
 		
 		try:
-			ki_number, _ = await self.server_state.create_avatar(avatar_name, avatar_shape, 1, state.ZERO_UUID)
+			ki_number, _ = await self.server_state.create_avatar(avatar_name, avatar_shape, 1, structs.ZERO_UUID)
 		except ValueError:
 			# More correct would be invalid_parameter,
 			# but the client assumes that means an invalid invite code.
@@ -571,10 +572,10 @@ class AuthConnection(base.BaseMOULConnection):
 		sequence_number, language = await self.read_unpack(VAULT_INIT_AGE_REQUEST_FOOTER)
 		logger.debug("Vault init age request: transaction ID %d, instance UUID %s, parent instance UUID %s, age %r, instance name %r, user-defined name %r, description %r", trans_id, instance_uuid, parent_instance_uuid, age_file_name, instance_name, user_defined_name, description)
 		
-		if instance_uuid == state.ZERO_UUID:
+		if instance_uuid == structs.ZERO_UUID:
 			logger.error("Received init age request with zero UUID, this isn't supposed to happen!")
 			await self.vault_init_age_reply(trans_id, base.NetError.invalid_parameter, 0, 0)
-		if parent_instance_uuid == state.ZERO_UUID:
+		if parent_instance_uuid == structs.ZERO_UUID:
 			parent_instance_uuid = None
 		if not age_file_name:
 			logger.error("Received init age request with empty age file name, this isn't supposed to happen!")
@@ -627,9 +628,9 @@ class AuthConnection(base.BaseMOULConnection):
 		try:
 			age_node_id, _ = await self.server_state.find_age_instance(age_file_name, instance_uuid)
 		except state.AgeInstanceNotFound:
-			await self.age_reply(trans_id, base.NetError.age_not_found, 0, state.ZERO_UUID, 0, ipaddress.IPv4Address(0))
+			await self.age_reply(trans_id, base.NetError.age_not_found, 0, structs.ZERO_UUID, 0, ipaddress.IPv4Address(0))
 		except Exception:
 			logger.error("Unhandled exception while finding age instance for age request", exc_info=True)
-			await self.age_reply(trans_id, base.NetError.internal_error, 0, state.ZERO_UUID, 0, ipaddress.IPv4Address(0))
+			await self.age_reply(trans_id, base.NetError.internal_error, 0, structs.ZERO_UUID, 0, ipaddress.IPv4Address(0))
 		else:
 			await self.age_reply(trans_id, base.NetError.success, age_node_id, instance_uuid, age_node_id, self._get_own_ipv4_address())
