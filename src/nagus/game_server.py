@@ -285,7 +285,7 @@ class NetMessage(object):
 		
 		if NetMessageFlags.has_account_uuid in self.flags:
 			assert self.account_uuid is not None
-			stream.write(structs.UINT32.pack(self.account_uuid))
+			stream.write(self.account_uuid.bytes_le)
 		else:
 			assert self.account_uuid is None
 
