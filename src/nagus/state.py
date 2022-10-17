@@ -22,6 +22,7 @@ import asyncio
 import concurrent.futures
 import datetime
 import enum
+import io
 import logging
 import sqlite3
 import struct
@@ -242,42 +243,27 @@ class VaultNodeData(object):
 		self.blob_1 = blob_1
 		self.blob_2 = blob_2
 	
-	@classmethod
-	def unpack(cls, data: bytes) -> "VaultNodeData":
-		(flags,) = VAULT_NODE_DATA_HEADER.unpack_from(data)
-		data = data[VAULT_NODE_DATA_HEADER.size:]
+	def read(self, stream: typing.BinaryIO) -> None:
+		(flags,) = structs.stream_unpack(stream, VAULT_NODE_DATA_HEADER)
 		if flags >= 1 << 32:
 			raise ValueError(f"Unsupported vault node data flags set: 0x{flags:>016x}")
 		
 		flags = VaultNodeFieldFlags(flags)
-		self = cls()
 		
 		def _unpack_uint32() -> int:
-			nonlocal data
-			(x,) = structs.UINT32.unpack_from(data)
-			data = data[structs.UINT32.size:]
+			(x,) = structs.stream_unpack(stream, structs.UINT32)
 			return x
 		
 		def _unpack_int32() -> int:
-			nonlocal data
-			(x,) = structs.INT32.unpack_from(data)
-			data = data[structs.INT32.size:]
+			(x,) = structs.stream_unpack(stream, structs.INT32)
 			return x
 		
 		def _unpack_uuid() -> uuid.UUID:
-			nonlocal data
-			uu = uuid.UUID(bytes_le=data[:16])
-			data = data[16:]
-			return uu
+			return uuid.UUID(bytes_le=structs.read_exact(stream, 16))
 		
 		def _unpack_blob() -> bytes:
-			nonlocal data
 			length = _unpack_uint32()
-			blob = data[:length]
-			if len(blob) != length:
-				raise ValueError(f"Truncated vault node string or blob: expected {length} bytes, but there are only {len(blob)} bytes of data remaining")
-			data = data[length:]
-			return blob
+			return structs.read_exact(stream, length)
 		
 		def _unpack_string() -> str:
 			string = _unpack_blob().decode("utf-16-le")
@@ -380,11 +366,21 @@ class VaultNodeData(object):
 		
 		if VaultNodeFieldFlags.blob_2 in flags:
 			self.blob_2 = _unpack_blob()
-		
-		if data:
-			raise ValueError(f"Extra data at end of packed vault node data: {data!r}")
-		
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "VaultNodeData":
+		self = cls()
+		self.read(stream)
 		return self
+	
+	@classmethod
+	def unpack(cls, data: bytes) -> "VaultNodeData":
+		with io.BytesIO(data) as stream:
+			self = cls.from_stream(stream)
+			extra_data = stream.read()
+			if extra_data:
+				raise ValueError(f"Extra data at end of packed vault node data: {extra_data!r}")
+			return self
 	
 	def pack(self) -> bytes:
 		flags = VaultNodeFieldFlags(0)
