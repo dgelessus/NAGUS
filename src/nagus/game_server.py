@@ -407,10 +407,11 @@ class GameConnection(base.BaseMOULConnection):
 	async def receive_propagate_buffer(self) -> None:
 		buffer_type, buffer_length = await self.read_unpack(PROPAGATE_BUFFER_HEADER)
 		buffer_type = NetMessageClassIndex(buffer_type)
-		buffer = io.BytesIO(await self.read(buffer_length))
 		
-		message = NetMessage.from_stream(buffer)
-		extra_data = buffer.read()
+		with io.BytesIO(await self.read(buffer_length)) as buffer:
+			message = NetMessage.from_stream(buffer)
+			extra_data = buffer.read()
+		
 		if buffer_type != message.class_index:
 			raise base.ProtocolError(f"PropagateBuffer type {buffer_type!r} doesn't match class index in serialized message: {message.class_index!r}")
 		
