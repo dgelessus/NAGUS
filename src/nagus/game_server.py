@@ -237,6 +237,7 @@ class NetMessage(object):
 		
 		class_index = NetMessageClassIndex(class_index)
 		
+		self: NetMessage
 		if class_index == NetMessageClassIndex.rooms_list:
 			self = NetMessageRoomsList()
 		elif class_index == NetMessageClassIndex.paging_room:
