@@ -272,7 +272,7 @@ Common data types
      otherwise defaults to :cpp:var:`plLoadMask::kAlways`.
    * **Class type:** 2-byte unsigned int.
    * **Object ID:** 4-byte unsigned int.
-   * **Object name:** :ref:`SafeWString <safe_w_string>`.
+   * **Object name:** :ref:`SafeString <safe_string>`.
    * **Clone ID:** 2-byte unsigned int.
      Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
      otherwise defaults to 0.
