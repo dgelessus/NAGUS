@@ -160,9 +160,9 @@ and not supported by MOSS or DIRTSAND
     
     * :cpp:class:`plNetMsgStreamedObject` = 0x027b = 635 (abstract)
       
-      * ``plNetMsgSharedState`` = 0x027c = 636 (abstract)
+      * :cpp:class:`plNetMsgSharedState` = 0x027c = 636 (abstract)
         
-        * ``plNetMsgTestAndSet`` = 0x027d = 637 (client -> server)
+        * :cpp:class:`plNetMsgTestAndSet` = 0x027d = 637 (client -> server)
       * ``plNetMsgSDLState`` = 0x02cd = 717 (client <-> server)
         
         * ``plNetMsgSDLStateBCast`` = 0x0329 = 809 (client <-> server)
@@ -591,3 +591,22 @@ Common data types
      Byte length of the following stream data field.
    * **Stream data:** Variable-length byte array.
      The format of this data depends on the subclass.
+
+:cpp:class:`plNetMsgSharedState`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgSharedState : public plNetMsgStreamedObject
+   
+   *Class index = 0x027c = 636*
+   
+   * **Header:** :cpp:class:`plNetMsgStreamedObject`.
+   * **Lock request:** 1-byte boolean.
+
+:cpp:class:`plNetMsgTestAndSet`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgTestAndSet : public plNetMsgSharedState
+   
+   *Class index = 0x027d = 637*
+   
+   Identical structure to its superclass :cpp:class:`plNetMsgSharedState`.
