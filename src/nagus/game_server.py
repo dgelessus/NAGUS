@@ -387,12 +387,14 @@ class NetMessage(object):
 			self = NetMessageObject()
 		elif class_index in {
 			NetMessageClassIndex.streamed_object,
-			NetMessageClassIndex.shared_state,
-			NetMessageClassIndex.test_and_set,
 			NetMessageClassIndex.sdl_state,
 			NetMessageClassIndex.sdl_state_broadcast,
 		}:
 			self = NetMessageStreamedObject()
+		elif class_index == NetMessageClassIndex.shared_state:
+			self = NetMessageSharedState()
+		elif class_index == NetMessageClassIndex.test_and_set:
+			self = NetMessageTestAndSet()
 		else:
 			self = cls()
 		
@@ -556,6 +558,30 @@ class NetMessageStreamedObject(NetMessageObject):
 		
 		stream.write(NET_MESSAGE_STREAMED_OBJECT_HEADER.pack(uncompressed_length, self.compression_type, len(stream_data)))
 		stream.write(stream_data)
+
+
+class NetMessageSharedState(NetMessageStreamedObject):
+	lock_request: bool
+	
+	def repr_fields(self) -> collections.OrderedDict[str, str]:
+		fields = super().repr_fields()
+		fields["lock_request"] = repr(self.lock_request)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		
+		(lock_request,) = structs.read_exact(stream, 1)
+		self.lock_request = bool(lock_request)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		
+		stream.write(bytes([self.lock_request]))
+
+
+class NetMessageTestAndSet(NetMessageSharedState):
+	pass
 
 
 class GameClientState(object):
