@@ -585,7 +585,7 @@ Common data types
    * **Uncompressed length:** 4-byte unsigned int.
      Byte length of the stream data after decompression.
      If the stream data is not compressed,
-     this is identical to the stream length.
+     this field is set to 0.
    * **Compression type:** 1-byte :cpp:enum:`plNetMessage::CompressionType`.
    * **Stream length:** 4-byte unsigned int.
      Byte length of the following stream data field.
