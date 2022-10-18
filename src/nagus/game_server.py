@@ -27,6 +27,7 @@ import logging
 import struct
 import typing
 import uuid
+import zlib
 
 from . import base
 from . import state
@@ -51,6 +52,7 @@ PROPAGATE_BUFFER_HEADER = struct.Struct("<II")
 NET_MESSAGE_HEADER = struct.Struct("<HI")
 NET_MESSAGE_VERSION = struct.Struct("<BB")
 NET_MESSAGE_TIME_SENT = struct.Struct("<II")
+NET_MESSAGE_STREAMED_OBJECT_HEADER = struct.Struct("<IBI")
 
 
 class Location(object):
@@ -276,6 +278,13 @@ class NetMessageFlags(enum.IntFlag):
 	)
 
 
+class CompressionType(enum.Enum):
+	none = 0
+	failed = 1
+	zlib = 2
+	dont = 3
+
+
 class NetMessage(object):
 	class_index: NetMessageClassIndex
 	flags: NetMessageFlags
@@ -372,15 +381,18 @@ class NetMessage(object):
 			self = NetMessageGameStateRequest()
 		elif class_index in {
 			NetMessageClassIndex.object,
+			NetMessageClassIndex.get_shared_state,
+			NetMessageClassIndex.object_state_request,
+		}:
+			self = NetMessageObject()
+		elif class_index in {
 			NetMessageClassIndex.streamed_object,
 			NetMessageClassIndex.shared_state,
 			NetMessageClassIndex.test_and_set,
 			NetMessageClassIndex.sdl_state,
 			NetMessageClassIndex.sdl_state_broadcast,
-			NetMessageClassIndex.get_shared_state,
-			NetMessageClassIndex.object_state_request,
 		}:
-			self = NetMessageObject()
+			self = NetMessageStreamedObject()
 		else:
 			self = cls()
 		
@@ -501,6 +513,49 @@ class NetMessageObject(NetMessage):
 		super().write(stream)
 		
 		self.uoid.write(stream)
+
+
+class NetMessageStreamedObject(NetMessageObject):
+	compression_type: CompressionType
+	data: bytes
+	
+	def repr_fields(self) -> collections.OrderedDict[str, str]:
+		fields = super().repr_fields()
+		if self.compression_type != CompressionType.none:
+			fields["compression_type"] = str(self.compression_type)
+		fields["data"] = repr(self.data)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		
+		uncompressed_length, compression_type, stream_length = structs.stream_unpack(stream, NET_MESSAGE_STREAMED_OBJECT_HEADER)
+		self.compression_type = CompressionType(compression_type)
+		if self.compression_type == CompressionType.failed:
+			raise ValueError("plNetMsgStreamedObject has its compression type set to failed, this should never happen!")
+		
+		stream_data = structs.read_exact(stream, stream_length)
+		if self.compression_type == CompressionType.zlib:
+			self.data = zlib.decompress(stream_data)
+			if uncompressed_length != len(self.data):
+				raise ValueError(f"plNetMsgStreamedObject uncompressed length {uncompressed_length} doesn't match actual length of data after decompression: {len(self.data)}")
+		else:
+			self.data = stream_data
+			if uncompressed_length != 0:
+				raise ValueError(f"plNetMsgStreamedObject uncompressed length {uncompressed_length} should be 0  for non-compressed data")
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		
+		if self.compression_type == CompressionType.zlib:
+			uncompressed_length = len(self.data)
+			stream_data = zlib.compress(self.data)
+		else:
+			uncompressed_length = 0
+			stream_data = self.data
+		
+		stream.write(NET_MESSAGE_STREAMED_OBJECT_HEADER.pack(uncompressed_length, self.compression_type, len(stream_data)))
+		stream.write(stream_data)
 
 
 class GameClientState(object):
