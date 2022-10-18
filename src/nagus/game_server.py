@@ -142,7 +142,7 @@ class Uoid(object):
 	object_name: bytes
 	clone_ids: typing.Optional[typing.Tuple[int, int]]
 	
-	def repr_fields(self) -> collections.OrderedDict[str, str]:
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = collections.OrderedDict()
 		fields["location"] = repr(self.location)
 		if self.load_mask != LoadMask.ALWAYS:
@@ -295,7 +295,7 @@ class NetMessage(object):
 	ki_number: typing.Optional[int]
 	account_uuid: typing.Optional[uuid.UUID]
 	
-	def repr_fields(self) -> collections.OrderedDict[str, str]:
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = collections.OrderedDict()
 		fields["class_index"] = repr(self.class_index)
 		fields["flags"] = repr(self.flags)
@@ -444,7 +444,7 @@ class NetMessage(object):
 class NetMessageRoomsList(NetMessage):
 	rooms: typing.List[typing.Tuple[Location, bytes]]
 	
-	def repr_fields(self) -> collections.OrderedDict[str, str]:
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
 		fields["rooms"] = repr(self.rooms)
 		return fields
@@ -479,7 +479,7 @@ class NetMessagePagingRoom(NetMessageRoomsList):
 	
 	page_flags: "NetMessagePagingRoom.Flags"
 	
-	def repr_fields(self) -> collections.OrderedDict[str, str]:
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
 		fields["page_flags"] = repr(self.page_flags)
 		return fields
@@ -501,7 +501,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 class NetMessageObject(NetMessage):
 	uoid: Uoid
 	
-	def repr_fields(self) -> collections.OrderedDict[str, str]:
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
 		fields["uoid"] = repr(self.uoid)
 		return fields
@@ -521,7 +521,7 @@ class NetMessageStreamedObject(NetMessageObject):
 	compression_type: CompressionType
 	data: bytes
 	
-	def repr_fields(self) -> collections.OrderedDict[str, str]:
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
 		if self.compression_type != CompressionType.none:
 			fields["compression_type"] = str(self.compression_type)
@@ -563,7 +563,7 @@ class NetMessageStreamedObject(NetMessageObject):
 class NetMessageSharedState(NetMessageStreamedObject):
 	lock_request: bool
 	
-	def repr_fields(self) -> collections.OrderedDict[str, str]:
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
 		fields["lock_request"] = repr(self.lock_request)
 		return fields
