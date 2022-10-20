@@ -53,6 +53,7 @@ NET_MESSAGE_HEADER = struct.Struct("<HI")
 NET_MESSAGE_VERSION = struct.Struct("<BB")
 NET_MESSAGE_TIME_SENT = struct.Struct("<II")
 NET_MESSAGE_STREAMED_OBJECT_HEADER = struct.Struct("<IBI")
+NET_MESSAGE_SDL_STATE = struct.Struct("<???")
 
 
 class Location(object):
@@ -385,16 +386,16 @@ class NetMessage(object):
 			NetMessageClassIndex.object_state_request,
 		}:
 			self = NetMessageObject()
-		elif class_index in {
-			NetMessageClassIndex.streamed_object,
-			NetMessageClassIndex.sdl_state,
-			NetMessageClassIndex.sdl_state_broadcast,
-		}:
+		elif class_index == NetMessageClassIndex.streamed_object:
 			self = NetMessageStreamedObject()
 		elif class_index == NetMessageClassIndex.shared_state:
 			self = NetMessageSharedState()
 		elif class_index == NetMessageClassIndex.test_and_set:
 			self = NetMessageTestAndSet()
+		elif class_index == NetMessageClassIndex.sdl_state:
+			self = NetMessageSDLState()
+		elif class_index == NetMessageClassIndex.sdl_state_broadcast:
+			self = NetMessageSDLStateBroadcast()
 		else:
 			self = cls()
 		
@@ -581,6 +582,34 @@ class NetMessageSharedState(NetMessageStreamedObject):
 
 
 class NetMessageTestAndSet(NetMessageSharedState):
+	pass
+
+
+class NetMessageSDLState(NetMessageStreamedObject):
+	is_initial_state: bool
+	persist_on_server: bool
+	is_avatar_state: bool
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.is_initial_state:
+			fields["is_initial_state"] = repr(self.is_initial_state)
+		if not self.persist_on_server:
+			fields["persist_on_server"] = repr(self.persist_on_server)
+		if self.is_avatar_state:
+			fields["is_avatar_state"] = repr(self.is_avatar_state)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		self.is_initial_state, self.persist_on_server, self.is_avatar_state = structs.stream_unpack(stream, NET_MESSAGE_SDL_STATE)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(NET_MESSAGE_SDL_STATE.pack(self.is_initial_state, self.persist_on_server, self.is_avatar_state))
+
+
+class NetMessageSDLStateBroadcast(NetMessageStreamedObject):
 	pass
 
 
