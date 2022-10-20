@@ -163,9 +163,9 @@ and not supported by MOSS or DIRTSAND
       * :cpp:class:`plNetMsgSharedState` = 0x027c = 636 (abstract)
         
         * :cpp:class:`plNetMsgTestAndSet` = 0x027d = 637 (client -> server)
-      * ``plNetMsgSDLState`` = 0x02cd = 717 (client <-> server)
+      * :cpp:class:`plNetMsgSDLState` = 0x02cd = 717 (client <-> server)
         
-        * ``plNetMsgSDLStateBCast`` = 0x0329 = 809 (client <-> server)
+        * :cpp:class:`plNetMsgSDLStateBCast` = 0x0329 = 809 (client <-> server)
     * ``plNetMsgGetSharedState`` = 0x027e = 638 (client -> server, unused)
     * ``plNetMsgObjStateRequest`` = 0x0286 = 646 (client -> server, unused)
   * ``plNetMsgStream`` = 0x026c = 620 (abstract)
@@ -371,7 +371,7 @@ Common data types
          The open-sourced client code sets this flag in two cases:
          
          * If ``plNetClientRecorder`` is enabled using the console command ``Demo.RecordNet``,
-           this flag is set on all ``plNetMsgSDLState``, ``plNetMsgSDLStateBCast``, ``plNetMsgGameMessage``, and ``plNetMsgLoadClone`` messages.
+           this flag is set on all :cpp:class:`plNetMsgSDLState`, :cpp:class:`plNetMsgSDLStateBCast`, ``plNetMsgGameMessage``, and ``plNetMsgLoadClone`` messages.
          * If voice chat echo has been enabled using the console command ``Net.Voice.Echo``,
            this flag is set on all ``plNetMsgVoice`` messages
            (this is broken in OpenUru clients if compression is disabled using the console command ``Audio.EnableVoiceCompression``).
@@ -418,7 +418,7 @@ Common data types
       
       .. cpp:enumerator:: kNewSDLState = 1 << 10
          
-         When a ``plSDLModifier`` sends a ``plNetMsgSDLState`` (or subclass) message for the first time,
+         When a ``plSDLModifier`` sends a :cpp:class:`plNetMsgSDLState` (or subclass) message for the first time,
          the client sets this flag in the message.
          All further messages from the same ``plSDLModifier`` have it unset.
          Should never be set for other message types.
@@ -439,7 +439,7 @@ Common data types
          Whether the message should be filtered by relevance regions.
          The client sets this flag for ``plNetMsgGameMessage`` (or subclass) messages
          if the wrapped ``plMessage`` has the ``kNetUseRelevanceRegions`` flag set,
-         and for some ``plNetMsgSDLState`` (or subclass) messages caused by ``plArmatureMod``.
+         and for some :cpp:class:`plNetMsgSDLState` (or subclass) messages caused by ``plArmatureMod``.
          Ignored by MOSS and DIRTSAND.
       
       .. cpp:enumerator:: kHasAcctUUID = 1 << 14
@@ -466,7 +466,7 @@ Common data types
          
          Set for all :cpp:class:`plNetMsgRoomsList`, ``plNetMsgObjStateRequest``, ``plNetMsgMembersListReq``, and ``plNetMsgServerToClient`` messages
          (including subclasses, if any).
-         DIRTSAND also sets it for some ``plNetMsgSDLStateBCast`` messages.
+         DIRTSAND also sets it for some :cpp:class:`plNetMsgSDLStateBCast` messages.
          MOSS, DIRTSAND, and the client never use this flag for anything.
          Unclear if Cyan's server software does anything with it.
       
@@ -610,3 +610,32 @@ Common data types
    *Class index = 0x027d = 637*
    
    Identical structure to its superclass :cpp:class:`plNetMsgSharedState`.
+
+:cpp:class:`plNetMsgSDLState`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgSDLState : public plNetMsgStreamedObject
+   
+   *Class index = 0x02cd = 717*
+   
+   * **Header:** :cpp:class:`plNetMsgStreamedObject`.
+   * **Is initial state:** 1-byte boolean.
+     Set to true by the server when replying to a :cpp:class:`plNetMsgGameStateRequest`.
+     The client always sets it to false.
+   * **Persist on server:** 1-byte boolean.
+     Normally always set to true.
+     The client sets it to false for SDL states that should only be propagated to other clients,
+     but not saved permanently on the server.
+   * **Is avatar state:** 1-byte boolean.
+     Set to true by the client for SDL states related/attached to an avatar.
+     If true,
+     the persist on server flag should be false.
+
+:cpp:class:`plNetMsgSDLStateBCast`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgSDLStateBCast : public plNetMsgSDLState
+   
+   *Class index = 0x0329 = 809*
+   
+   Identical structure to its superclass :cpp:class:`plNetMsgSDLState`.
