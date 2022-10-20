@@ -396,6 +396,13 @@ class NetMessage(object):
 			self = NetMessageSDLState()
 		elif class_index == NetMessageClassIndex.sdl_state_broadcast:
 			self = NetMessageSDLStateBroadcast()
+		elif class_index in {
+			NetMessageClassIndex.stream,
+			NetMessageClassIndex.game_message,
+			NetMessageClassIndex.game_message_directed,
+			NetMessageClassIndex.load_clone,
+		}:
+			self = NetMessageStream()
 		else:
 			self = cls()
 		
@@ -518,7 +525,7 @@ class NetMessageObject(NetMessage):
 		self.uoid.write(stream)
 
 
-class NetMessageStreamedObject(NetMessageObject):
+class NetMessageStream(NetMessage):
 	compression_type: CompressionType
 	data: bytes
 	
@@ -559,6 +566,11 @@ class NetMessageStreamedObject(NetMessageObject):
 		
 		stream.write(NET_MESSAGE_STREAMED_OBJECT_HEADER.pack(uncompressed_length, self.compression_type, len(stream_data)))
 		stream.write(stream_data)
+
+
+class NetMessageStreamedObject(NetMessageStream, NetMessageObject):
+	# Multiple inheritance, yo!
+	pass
 
 
 class NetMessageSharedState(NetMessageStreamedObject):
