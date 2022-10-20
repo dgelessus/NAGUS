@@ -168,7 +168,7 @@ and not supported by MOSS or DIRTSAND
         * :cpp:class:`plNetMsgSDLStateBCast` = 0x0329 = 809 (client <-> server)
     * :cpp:class:`plNetMsgGetSharedState` = 0x027e = 638 (client -> server, unused)
     * :cpp:class:`plNetMsgObjStateRequest` = 0x0286 = 646 (client -> server, unused)
-  * ``plNetMsgStream`` = 0x026c = 620 (abstract)
+  * :cpp:class:`plNetMsgStream` = 0x026c = 620 (abstract)
     
     * ``plNetMsgGameMessage`` = 0x026b = 619 (client <-> server)
       
@@ -286,6 +286,18 @@ Common data types
       
       .. cpp:enumerator:: kHasCloneIDs = 1 << 0
       .. cpp:enumerator:: kHasLoadMask = 1 << 1
+
+.. cpp:class:: plNetMsgStreamHelper : public plCreatable
+   
+   * **Uncompressed length:** 4-byte unsigned int.
+     Byte length of the stream data after decompression.
+     If the stream data is not compressed,
+     this field is set to 0.
+   * **Compression type:** 1-byte :cpp:enum:`plNetMessage::CompressionType`.
+   * **Stream length:** 4-byte unsigned int.
+     Byte length of the following stream data field.
+   * **Stream data:** Variable-length byte array.
+     The format of this data depends on the class of the containing message.
 
 :cpp:class:`plNetMessage`
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -582,15 +594,7 @@ Common data types
    *Class index = 0x027b = 635*
    
    * **Header:** :cpp:class:`plNetMsgObject`.
-   * **Uncompressed length:** 4-byte unsigned int.
-     Byte length of the stream data after decompression.
-     If the stream data is not compressed,
-     this field is set to 0.
-   * **Compression type:** 1-byte :cpp:enum:`plNetMessage::CompressionType`.
-   * **Stream length:** 4-byte unsigned int.
-     Byte length of the following stream data field.
-   * **Stream data:** Variable-length byte array.
-     The format of this data depends on the subclass.
+   * **Stream:** :cpp:class:`plNetMsgStreamHelper`.
 
 :cpp:class:`plNetMsgSharedState`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -658,3 +662,13 @@ Common data types
    *Class index = 0x0286 = 646*
    
    Identical structure to its superclass :cpp:class:`plNetMsgObject`.
+
+:cpp:class:`plNetMsgStream`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgStream : public plNetMessage
+   
+   *Class index = 0x026c = 620*
+   
+   * **Header:** :cpp:class:`plNetMessage`.
+   * **Stream:** :cpp:class:`plNetMsgStreamHelper`.
