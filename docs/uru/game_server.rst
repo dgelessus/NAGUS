@@ -166,8 +166,8 @@ and not supported by MOSS or DIRTSAND
       * :cpp:class:`plNetMsgSDLState` = 0x02cd = 717 (client <-> server)
         
         * :cpp:class:`plNetMsgSDLStateBCast` = 0x0329 = 809 (client <-> server)
-    * ``plNetMsgGetSharedState`` = 0x027e = 638 (client -> server, unused)
-    * ``plNetMsgObjStateRequest`` = 0x0286 = 646 (client -> server, unused)
+    * :cpp:class:`plNetMsgGetSharedState` = 0x027e = 638 (client -> server, unused)
+    * :cpp:class:`plNetMsgObjStateRequest` = 0x0286 = 646 (client -> server, unused)
   * ``plNetMsgStream`` = 0x026c = 620 (abstract)
     
     * ``plNetMsgGameMessage`` = 0x026b = 619 (client <-> server)
@@ -464,7 +464,7 @@ Common data types
       
       .. cpp:enumerator:: kIsSystemMessage = 1 << 17
          
-         Set for all :cpp:class:`plNetMsgRoomsList`, ``plNetMsgObjStateRequest``, ``plNetMsgMembersListReq``, and ``plNetMsgServerToClient`` messages
+         Set for all :cpp:class:`plNetMsgRoomsList`, :cpp:class:`plNetMsgObjStateRequest`, ``plNetMsgMembersListReq``, and ``plNetMsgServerToClient`` messages
          (including subclasses, if any).
          DIRTSAND also sets it for some :cpp:class:`plNetMsgSDLStateBCast` messages.
          MOSS, DIRTSAND, and the client never use this flag for anything.
@@ -639,3 +639,22 @@ Common data types
    *Class index = 0x0329 = 809*
    
    Identical structure to its superclass :cpp:class:`plNetMsgSDLState`.
+
+:cpp:class:`plNetMsgGetSharedState`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgGetSharedState : public plNetMsgObject
+   
+   *Class index = 0x027e = 638*
+   
+   * **Header:** :cpp:class:`plNetMsgObject`.
+   * **Shared state name:** 32-byte zero-terminated string.
+
+:cpp:class:`plNetMsgObjStateRequest`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgObjStateRequest : public plNetMsgObject
+   
+   *Class index = 0x0286 = 646*
+   
+   Identical structure to its superclass :cpp:class:`plNetMsgObject`.
