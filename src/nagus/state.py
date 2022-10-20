@@ -30,8 +30,12 @@ import types
 import typing
 import uuid
 
-from . import auth_server
 from . import structs
+
+
+if typing.TYPE_CHECKING:
+	# Avoid circular import
+	from . import auth_server
 
 
 logger = logging.getLogger(__name__)
