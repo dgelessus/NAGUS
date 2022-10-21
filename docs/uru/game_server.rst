@@ -170,7 +170,7 @@ and not supported by MOSS or DIRTSAND
     * :cpp:class:`plNetMsgObjStateRequest` = 0x0286 = 646 (client -> server, unused)
   * :cpp:class:`plNetMsgStream` = 0x026c = 620 (abstract)
     
-    * ``plNetMsgGameMessage`` = 0x026b = 619 (client <-> server)
+    * :cpp:class:`plNetMsgGameMessage` = 0x026b = 619 (client <-> server)
       
       * ``plNetMsgGameMessageDirected`` = 0x032e = 814 (client <-> server)
       * ``plNetMsgLoadClone`` = 0x03b3 = 947 (client <-> server)
@@ -232,6 +232,13 @@ Common data types
      Should always be 0.
      This string terminator is stored in the data,
      but not counted in the count field.
+
+.. cpp:class:: plUnifiedTime
+   
+   * **Seconds:** 4-byte unsigned int.
+     Unix timestamp (seconds since 1970).
+   * **Microseconds:** 4-byte unsigned int.
+     Fractional part of the timestamp for sub-second precision.
 
 .. cpp:class:: plLocation
    
@@ -328,17 +335,12 @@ Common data types
        Always set to 12.
      * **Minor version:** 1-byte unsigned int.
        Always set to 6.
-   * **Time sent:** 8 bytes.
+   * **Time sent:** 8-byte :cpp:class:`plUnifiedTime`.
      Only present if the :cpp:enumerator:`~BitVectorFlags::kHasTimeSent` flag is set.
      Timestamp indicating when this message was sent.
      Used by the client to adjust for differences between the client and server clocks.
      The client sets this field for *every* message it sends,
      and so does every server implementation apparently.
-     
-     * **Seconds:** 4-byte unsigned int.
-       Unix timestamp (seconds since 1970).
-     * **Microseconds:** 4-byte unsigned int.
-       Fractional part of the timestamp for sub-second precision.
    * **Context:** 4-byte unsigned int.
      Only present if the :cpp:enumerator:`~BitVectorFlags::kHasContext` flag is set.
      Always unset in practice and not used by client or servers.
@@ -369,7 +371,7 @@ Common data types
       
       .. cpp:enumerator:: kHasGameMsgRcvrs = 1 << 1
          
-         Set for ``plNetMsgGameMessage`` (or subclass) messages if they use "direct communication".
+         Set for :cpp:class:`plNetMsgGameMessage` (or subclass) messages if they use "direct communication".
          Should never be set for other message types.
          According to comments in the open-sourced client code,
          this flag is meant to allow some server-side optimization.
@@ -383,7 +385,7 @@ Common data types
          The open-sourced client code sets this flag in two cases:
          
          * If ``plNetClientRecorder`` is enabled using the console command ``Demo.RecordNet``,
-           this flag is set on all :cpp:class:`plNetMsgSDLState`, :cpp:class:`plNetMsgSDLStateBCast`, ``plNetMsgGameMessage``, and ``plNetMsgLoadClone`` messages.
+           this flag is set on all :cpp:class:`plNetMsgSDLState`, :cpp:class:`plNetMsgSDLStateBCast`, :cpp:class:`plNetMsgGameMessage`, and ``plNetMsgLoadClone`` messages.
          * If voice chat echo has been enabled using the console command ``Net.Voice.Echo``,
            this flag is set on all ``plNetMsgVoice`` messages
            (this is broken in OpenUru clients if compression is disabled using the console command ``Audio.EnableVoiceCompression``).
@@ -449,7 +451,7 @@ Common data types
       .. cpp:enumerator:: kUseRelevanceRegions = 1 << 13
          
          Whether the message should be filtered by relevance regions.
-         The client sets this flag for ``plNetMsgGameMessage`` (or subclass) messages
+         The client sets this flag for :cpp:class:`plNetMsgGameMessage` (or subclass) messages
          if the wrapped ``plMessage`` has the ``kNetUseRelevanceRegions`` flag set,
          and for some :cpp:class:`plNetMsgSDLState` (or subclass) messages caused by ``plArmatureMod``.
          Ignored by MOSS and DIRTSAND.
@@ -463,7 +465,7 @@ Common data types
          
          Whether the message should also be sent across age instances,
          not just within the current age instance as usual.
-         Set for ``plNetMsgGameMessage`` (or subclass) messages
+         Set for :cpp:class:`plNetMsgGameMessage` (or subclass) messages
          if the wrapped ``plMessage`` has the ``kNetAllowInterAge`` flag set
          (unless :cpp:enumerator:`kRouteToAllPlayers`/``kCCRSendToAllPlayers`` is also set).
          Should never be set for other message types.
@@ -495,7 +497,7 @@ Common data types
          Whether the message should be sent to all players in all age instances.
          If this flag is set,
          :cpp:enumerator:`kInterAgeRouting` should be unset.
-         The client sets this flag for ``plNetMsgGameMessage`` (or subclass) messages
+         The client sets this flag for :cpp:class:`plNetMsgGameMessage` (or subclass) messages
          if the client is :ref:`internal <internal_external_client>`,
          the current :ref:`CCR level <ccr_level>` is greater than 0,
          and the wrapped ``plMessage`` has the ``kCCRSendToAllPlayers`` flag set.
@@ -672,3 +674,23 @@ Common data types
    
    * **Header:** :cpp:class:`plNetMessage`.
    * **Stream:** :cpp:class:`plNetMsgStreamHelper`.
+
+:cpp:class:`plNetMsgGameMessage`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgGameMessage : public plNetMsgStream
+   
+   *Class index = 0x026b = 619*
+   
+   * **Header:** :cpp:class:`plNetMsgStream`.
+   * **Delivery time present:** 1-byte boolean.
+     Whether the following delivery time field is set.
+     MOSS, DIRTSAND, and the open-sourced client code always set it to false.
+   * **Delivery time:** 8-byte :cpp:class:`plUnifiedTime`.
+     Only present if the preceding boolean field is true,
+     otherwise defaults to all zeroes
+     (i. e. the Unix epoch).
+     The open-sourced client code never sets this field,
+     but handles it if received.
+     MOSS and DIRTSAND ignore this field and never set it.
+     Unclear if Cyan's server software does anything with it.
