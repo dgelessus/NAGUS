@@ -184,7 +184,7 @@ and not supported by MOSS or DIRTSAND
     * :cpp:class:`plNetMsgMemberUpdate` = 0x02b1 = 689 (server -> client)
     * :cpp:class:`plNetMsgInitialAgeStateSent` = 0x02b8 = 696 (server -> client)
   * :cpp:class:`plNetMsgListenListUpdate` = 0x02c8 = 712 (client <-> server, unused, but client theoretically handles it)
-  * ``plNetMsgRelevanceRegions`` = 0x03ac = 940 (client -> server)
+  * :cpp:class:`plNetMsgRelevanceRegions` = 0x03ac = 940 (client -> server)
   * ``plNetMsgPlayerPage`` = 0x03b4 = 948 (client -> server)
 
 Common data types
@@ -232,6 +232,16 @@ Common data types
      Should always be 0.
      This string terminator is stored in the data,
      but not counted in the count field.
+
+.. cpp:class:: hsBitVector
+   
+   * **Count:** 4-byte unsigned int.
+     Element count for the following array.
+   * **Bit vector:** Variable-length array of 4-byte unsigned ints.
+     The contents of the bit vector,
+     grouped into 4-byte units,
+     with the first element containing the least significant bits
+     and the last one the most significant bits.
 
 .. cpp:class:: plUnifiedTime
    
@@ -996,3 +1006,14 @@ Common data types
      Element count for the following receiver array.
    * **Receivers:** Variable-length array of 4-byte unsigned ints,
      each a KI number of another avatar.
+
+:cpp:class:`plNetMsgRelevanceRegions`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgRelevanceRegions : public plNetMessage
+   
+   *Class index = 0x03ac = 940*
+   
+   * **Header:** :cpp:class:`plNetMessage`.
+   * **Regions I care about:** :cpp:class:`hsBitVector`.
+   * **Regions I'm in:** :cpp:class:`hsBitVector`.
