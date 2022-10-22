@@ -185,7 +185,7 @@ and not supported by MOSS or DIRTSAND
     * :cpp:class:`plNetMsgInitialAgeStateSent` = 0x02b8 = 696 (server -> client)
   * :cpp:class:`plNetMsgListenListUpdate` = 0x02c8 = 712 (client <-> server, unused, but client theoretically handles it)
   * :cpp:class:`plNetMsgRelevanceRegions` = 0x03ac = 940 (client -> server)
-  * ``plNetMsgPlayerPage`` = 0x03b4 = 948 (client -> server)
+  * :cpp:class:`plNetMsgPlayerPage` = 0x03b4 = 948 (client -> server)
 
 Common data types
 ^^^^^^^^^^^^^^^^^
@@ -1017,3 +1017,14 @@ Common data types
    * **Header:** :cpp:class:`plNetMessage`.
    * **Regions I care about:** :cpp:class:`hsBitVector`.
    * **Regions I'm in:** :cpp:class:`hsBitVector`.
+
+:cpp:class:`plNetMsgPlayerPage`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgPlayerPage : public plNetMessage
+   
+   *Class index = 0x03b4 = 948*
+   
+   * **Header:** :cpp:class:`plNetMessage`.
+   * **Unload:** 1-byte boolean.
+   * **UOID:** :cpp:class:`plUoid`.
