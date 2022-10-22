@@ -176,7 +176,7 @@ and not supported by MOSS or DIRTSAND
       * :cpp:class:`plNetMsgLoadClone` = 0x03b3 = 947 (client <-> server)
   * :cpp:class:`plNetMsgVoice` = 0x0279 = 633 (client <-> server)
   * :cpp:class:`plNetMsgObjectUpdateFilter` = 0x029d = 669 (client -> server, not handled by MOSS or DIRTSAND)
-  * ``plNetMsgMembersListReq`` = 0x02ad = 685 (client -> server)
+  * :cpp:class:`plNetMsgMembersListReq` = 0x02ad = 685 (client -> server)
   * ``plNetMsgServerToClient`` = 0x02b2 = 690 (abstract)
     
     * ``plNetMsgGroupOwner`` = 0x0264 = 612 (server -> client)
@@ -478,7 +478,7 @@ Common data types
       
       .. cpp:enumerator:: kIsSystemMessage = 1 << 17
          
-         Set for all :cpp:class:`plNetMsgRoomsList`, :cpp:class:`plNetMsgObjStateRequest`, ``plNetMsgMembersListReq``, and ``plNetMsgServerToClient`` messages
+         Set for all :cpp:class:`plNetMsgRoomsList`, :cpp:class:`plNetMsgObjStateRequest`, :cpp:class:`plNetMsgMembersListReq`, and ``plNetMsgServerToClient`` messages
          (including subclasses, if any).
          DIRTSAND also sets it for some :cpp:class:`plNetMsgSDLStateBCast` messages.
          MOSS, DIRTSAND, and the client never use this flag for anything.
@@ -792,3 +792,12 @@ Common data types
      Element count for the following UOID array.
    * **UOIDs:** Variable-length array of :cpp:class:`plUoid`\s.
    * **Maximum update frequency:** 4-byte floating-point number.
+
+:cpp:class:`plNetMsgMembersListReq`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgMembersListReq : public plNetMessage
+   
+   *Class index = 0x02ad = 685*
+   
+   Identical structure to its superclass :cpp:class:`plNetMessage`.
