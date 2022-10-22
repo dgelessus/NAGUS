@@ -183,7 +183,7 @@ and not supported by MOSS or DIRTSAND
     * :cpp:class:`plNetMsgMembersList` = 0x02ae = 686 (server -> client)
     * :cpp:class:`plNetMsgMemberUpdate` = 0x02b1 = 689 (server -> client)
     * :cpp:class:`plNetMsgInitialAgeStateSent` = 0x02b8 = 696 (server -> client)
-  * ``plNetMsgListenListUpdate`` = 0x02c8 = 712 (client <-> server, unused, but client theoretically handles it)
+  * :cpp:class:`plNetMsgListenListUpdate` = 0x02c8 = 712 (client <-> server, unused, but client theoretically handles it)
   * ``plNetMsgRelevanceRegions`` = 0x03ac = 940 (client -> server)
   * ``plNetMsgPlayerPage`` = 0x03b4 = 948 (client -> server)
 
@@ -600,7 +600,7 @@ Common data types
       
       .. cpp:enumerator:: kNeedsReliableSend = 1 << 18
          
-         The client sets this flag for all messages other than :cpp:class:`plNetMsgVoice`, :cpp:class:`plNetMsgObjectUpdateFilter`, and ``plNetMsgListenListUpdate``.
+         The client sets this flag for all messages other than :cpp:class:`plNetMsgVoice`, :cpp:class:`plNetMsgObjectUpdateFilter`, and :cpp:class:`plNetMsgListenListUpdate`.
          DIRTSAND sets it for all messages it creates,
          whereas MOSS never sets it for its own messages.
          MOSS, DIRTSAND, and the client never use this flag for anything.
@@ -980,3 +980,19 @@ Common data types
    
    * **Header:** :cpp:class:`plNetMsgServerToClient`.
    * **Initial SDL state count:** 4-byte unsigned int.
+
+:cpp:class:`plNetMsgListenListUpdate`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgListenListUpdate : public plNetMessage
+   
+   *Class index = 0x02c8 = 712*
+   
+   * **Header:** :cpp:class:`plNetMessage`.
+   * **Adding:** 1-byte boolean.
+     Set to true if the avatars in question should be added,
+     or set to false if they should be removed.
+   * **Receiver count:** 1-byte unsigned int.
+     Element count for the following receiver array.
+   * **Receivers:** Variable-length array of 4-byte unsigned ints,
+     each a KI number of another avatar.
