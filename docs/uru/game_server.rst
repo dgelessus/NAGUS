@@ -173,7 +173,7 @@ and not supported by MOSS or DIRTSAND
     * :cpp:class:`plNetMsgGameMessage` = 0x026b = 619 (client <-> server)
       
       * :cpp:class:`plNetMsgGameMessageDirected` = 0x032e = 814 (client <-> server)
-      * ``plNetMsgLoadClone`` = 0x03b3 = 947 (client <-> server)
+      * :cpp:class:`plNetMsgLoadClone` = 0x03b3 = 947 (client <-> server)
   * ``plNetMsgVoice`` = 0x0279 = 633 (client <-> server)
   * ``plNetMsgObjectUpdateFilter`` = 0x029d = 669 (client -> server, not handled by MOSS or DIRTSAND)
   * ``plNetMsgMembersListReq`` = 0x02ad = 685 (client -> server)
@@ -385,7 +385,7 @@ Common data types
          The open-sourced client code sets this flag in two cases:
          
          * If ``plNetClientRecorder`` is enabled using the console command ``Demo.RecordNet``,
-           this flag is set on all :cpp:class:`plNetMsgSDLState`, :cpp:class:`plNetMsgSDLStateBCast`, :cpp:class:`plNetMsgGameMessage`, and ``plNetMsgLoadClone`` messages.
+           this flag is set on all :cpp:class:`plNetMsgSDLState`, :cpp:class:`plNetMsgSDLStateBCast`, :cpp:class:`plNetMsgGameMessage`, and :cpp:class:`plNetMsgLoadClone` messages.
          * If voice chat echo has been enabled using the console command ``Net.Voice.Echo``,
            this flag is set on all ``plNetMsgVoice`` messages
            (this is broken in OpenUru clients if compression is disabled using the console command ``Audio.EnableVoiceCompression``).
@@ -707,3 +707,16 @@ Common data types
      Element count of the following receiver array.
    * **Receivers:** Variable-length array of 4-byte unsigned ints,
      each a KI number of an avatar that should receive this message.
+
+:cpp:class:`plNetMsgLoadClone`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgLoadClone : public plNetMsgGameMessage
+   
+   *Class index = 0x03b3 = 947*
+   
+   * **Header:** :cpp:class:`plNetMsgGameMessage`.
+   * **UOID:** :cpp:class:`plUoid`.
+   * **Is player:** 1-byte boolean.
+   * **Is loading:** 1-byte boolean.
+   * **Is initial state:** 1-byte boolean.
