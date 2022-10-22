@@ -81,7 +81,7 @@ class Location(object):
 		return self.sequence_number == other.sequence_number and self.flags == other.flags
 	
 	def __repr__(self) -> str:
-		return f"{type(self).__qualname__}({self.sequence_number}, {self.flags!s})"
+		return f"{type(self).__qualname__}({self.sequence_number:#x}, {self.flags!s})"
 	
 	@classmethod
 	def from_stream(cls, stream: typing.BinaryIO) -> "Location":
