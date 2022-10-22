@@ -172,7 +172,7 @@ and not supported by MOSS or DIRTSAND
     
     * :cpp:class:`plNetMsgGameMessage` = 0x026b = 619 (client <-> server)
       
-      * ``plNetMsgGameMessageDirected`` = 0x032e = 814 (client <-> server)
+      * :cpp:class:`plNetMsgGameMessageDirected` = 0x032e = 814 (client <-> server)
       * ``plNetMsgLoadClone`` = 0x03b3 = 947 (client <-> server)
   * ``plNetMsgVoice`` = 0x0279 = 633 (client <-> server)
   * ``plNetMsgObjectUpdateFilter`` = 0x029d = 669 (client -> server, not handled by MOSS or DIRTSAND)
@@ -694,3 +694,16 @@ Common data types
      but handles it if received.
      MOSS and DIRTSAND ignore this field and never set it.
      Unclear if Cyan's server software does anything with it.
+
+:cpp:class:`plNetMsgGameMessageDirected`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgGameMessageDirected : public plNetMsgGameMessage
+   
+   *Class index = 0x032e = 814*
+   
+   * **Header:** :cpp:class:`plNetMsgGameMessage`.
+   * **Receiver count:** 1-byte unsigned int.
+     Element count of the following receiver array.
+   * **Receivers:** Variable-length array of 4-byte unsigned ints,
+     each a KI number of an avatar that should receive this message.
