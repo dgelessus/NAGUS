@@ -174,7 +174,7 @@ and not supported by MOSS or DIRTSAND
       
       * :cpp:class:`plNetMsgGameMessageDirected` = 0x032e = 814 (client <-> server)
       * :cpp:class:`plNetMsgLoadClone` = 0x03b3 = 947 (client <-> server)
-  * ``plNetMsgVoice`` = 0x0279 = 633 (client <-> server)
+  * :cpp:class:`plNetMsgVoice` = 0x0279 = 633 (client <-> server)
   * ``plNetMsgObjectUpdateFilter`` = 0x029d = 669 (client -> server, not handled by MOSS or DIRTSAND)
   * ``plNetMsgMembersListReq`` = 0x02ad = 685 (client -> server)
   * ``plNetMsgServerToClient`` = 0x02b2 = 690 (abstract)
@@ -387,7 +387,7 @@ Common data types
          * If ``plNetClientRecorder`` is enabled using the console command ``Demo.RecordNet``,
            this flag is set on all :cpp:class:`plNetMsgSDLState`, :cpp:class:`plNetMsgSDLStateBCast`, :cpp:class:`plNetMsgGameMessage`, and :cpp:class:`plNetMsgLoadClone` messages.
          * If voice chat echo has been enabled using the console command ``Net.Voice.Echo``,
-           this flag is set on all ``plNetMsgVoice`` messages
+           this flag is set on all :cpp:class:`plNetMsgVoice` messages
            (this is broken in OpenUru clients if compression is disabled using the console command ``Audio.EnableVoiceCompression``).
          
          Because both of these features can only be enabled via console commands,
@@ -486,7 +486,7 @@ Common data types
       
       .. cpp:enumerator:: kNeedsReliableSend = 1 << 18
          
-         The client sets this flag for all messages other than ``plNetMsgVoice``, ``plNetMsgObjectUpdateFilter``, and ``plNetMsgListenListUpdate``.
+         The client sets this flag for all messages other than :cpp:class:`plNetMsgVoice`, ``plNetMsgObjectUpdateFilter``, and ``plNetMsgListenListUpdate``.
          DIRTSAND sets it for all messages it creates,
          whereas MOSS never sets it for its own messages.
          MOSS, DIRTSAND, and the client never use this flag for anything.
@@ -720,3 +720,59 @@ Common data types
    * **Is player:** 1-byte boolean.
    * **Is loading:** 1-byte boolean.
    * **Is initial state:** 1-byte boolean.
+
+:cpp:class:`plNetMsgVoice`
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:enum:: plVoiceFlags
+   
+   .. cpp:enumerator:: kEncoded = 1 << 0
+      
+      Whether the voice data is compressed/encoded.
+      This flag is normally always set,
+      because all clients use some kind of compression by default ---
+      although the exact codec depends on the other flags explained below.
+      Compression can be disabled using the console command ``Audio.EnableVoiceCompression`` (OpenUru) or ``Audio.SetVoiceCodec`` (H'uru),
+      in which case this flag is left unset
+      and the voice data is transmitted as uncompressed PCM data, mono, 16-bit, 8 kHz.
+      OpenUru defines this flag as the macro ``VOICE_ENCODED``.
+   
+   .. cpp:enumerator:: kEncodedSpeex = 1 << 1
+      
+      Whether the voice data is encoded using the Speex codec.
+      If set,
+      then :cpp:enumerator:`kEncoded` must also be set.
+      Only set by H'uru clients if Speex is manually selected using the ``Audio.SetVoiceCodec`` console command.
+      OpenUru defines this flag as the macro ``VOICE_NARROWBAND``,
+      but ignores it and never sets it ---
+      OpenUru clients don't support any codecs other than Speex
+      and assume that all messages with :cpp:enumerator:`kEncoded`/``VOICE_ENCODED`` set use Speex.
+      For compatibility,
+      H'uru clients also assume Speex compression if only :cpp:enumerator:`kEncoded` and no other codec flags are set.
+   
+   .. cpp:enumerator:: kEncodedOpus = 1 << 2
+      
+      Whether the voice data is encoded using the Opus codec.
+      If set,
+      then :cpp:enumerator:`kEncoded` must also be set.
+      H'uru clients use Opus by default,
+      but this can be changed using the ``Audio.SetVoiceCodec`` console command.
+      OpenUru defines this flag as the macro ``VOICE_ENH``,
+      but ignores it and never sets it ---
+      OpenUru clients don't support Opus compression.
+
+.. cpp:class:: plNetMsgVoice : public plNetMessage
+   
+   *Class index = 0x0279 = 633*
+   
+   * **Header:** :cpp:class:`plNetMessage`.
+   * **Flags:** 1-byte unsigned int.
+     See :cpp:enum:`plVoiceFlags` for details.
+   * **Frame count:** 1-byte unsigned int.
+   * **Voice data length:** 2-byte unsigned int.
+     Byte count for the following voice data.
+   * **Voice data:** Variable-length byte array.
+   * **Receiver count:** 1-byte unsigned int.
+     Element count for the following receiver array.
+   * **Receivers:** Variable-length array of 4-byte unsigned ints,
+     each a KI number of an avatar that should receive this message.
