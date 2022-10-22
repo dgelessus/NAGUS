@@ -18,11 +18,13 @@
 """Common data types and utilities for binary data (de)serialization."""
 
 
+import datetime
 import struct
 import typing
 import uuid
 
 
+ZERO_DATETIME = datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)
 ZERO_UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
 
 INT8 = struct.Struct("<b")
@@ -33,6 +35,8 @@ INT64 = struct.Struct("<q")
 UINT16 = struct.Struct("<H")
 UINT32 = struct.Struct("<I")
 UINT64 = struct.Struct("<Q")
+
+UNIFIED_TIME = struct.Struct("<II")
 
 
 def read_exact(stream: typing.BinaryIO, byte_count: int) -> bytes:
@@ -103,3 +107,20 @@ def write_safe_wide_string(stream: typing.BinaryIO, string: str) -> None:
 	stream.write(UINT16.pack(utf_16_length | 0xf000))
 	stream.write(_bit_flip(encoded))
 	stream.write(b"\x00\x00")
+
+
+def unpack_unified_time(data: bytes) -> datetime.datetime:
+	timestamp, micros = UNIFIED_TIME.unpack(data)
+	return datetime.datetime.fromtimestamp(timestamp) + datetime.timedelta(microseconds=micros)
+
+
+def read_unified_time(stream: typing.BinaryIO) -> datetime.datetime:
+	return unpack_unified_time(read_exact(stream, UNIFIED_TIME.size))
+
+
+def pack_unified_time(dt: datetime.datetime) -> bytes:
+	return UNIFIED_TIME.pack(int(dt.timestamp()), dt.microsecond)
+
+
+def write_unified_time(stream: typing.BinaryIO, dt: datetime.datetime) -> None:
+	stream.write(pack_unified_time(dt))

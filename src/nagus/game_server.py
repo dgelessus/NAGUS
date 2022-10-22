@@ -305,7 +305,7 @@ class NetMessage(object):
 			fields["protocol_version"] = repr(self.protocol_version)
 		
 		if self.time_sent is not None:
-			fields["time_sent"] = repr(self.time_sent)
+			fields["time_sent"] = self.time_sent.isoformat()
 		
 		if self.context is not None:
 			fields["context"] = repr(self.context)
@@ -337,8 +337,7 @@ class NetMessage(object):
 			self.protocol_version = None
 		
 		if NetMessageFlags.has_time_sent in self.flags:
-			timestamp, micros = structs.stream_unpack(stream, NET_MESSAGE_TIME_SENT)
-			self.time_sent = datetime.datetime.fromtimestamp(timestamp) + datetime.timedelta(microseconds=micros)
+			self.time_sent = structs.read_unified_time(stream)
 		else:
 			self.time_sent = None
 		
@@ -396,13 +395,14 @@ class NetMessage(object):
 			self = NetMessageSDLState()
 		elif class_index == NetMessageClassIndex.sdl_state_broadcast:
 			self = NetMessageSDLStateBroadcast()
+		elif class_index == NetMessageClassIndex.stream:
+			self = NetMessageStream()
 		elif class_index in {
-			NetMessageClassIndex.stream,
 			NetMessageClassIndex.game_message,
 			NetMessageClassIndex.game_message_directed,
 			NetMessageClassIndex.load_clone,
 		}:
-			self = NetMessageStream()
+			self = NetMessageGameMessage()
 		else:
 			self = cls()
 		
@@ -420,7 +420,7 @@ class NetMessage(object):
 		
 		if NetMessageFlags.has_time_sent in self.flags:
 			assert self.time_sent is not None
-			stream.write(NET_MESSAGE_VERSION.pack(int(self.time_sent.timestamp()), self.time_sent.microsecond))
+			structs.write_unified_time(stream, self.time_sent)
 		else:
 			assert self.time_sent is None
 		
@@ -623,6 +623,32 @@ class NetMessageSDLState(NetMessageStreamedObject):
 
 class NetMessageSDLStateBroadcast(NetMessageStreamedObject):
 	pass
+
+
+class NetMessageGameMessage(NetMessageStream):
+	delivery_time: datetime.datetime
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.delivery_time != structs.ZERO_DATETIME:
+			fields["delivery_time"] = self.delivery_time.isoformat()
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		(delivery_time_present,) = structs.read_exact(stream, 1)
+		if delivery_time_present:
+			self.delivery_time = structs.read_unified_time(stream)
+		else:
+			self.delivery_time = structs.ZERO_DATETIME
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		if self.delivery_time == structs.ZERO_DATETIME:
+			stream.write(b"\x00")
+		else:
+			stream.write(b"\x01")
+			structs.write_unified_time(stream, self.delivery_time)
 
 
 class GameClientState(object):
