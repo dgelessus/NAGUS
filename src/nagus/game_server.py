@@ -54,6 +54,7 @@ NET_MESSAGE_VERSION = struct.Struct("<BB")
 NET_MESSAGE_TIME_SENT = struct.Struct("<II")
 NET_MESSAGE_STREAMED_OBJECT_HEADER = struct.Struct("<IBI")
 NET_MESSAGE_SDL_STATE = struct.Struct("<???")
+NET_MESSAGE_LOAD_CLONE_BOOLS = struct.Struct("<???")
 
 
 class Location(object):
@@ -397,12 +398,12 @@ class NetMessage(object):
 			self = NetMessageSDLStateBroadcast()
 		elif class_index == NetMessageClassIndex.stream:
 			self = NetMessageStream()
-		elif class_index in {
-			NetMessageClassIndex.game_message,
-			NetMessageClassIndex.game_message_directed,
-			NetMessageClassIndex.load_clone,
-		}:
+		elif class_index == NetMessageClassIndex.game_message:
 			self = NetMessageGameMessage()
+		elif class_index == NetMessageClassIndex.game_message_directed:
+			self = NetMessageGameMessageDirected()
+		elif class_index == NetMessageClassIndex.load_clone:
+			self = NetMessageLoadClone()
 		else:
 			self = cls()
 		
@@ -649,6 +650,57 @@ class NetMessageGameMessage(NetMessageStream):
 		else:
 			stream.write(b"\x01")
 			structs.write_unified_time(stream, self.delivery_time)
+
+
+class NetMessageGameMessageDirected(NetMessageGameMessage):
+	receivers: typing.List[int]
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["receivers"] = repr(self.receivers)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		(receiver_count,) = structs.read_exact(stream, 1)
+		self.receivers = []
+		for _ in range(receiver_count):
+			(receiver,) = structs.stream_unpack(stream, structs.UINT32)
+			self.receivers.append(receiver)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(bytes([len(self.receivers)]))
+		for receiver in self.receivers:
+			stream.write(structs.UINT32.pack(receiver))
+
+
+class NetMessageLoadClone(NetMessageGameMessage):
+	uoid: Uoid
+	is_player: bool
+	is_loading: bool
+	is_initial_state: bool
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["uoid"] = repr(self.uoid)
+		if not self.is_player:
+			fields["is_player"] = repr(self.is_player)
+		if not self.is_loading:
+			fields["is_loading"] = repr(self.is_loading)
+		if self.is_initial_state:
+			fields["is_initial_state"] = repr(self.is_initial_state)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		self.uoid = Uoid.from_stream(stream)
+		self.is_player, self.is_loading, self.is_initial_state = structs.stream_unpack(stream, NET_MESSAGE_LOAD_CLONE_BOOLS)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		self.uoid.write(stream)
+		stream.write(NET_MESSAGE_LOAD_CLONE_BOOLS.pack(self.is_player, self.is_loading, self.is_initial_state))
 
 
 class GameClientState(object):
