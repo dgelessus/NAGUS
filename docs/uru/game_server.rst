@@ -182,7 +182,7 @@ and not supported by MOSS or DIRTSAND
     * :cpp:class:`plNetMsgGroupOwner` = 0x0264 = 612 (server -> client)
     * :cpp:class:`plNetMsgMembersList` = 0x02ae = 686 (server -> client)
     * :cpp:class:`plNetMsgMemberUpdate` = 0x02b1 = 689 (server -> client)
-    * ``plNetMsgInitialAgeStateSent`` = 0x02b8 = 696 (server -> client)
+    * :cpp:class:`plNetMsgInitialAgeStateSent` = 0x02b8 = 696 (server -> client)
   * ``plNetMsgListenListUpdate`` = 0x02c8 = 712 (client <-> server, unused, but client theoretically handles it)
   * ``plNetMsgRelevanceRegions`` = 0x03ac = 940 (client -> server)
   * ``plNetMsgPlayerPage`` = 0x03b4 = 948 (client -> server)
@@ -970,3 +970,13 @@ Common data types
    * **Was added:** 1-byte boolean.
      Set to true if the member in question was added,
      or set to false if it was removed.
+
+:cpp:class:`plNetMsgInitialAgeStateSent`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgInitialAgeStateSent : public plNetMsgServerToClient
+   
+   *Class index = 0x02b8 = 696*
+   
+   * **Header:** :cpp:class:`plNetMsgServerToClient`.
+   * **Initial SDL state count:** 4-byte unsigned int.
