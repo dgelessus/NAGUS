@@ -179,7 +179,7 @@ and not supported by MOSS or DIRTSAND
   * :cpp:class:`plNetMsgMembersListReq` = 0x02ad = 685 (client -> server)
   * :cpp:class:`plNetMsgServerToClient` = 0x02b2 = 690 (abstract)
     
-    * ``plNetMsgGroupOwner`` = 0x0264 = 612 (server -> client)
+    * :cpp:class:`plNetMsgGroupOwner` = 0x0264 = 612 (server -> client)
     * ``plNetMsgMembersList`` = 0x02ae = 686 (server -> client)
     * ``plNetMsgMemberUpdate`` = 0x02b1 = 689 (server -> client)
     * ``plNetMsgInitialAgeStateSent`` = 0x02b8 = 696 (server -> client)
@@ -253,6 +253,17 @@ Common data types
       .. cpp:enumerator:: kReserved = 1 << 2
       .. cpp:enumerator:: kBuiltIn = 1 << 3
       .. cpp:enumerator:: kItinerant = 1 << 4
+
+.. cpp:class:: plNetGroupId
+   
+   * **ID:** 6-byte :cpp:class:`plLocation`.
+   * **Flags:** 1-byte unsigned int.
+     See :cpp:enum:`NetGroupConstants` for details.
+   
+   .. cpp:enum:: NetGroupConstants
+      
+      .. cpp:enumerator:: kNetGroupConstant = 1 << 0
+      .. cpp:enumerator:: kNetGroupLocal = 1 << 1
 
 .. cpp:class:: plLoadMask
    
@@ -810,3 +821,21 @@ Common data types
    *Class index = 0x02b2 = 690*
    
    Identical structure to its superclass :cpp:class:`plNetMessage`.
+
+:cpp:class:`plNetMsgGroupOwner`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgGroupOwner : public plNetMsgServerToClient
+   
+   *Class index = 0x0264 = 612*
+   
+   * **Header:** :cpp:class:`plNetMsgServerToClient`.
+   * **Group count:** 4-byte signed int
+     (yes,
+     it's signed for some reason,
+     even though it can never be negative).
+     Element count for the following group array.
+   * **Groups:** Variable-length array of:
+     
+     * **ID:** 7-byte :cpp:class:`plNetGroupId`.
+     * **Owned:** 1-byte boolean.
