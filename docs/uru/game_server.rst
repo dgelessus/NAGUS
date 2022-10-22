@@ -177,7 +177,7 @@ and not supported by MOSS or DIRTSAND
   * :cpp:class:`plNetMsgVoice` = 0x0279 = 633 (client <-> server)
   * :cpp:class:`plNetMsgObjectUpdateFilter` = 0x029d = 669 (client -> server, not handled by MOSS or DIRTSAND)
   * :cpp:class:`plNetMsgMembersListReq` = 0x02ad = 685 (client -> server)
-  * ``plNetMsgServerToClient`` = 0x02b2 = 690 (abstract)
+  * :cpp:class:`plNetMsgServerToClient` = 0x02b2 = 690 (abstract)
     
     * ``plNetMsgGroupOwner`` = 0x0264 = 612 (server -> client)
     * ``plNetMsgMembersList`` = 0x02ae = 686 (server -> client)
@@ -478,7 +478,7 @@ Common data types
       
       .. cpp:enumerator:: kIsSystemMessage = 1 << 17
          
-         Set for all :cpp:class:`plNetMsgRoomsList`, :cpp:class:`plNetMsgObjStateRequest`, :cpp:class:`plNetMsgMembersListReq`, and ``plNetMsgServerToClient`` messages
+         Set for all :cpp:class:`plNetMsgRoomsList`, :cpp:class:`plNetMsgObjStateRequest`, :cpp:class:`plNetMsgMembersListReq`, and :cpp:class:`plNetMsgServerToClient` messages
          (including subclasses, if any).
          DIRTSAND also sets it for some :cpp:class:`plNetMsgSDLStateBCast` messages.
          MOSS, DIRTSAND, and the client never use this flag for anything.
@@ -799,5 +799,14 @@ Common data types
 .. cpp:class:: plNetMsgMembersListReq : public plNetMessage
    
    *Class index = 0x02ad = 685*
+   
+   Identical structure to its superclass :cpp:class:`plNetMessage`.
+
+:cpp:class:`plNetMsgServerToClient`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgServerToClient : public plNetMessage
+   
+   *Class index = 0x02b2 = 690*
    
    Identical structure to its superclass :cpp:class:`plNetMessage`.
