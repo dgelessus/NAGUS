@@ -109,6 +109,23 @@ def write_safe_wide_string(stream: typing.BinaryIO, string: str) -> None:
 	stream.write(b"\x00\x00")
 
 
+def read_bit_vector(stream: typing.BinaryIO) -> int:
+	(count,) = stream_unpack(stream, UINT32)
+	bits = 0
+	for i in range(count):
+		(v,) = stream_unpack(stream, UINT32)
+		bits |= v << 32*i
+	return bits
+
+
+def write_bit_vector(stream: typing.BinaryIO, bits: int) -> None:
+	count = (bits.bit_length() + 31) // 32
+	stream.write(UINT32.pack(count))
+	for _ in range(count):
+		stream.write(UINT32.pack(bits & 0xffffffff))
+		bits >>= 32
+
+
 def unpack_unified_time(data: bytes) -> datetime.datetime:
 	timestamp, micros = UNIFIED_TIME.unpack(data)
 	return datetime.datetime.fromtimestamp(timestamp) + datetime.timedelta(microseconds=micros)

@@ -404,6 +404,12 @@ class NetMessage(object):
 			self = NetMessageGameMessageDirected()
 		elif class_index == NetMessageClassIndex.load_clone:
 			self = NetMessageLoadClone()
+		elif class_index == NetMessageClassIndex.members_list_req:
+			self = NetMessageMembersListRequest()
+		elif class_index == NetMessageClassIndex.relevance_regions:
+			self = NetMessageRelevanceRegions()
+		elif class_index == NetMessageClassIndex.player_page:
+			self = NetMessagePlayerPage()
 		else:
 			self = cls()
 		
@@ -701,6 +707,54 @@ class NetMessageLoadClone(NetMessageGameMessage):
 		super().write(stream)
 		self.uoid.write(stream)
 		stream.write(NET_MESSAGE_LOAD_CLONE_BOOLS.pack(self.is_player, self.is_loading, self.is_initial_state))
+
+
+class NetMessageMembersListRequest(NetMessage):
+	pass
+
+
+class NetMessageRelevanceRegions(NetMessage):
+	regions_i_care_about: int
+	regions_im_in: int
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["regions_i_care_about"] = bin(self.regions_i_care_about)
+		fields["regions_im_in"] = bin(self.regions_im_in)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		self.regions_i_care_about = structs.read_bit_vector(stream)
+		self.regions_im_in = structs.read_bit_vector(stream)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		structs.write_bit_vector(stream, self.regions_i_care_about)
+		structs.write_bit_vector(stream, self.regions_im_in)
+
+
+class NetMessagePlayerPage(NetMessage):
+	unload: bool
+	uoid: Uoid
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.unload:
+			fields["unload"] = repr(self.unload)
+		fields["uoid"] = repr(self.uoid)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		(unload,) = structs.read_exact(stream, 1)
+		self.unload = bool(unload)
+		self.uoid = Uoid.from_stream(stream)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(bytes([self.unload]))
+		self.uoid.write(stream)
 
 
 class GameClientState(object):
