@@ -175,7 +175,7 @@ and not supported by MOSS or DIRTSAND
       * :cpp:class:`plNetMsgGameMessageDirected` = 0x032e = 814 (client <-> server)
       * :cpp:class:`plNetMsgLoadClone` = 0x03b3 = 947 (client <-> server)
   * :cpp:class:`plNetMsgVoice` = 0x0279 = 633 (client <-> server)
-  * ``plNetMsgObjectUpdateFilter`` = 0x029d = 669 (client -> server, not handled by MOSS or DIRTSAND)
+  * :cpp:class:`plNetMsgObjectUpdateFilter` = 0x029d = 669 (client -> server, not handled by MOSS or DIRTSAND)
   * ``plNetMsgMembersListReq`` = 0x02ad = 685 (client -> server)
   * ``plNetMsgServerToClient`` = 0x02b2 = 690 (abstract)
     
@@ -486,7 +486,7 @@ Common data types
       
       .. cpp:enumerator:: kNeedsReliableSend = 1 << 18
          
-         The client sets this flag for all messages other than :cpp:class:`plNetMsgVoice`, ``plNetMsgObjectUpdateFilter``, and ``plNetMsgListenListUpdate``.
+         The client sets this flag for all messages other than :cpp:class:`plNetMsgVoice`, :cpp:class:`plNetMsgObjectUpdateFilter`, and ``plNetMsgListenListUpdate``.
          DIRTSAND sets it for all messages it creates,
          whereas MOSS never sets it for its own messages.
          MOSS, DIRTSAND, and the client never use this flag for anything.
@@ -776,3 +776,19 @@ Common data types
      Element count for the following receiver array.
    * **Receivers:** Variable-length array of 4-byte unsigned ints,
      each a KI number of an avatar that should receive this message.
+
+:cpp:class:`plNetMsgObjectUpdateFilter`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plNetMsgObjectUpdateFilter : public plNetMessage
+   
+   *Class index = 0x029d = 669*
+   
+   * **Header:** :cpp:class:`plNetMessage`.
+   * **UOID count:** 2-byte signed int
+     (yes,
+     it's signed for some reason,
+     even though it can never be negative).
+     Element count for the following UOID array.
+   * **UOIDs:** Variable-length array of :cpp:class:`plUoid`\s.
+   * **Maximum update frequency:** 4-byte floating-point number.
