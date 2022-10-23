@@ -25,12 +25,14 @@ the code here just dispatches incoming connections to other modules that do the 
 
 import asyncio
 import logging
+import random
 import socket
 import sys
 import typing
 
 from . import auth_server
 from . import base
+from . import crash_lines
 from . import game_server
 from . import state
 from . import status_server
@@ -95,7 +97,11 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 	except base.ProtocolError as exc:
 		logger.error("Error in data sent by %s: %s", client_address, exc)
 	except Exception as exc:
-		logger.error("Uncaught exception while handling request from %s:", client_address, exc_info=exc)
+		try:
+			quip = random.choice(crash_lines.client_crash_lines)
+		except IndexError:
+			quip = "missingno"
+		logger.error("%s (uncaught exception while handling request from %s)", quip, client_address, exc_info=exc)
 	except BaseException as exc:
 		logger.error("Uncaught BaseException while handling request from %s - something has gone quite wrong:", client_address, exc_info=exc)
 		raise

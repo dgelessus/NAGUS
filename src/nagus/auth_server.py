@@ -28,6 +28,7 @@ import typing
 import uuid
 
 from . import base
+from . import crash_lines
 from . import state
 from . import structs
 
@@ -666,14 +667,22 @@ class AuthConnection(base.BaseMOULConnection):
 	@base.message_handler(43)
 	async def log_python_traceback(self) -> None:
 		traceback_text = await self.read_string_field(1024)
-		logger.error("Client Python traceback:")
+		try:
+			quip = random.choice(crash_lines.client_crash_lines)
+		except IndexError:
+			quip = "missingno"
+		logger.error("%s (client Python traceback)", quip)
 		for line in traceback_text.splitlines():
 			logger.error("[traceback] %s", line)
 	
 	@base.message_handler(44)
 	async def log_stack_dump(self) -> None:
 		stack_dump_text = await self.read_string_field(1024)
-		logger.error("Client stack dump:")
+		try:
+			quip = random.choice(crash_lines.client_crash_lines)
+		except IndexError:
+			quip = "missingno"
+		logger.error("%s (client stack dump)", quip)
 		for line in stack_dump_text.splitlines():
 			logger.error("[stack dump] %s", line)
 	
