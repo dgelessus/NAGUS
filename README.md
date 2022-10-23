@@ -2,15 +2,15 @@
 
 [![Documentation Status](https://readthedocs.org/projects/nagus/badge/?version=latest)](https://nagus.readthedocs.io/en/latest/?badge=latest)
 
-This is (one day supposed to be) an Uru Live/Myst Online server.
-It is (probably) not very good.
+This is an experimental work-in-progress Uru Live/Myst Online server written in pure Python.
+It is (currently) not very good.
 
 For a proper MOULa server implementation,
 check out OpenUru's [MOSS](https://wiki.openuru.org/index.php/MOSS) and H'uru's [DIRTSAND](https://guildofwriters.org/wiki/DIRTSAND).
 
 I started writing this while trying to understand how MOULa's networking works.
-The code does nothing useful at this point,
-but [the docs](https://nagus.readthedocs.io/en/latest/) contain some assorted information about MOULa's internals,
+The code is still *very* incomplete and not all that useful yet.
+[The docs](https://nagus.readthedocs.io/en/latest/) contain some assorted information about MOULa's internals,
 most of which isn't well-documented elsewhere
 (though I'm hoping to change that soon-ish).
 
