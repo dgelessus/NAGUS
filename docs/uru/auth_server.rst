@@ -152,9 +152,9 @@ not even their structure.
    :header: #,Cli2Auth,Auth2Cli,#
    :widths: auto
    
-   43,LogPythonTraceback,,
-   44,LogStackDump,,
-   45,LogClientDebuggerConnect,,
+   43,:ref:`LogPythonTraceback <cli2auth_log_python_traceback>`,,
+   44,:ref:`LogStackDump <cli2auth_log_stack_dump>`,,
+   45,:ref:`LogClientDebuggerConnect <cli2auth_log_client_debugger_connect>`,,
 
 .. csv-table:: Score
    :name: auth_messages_score
@@ -2051,3 +2051,42 @@ The result is usually one of:
 * :cpp:enumerator:`kNetSuccess`
 * :cpp:enumerator:`kNetErrVaultNodeNotFound`: For some reason,
   the open-sourced client code considers this a success.
+
+.. _cli2auth_log_python_traceback:
+
+Cli2Auth_LogPythonTraceback
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 43
+* **Traceback text:** :c:macro:`NET_MSG_FIELD_STRING`\(1024).
+  The Python traceback and exception info in plain text form.
+
+Sent by the client when a Python exception is raised and never handled.
+
+.. _cli2auth_log_stack_dump:
+
+Cli2Auth_LogStackDump
+^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 44
+* **Stack dump text:** :c:macro:`NET_MSG_FIELD_STRING`\(1024).
+  The crash stack trace in plain text form.
+
+Sent by the client when a crash (usually an access violation) occurs in native code.
+Such crashes are fatal,
+so the client will disconnect after sending this message.
+
+.. _cli2auth_log_client_debugger_connect:
+
+Cli2Auth_LogClientDebuggerConnect
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 45
+* **Nothing:** 4-byte unsigned int.
+  Always set to 0.
+
+Sent by H'uru-based :ref:`external clients <internal_external_client>` upon detecting that a debugger was connected.
+The client automatically exits after sending this message.
+Since 2020,
+OpenUru-based clients have this debugger trap disabled by default,
+unless the macro ``PLASMA_EXTERNAL_NODEBUGGER`` is defined.

@@ -78,6 +78,7 @@ VAULT_NODE_FIND_HEADER = struct.Struct("<II")
 VAULT_NODE_FIND_REPLY_HEADER = struct.Struct("<III")
 AGE_REQUEST_HEADER = struct.Struct("<I")
 AGE_REPLY = struct.Struct("<III16sII")
+LOG_CLIENT_DEBUGGER_CONNECT = struct.Struct("<I")
 
 
 SYSTEM_RANDOM = random.SystemRandom()
@@ -661,3 +662,22 @@ class AuthConnection(base.BaseMOULConnection):
 			await self.age_reply(trans_id, base.NetError.internal_error, 0, structs.ZERO_UUID, 0, ipaddress.IPv4Address(0))
 		else:
 			await self.age_reply(trans_id, base.NetError.success, age_node_id, instance_uuid, age_node_id, self._get_own_ipv4_address())
+	
+	@base.message_handler(43)
+	async def log_python_traceback(self) -> None:
+		traceback_text = await self.read_string_field(1024)
+		logger.error("Client Python traceback:")
+		for line in traceback_text.splitlines():
+			logger.error("[traceback] %s", line)
+	
+	@base.message_handler(44)
+	async def log_stack_dump(self) -> None:
+		stack_dump_text = await self.read_string_field(1024)
+		logger.error("Client stack dump:")
+		for line in stack_dump_text.splitlines():
+			logger.error("[stack dump] %s", line)
+	
+	@base.message_handler(45)
+	async def log_client_debugger_connect(self) -> None:
+		(nothing,) = await self.read_unpack(LOG_CLIENT_DEBUGGER_CONNECT)
+		logger.warning("Client debugger connect: nothing %d", nothing)
