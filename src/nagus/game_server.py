@@ -23,6 +23,7 @@ import collections
 import datetime
 import enum
 import io
+import ipaddress
 import logging
 import struct
 import typing
@@ -90,6 +91,40 @@ class Location(object):
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		stream.write(LOCATION.pack(self.sequence_number, self.flags))
+
+
+class GroupId(object):
+	class Flags(enum.IntFlag):
+		constant = 1 << 0
+		local = 1 << 1
+	
+	location: Location
+	flags: "GroupId.Flags"
+	
+	def __init__(self, id: Location, flags: "GroupId.Flags") -> None:
+		super().__init__()
+		
+		self.location = id
+		self.flags = flags
+	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, GroupId):
+			return NotImplemented
+		
+		return self.location == other.location and self.flags == other.flags
+	
+	def __repr__(self) -> str:
+		return f"{type(self).__qualname__}({self.location!r}, {self.flags!s})"
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "GroupId":
+		location = Location.from_stream(stream)
+		(flags,) = structs.read_exact(stream, 1)
+		return cls(location, GroupId.Flags(flags))
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		self.location.write(stream)
+		stream.write(bytes([self.flags]))
 
 
 class LoadMask(object):
@@ -210,6 +245,236 @@ class Uoid(object):
 			stream.write(UOID_CLONE_IDS.pack(clone_id, 0, clone_player_id))
 
 
+class ClientInfo(object):
+	class Flags(enum.Flag):
+		account_uuid = 1 << 0
+		ki_number = 1 << 1
+		temp_ki_number = 1 << 2
+		ccr_level = 1 << 3
+		protected_login = 1 << 4
+		build_type = 1 << 5
+		avatar_name = 1 << 6
+		source_ip_address = 1 << 7
+		source_port = 1 << 8
+		reserved = 1 << 9
+		client_key = 1 << 10
+	
+	account_uuid: typing.Optional[uuid.UUID]
+	ki_number: typing.Optional[int]
+	temp_ki_number: typing.Optional[int]
+	avatar_name: typing.Optional[bytes]
+	ccr_level: typing.Optional[int]
+	protected_login: typing.Optional[bool]
+	build_type: typing.Optional[int]
+	source_ip_address: typing.Optional[ipaddress.IPv4Address]
+	source_port: typing.Optional[int]
+	reserved: typing.Optional[bool]
+	client_key: typing.Optional[bytes]
+	
+	def __init__(
+		self,
+		account_uuid: typing.Optional[uuid.UUID] = None,
+		ki_number: typing.Optional[int] = None,
+		temp_ki_number: typing.Optional[int] = None,
+		avatar_name: typing.Optional[bytes] = None,
+		ccr_level: typing.Optional[int] = None,
+		protected_login: typing.Optional[bool] = None,
+		build_type: typing.Optional[int] = None,
+		source_ip_address: typing.Optional[ipaddress.IPv4Address] = None,
+		source_port: typing.Optional[int] = None,
+		reserved: typing.Optional[bool] = None,
+		client_key: typing.Optional[bytes] = None,
+	) -> None:
+		super().__init__()
+		
+		self.account_uuid = account_uuid
+		self.ki_number = ki_number
+		self.temp_ki_number = temp_ki_number
+		self.avatar_name = avatar_name
+		self.ccr_level = ccr_level
+		self.protected_login = protected_login
+		self.build_type = build_type
+		self.source_ip_address = source_ip_address
+		self.source_port = source_port
+		self.reserved = reserved
+		self.client_key = client_key
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = collections.OrderedDict()
+		if self.account_uuid is not None:
+			fields["account_uuid"] = repr(self.account_uuid)
+		if self.ki_number is not None:
+			fields["ki_number"] = repr(self.ki_number)
+		if self.temp_ki_number is not None:
+			fields["temp_ki_number"] = repr(self.temp_ki_number)
+		if self.avatar_name is not None:
+			fields["avatar_name"] = repr(self.avatar_name)
+		if self.ccr_level is not None:
+			fields["ccr_level"] = repr(self.ccr_level)
+		if self.protected_login is not None:
+			fields["protected_login"] = repr(self.protected_login)
+		if self.build_type is not None:
+			fields["build_type"] = repr(self.build_type)
+		if self.source_ip_address is not None:
+			fields["source_ip_address"] = repr(self.source_ip_address)
+		if self.source_port is not None:
+			fields["source_port"] = repr(self.source_port)
+		if self.reserved is not None:
+			fields["reserved"] = repr(self.reserved)
+		if self.client_key is not None:
+			fields["client_key"] = repr(self.client_key)
+		return fields
+	
+	def __repr__(self) -> str:
+		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
+		return f"{type(self).__qualname__}({joined_fields})"
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		(flags,) = structs.stream_unpack(stream, structs.UINT16)
+		flags = ClientInfo.Flags(flags)
+		
+		if ClientInfo.Flags.account_uuid in flags:
+			self.account_uuid = uuid.UUID(bytes_le=structs.read_exact(stream, 16))
+		
+		if ClientInfo.Flags.ki_number in flags:
+			(self.ki_number,) = structs.stream_unpack(stream, structs.UINT32)
+		
+		if ClientInfo.Flags.temp_ki_number in flags:
+			(self.temp_ki_number,) = structs.stream_unpack(stream, structs.UINT32)
+		
+		if ClientInfo.Flags.avatar_name in flags:
+			(avatar_name_length,) = structs.stream_unpack(stream, structs.UINT16)
+			self.avatar_name = structs.read_exact(stream, avatar_name_length)
+		
+		if ClientInfo.Flags.ccr_level in flags:
+			(self.ccr_level,) = structs.read_exact(stream, 1)
+		
+		if ClientInfo.Flags.protected_login in flags:
+			(protected_login,) = structs.read_exact(stream, 1)
+			self.protected_login = bool(protected_login)
+		
+		if ClientInfo.Flags.build_type in flags:
+			(self.build_type,) = structs.read_exact(stream, 1)
+		
+		if ClientInfo.Flags.source_ip_address in flags:
+			(source_ip_address,) = structs.stream_unpack(stream, structs.UINT32)
+			self.source_ip_address = ipaddress.IPv4Address(source_ip_address)
+		
+		if ClientInfo.Flags.source_port in flags:
+			(self.source_port,) = structs.stream_unpack(stream, structs.UINT16)
+		
+		if ClientInfo.Flags.reserved in flags:
+			(reserved,) = structs.read_exact(stream, 1)
+			self.reserved = bool(reserved)
+		
+		if ClientInfo.Flags.client_key in flags:
+			(client_key_length,) = structs.stream_unpack(stream, structs.UINT16)
+			self.client_key = structs.read_exact(stream, client_key_length)
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "ClientInfo":
+		self = cls()
+		self.read(stream)
+		return self
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		flags = ClientInfo.Flags(0)
+		if self.account_uuid is not None:
+			flags |= ClientInfo.Flags.account_uuid
+		if self.ki_number is not None:
+			flags |= ClientInfo.Flags.ki_number
+		if self.temp_ki_number is not None:
+			flags |= ClientInfo.Flags.temp_ki_number
+		if self.avatar_name is not None:
+			flags |= ClientInfo.Flags.avatar_name
+		if self.ccr_level is not None:
+			flags |= ClientInfo.Flags.ccr_level
+		if self.protected_login is not None:
+			flags |= ClientInfo.Flags.protected_login
+		if self.build_type is not None:
+			flags |= ClientInfo.Flags.build_type
+		if self.source_ip_address is not None:
+			flags |= ClientInfo.Flags.source_ip_address
+		if self.source_port is not None:
+			flags |= ClientInfo.Flags.source_port
+		if self.reserved is not None:
+			flags |= ClientInfo.Flags.reserved
+		if self.client_key is not None:
+			flags |= ClientInfo.Flags.client_key
+		stream.write(structs.UINT16.pack(flags))
+		
+		if self.account_uuid is not None:
+			stream.write(self.account_uuid.bytes_le)
+		
+		if self.ki_number is not None:
+			stream.write(structs.UINT32.pack(self.ki_number))
+		
+		if self.temp_ki_number is not None:
+			stream.write(structs.UINT32.pack(self.temp_ki_number))
+		
+		if self.avatar_name:
+			stream.write(structs.UINT16.pack(len(self.avatar_name)))
+			stream.write(self.avatar_name)
+		
+		if self.ccr_level is not None:
+			stream.write(bytes([self.ccr_level]))
+		
+		if self.protected_login is not None:
+			stream.write(bytes([self.protected_login]))
+		
+		if self.build_type is not None:
+			stream.write(bytes([self.build_type]))
+		
+		if self.source_ip_address is not None:
+			stream.write(structs.UINT32.pack(int(self.source_ip_address)))
+		
+		if self.source_port:
+			stream.write(structs.UINT16.pack(self.source_port))
+		
+		if self.reserved is not None:
+			stream.write(bytes([self.reserved]))
+		
+		if self.client_key:
+			stream.write(structs.UINT16.pack(len(self.client_key)))
+			stream.write(self.client_key)
+
+
+class MemberInfo(object):
+	class Flags(enum.IntFlag):
+		waiting_for_link_query = 1 << 0
+		indirect_member = 1 << 1
+		request_p2p = 1 << 2
+		waiting_for_challenge_response = 1 << 3
+		is_server = 1 << 4
+		allow_time_out = 1 << 5
+	
+	flags: "MemberInfo.Flags"
+	client_info: ClientInfo
+	avatar_uoid: Uoid
+	
+	def __init__(self, flags: "MemberInfo.Flags", client_info: ClientInfo, avatar_uoid: Uoid) -> None:
+		super().__init__()
+		
+		self.flags = flags
+		self.client_info = client_info
+		self.avatar_uoid = avatar_uoid
+	
+	def __repr__(self) -> str:
+		return f"{type(self).__qualname__}({self.flags!s}, {self.client_info!r}, {self.avatar_uoid!r})"
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "MemberInfo":
+		(flags,) = structs.stream_unpack(stream, structs.UINT32)
+		client_info = ClientInfo.from_stream(stream)
+		avatar_uoid = Uoid.from_stream(stream)
+		return cls(MemberInfo.Flags(flags), client_info, avatar_uoid)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		stream.write(structs.UINT32.pack(self.flags))
+		self.client_info.write(stream)
+		self.avatar_uoid.write(stream)
+
+
 class NetMessageClassIndex(enum.IntEnum):
 	paging_room = 0x0218
 	net_message = 0x025e
@@ -296,6 +561,18 @@ class NetMessage(object):
 	trans_id: typing.Optional[int]
 	ki_number: typing.Optional[int]
 	account_uuid: typing.Optional[uuid.UUID]
+	
+	def __init__(self) -> None:
+		super().__init__()
+		
+		self.class_index = NetMessageClassIndex.net_message
+		self.flags = NetMessageFlags(0)
+		self.protocol_version = None
+		self.time_sent = None
+		self.context = None
+		self.trans_id = None
+		self.ki_number = None
+		self.account_uuid = None
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = collections.OrderedDict()
@@ -406,6 +683,16 @@ class NetMessage(object):
 			self = NetMessageLoadClone()
 		elif class_index == NetMessageClassIndex.members_list_req:
 			self = NetMessageMembersListRequest()
+		elif class_index == NetMessageClassIndex.server_to_client:
+			self = NetMessageServerToClient()
+		elif class_index == NetMessageClassIndex.group_owner:
+			self = NetMessageGroupOwner()
+		elif class_index == NetMessageClassIndex.members_list:
+			self = NetMessageMembersList()
+		elif class_index == NetMessageClassIndex.member_update:
+			self = NetMessageMemberUpdate()
+		elif class_index == NetMessageClassIndex.initial_age_state_sent:
+			self = NetMessageInitialAgeStateSent()
 		elif class_index == NetMessageClassIndex.relevance_regions:
 			self = NetMessageRelevanceRegions()
 		elif class_index == NetMessageClassIndex.player_page:
@@ -454,6 +741,9 @@ class NetMessage(object):
 			stream.write(self.account_uuid.bytes_le)
 		else:
 			assert self.account_uuid is None
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		logger.error("Don't know how to handle plNetMessage of class %r - ignoring", self.class_index)
 
 
 class NetMessageRoomsList(NetMessage):
@@ -510,7 +800,17 @@ class NetMessagePagingRoom(NetMessageRoomsList):
 
 
 class NetMessageGameStateRequest(NetMessageRoomsList):
-	pass
+	async def handle(self, connection: "GameConnection") -> None:
+		initial_age_state_sent = NetMessageInitialAgeStateSent()
+		initial_age_state_sent.class_index = NetMessageClassIndex.initial_age_state_sent
+		initial_age_state_sent.flags = (
+			NetMessageFlags.has_time_sent
+			| NetMessageFlags.is_system_message
+			| NetMessageFlags.needs_reliable_send
+		)
+		initial_age_state_sent.time_sent = datetime.datetime.now(tz=datetime.timezone.utc)
+		initial_age_state_sent.initial_sdl_state_count = 0
+		await connection.send_propagat_buffer(initial_age_state_sent)
 
 
 class NetMessageObject(NetMessage):
@@ -713,6 +1013,96 @@ class NetMessageMembersListRequest(NetMessage):
 	pass
 
 
+class NetMessageServerToClient(NetMessage):
+	async def handle(self, connection: "GameConnection") -> None:
+		raise base.ProtocolError(f"A server-to-client message {self.class_index!r} was sent from a client to the server!")
+
+
+class NetMessageGroupOwner(NetMessageServerToClient):
+	groups: typing.List[typing.Tuple[GroupId, bool]]
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["groups"] = repr(self.groups)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		
+		(group_count,) = structs.stream_unpack(stream, structs.INT32)
+		self.groups = []
+		for _ in range(group_count):
+			group_id = GroupId.from_stream(stream)
+			(owned,) = structs.read_exact(stream, 1)
+			self.groups.append((group_id, bool(owned)))
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		
+		stream.write(structs.INT32.pack(len(self.groups)))
+		for group_id, owned in self.groups:
+			group_id.write(stream)
+			stream.write(bytes([owned]))
+
+
+class NetMessageMembersList(NetMessageServerToClient):
+	members: typing.List[MemberInfo]
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["members"] = repr(self.members)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		(member_count,) = structs.stream_unpack(stream, structs.INT16)
+		self.members = []
+		for _ in range(member_count):
+			self.members.append(MemberInfo.from_stream(stream))
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+
+
+class NetMessageMemberUpdate(NetMessageServerToClient):
+	member: MemberInfo
+	was_added: bool
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["member"] = repr(self.member)
+		fields["was_added"] = repr(self.was_added)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		self.member = MemberInfo.from_stream(stream)
+		(was_addded,) = structs.read_exact(stream, 1)
+		self.was_added = bool(was_addded)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		self.member.write(stream)
+		stream.write(bytes([self.was_added]))
+
+
+class NetMessageInitialAgeStateSent(NetMessageServerToClient):
+	initial_sdl_state_count: int
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["initial_sdl_state_count"] = repr(self.initial_sdl_state_count)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		(self.initial_sdl_state_count,) = structs.stream_unpack(stream, structs.UINT32)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(structs.UINT32.pack(self.initial_sdl_state_count))
+
+
 class NetMessageRelevanceRegions(NetMessage):
 	regions_i_care_about: int
 	regions_im_in: int
@@ -813,6 +1203,15 @@ class GameConnection(base.BaseMOULConnection):
 		
 		await self.join_age_reply(trans_id, base.NetError.success)
 	
+	async def send_propagat_buffer(self, message: NetMessage) -> None:
+		logger.debug("Sending propagate buffer: %r", message)
+		
+		with io.BytesIO() as stream:
+			message.write(stream)
+			buffer = stream.getvalue()
+		
+		await self.write_message(2, PROPAGATE_BUFFER_HEADER.pack(message.class_index, len(buffer)) + buffer)
+	
 	@base.message_handler(2)
 	async def receive_propagate_buffer(self) -> None:
 		buffer_type, buffer_length = await self.read_unpack(PROPAGATE_BUFFER_HEADER)
@@ -840,3 +1239,5 @@ class GameConnection(base.BaseMOULConnection):
 			logger.warning("PropagateBuffer message %r contains account UUID: %s", message.class_index, message.account_uuid)
 		if extra_data:
 			logger.warning("PropagateBuffer message %r has extra trailing data: %r", message.class_index, extra_data)
+		
+		await message.handle(self)
