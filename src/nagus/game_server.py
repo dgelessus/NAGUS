@@ -853,7 +853,9 @@ class NetMessageStream(NetMessage):
 		
 		stream_data = structs.read_exact(stream, stream_length)
 		if self.compression_type == CompressionType.zlib:
-			self.data = zlib.decompress(stream_data)
+			if len(stream_data) < 2:
+				raise ValueError(f"Stream message zlib compression requires at least 2 bytes of data, but got {len(stream_data)}")
+			self.data = stream_data[:2] + zlib.decompress(stream_data[2:])
 			if uncompressed_length != len(self.data):
 				raise ValueError(f"plNetMsgStreamedObject uncompressed length {uncompressed_length} doesn't match actual length of data after decompression: {len(self.data)}")
 		else:
@@ -866,7 +868,9 @@ class NetMessageStream(NetMessage):
 		
 		if self.compression_type == CompressionType.zlib:
 			uncompressed_length = len(self.data)
-			stream_data = zlib.compress(self.data)
+			if uncompressed_length < 2:
+				raise ValueError(f"Stream message zlib compression requires at least 2 bytes of data, but got {uncompressed_length}")
+			stream_data = self.data[:2] + zlib.compress(self.data[2:])
 		else:
 			uncompressed_length = 0
 			stream_data = self.data

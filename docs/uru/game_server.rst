@@ -395,6 +395,9 @@ Common data types
      Byte length of the following stream data field.
    * **Stream data:** Variable-length byte array.
      The format of this data depends on the class of the containing message.
+     Additionally,
+     the data may be compressed,
+     depending on the compression type field.
 
 .. cpp:enum:: plNetMember::Flags
    
@@ -647,7 +650,10 @@ Common data types
       
       .. cpp:enumerator:: kCompressionZlib = 2
          
-         The stream data is zlib-compressed.
+         The stream data is partially compressed:
+         the first two bytes are uncompressed,
+         followed by the remaining data,
+         which is zlib-compressed.
          The open-sourced client code uses zlib compression iff the stream data is at least 256 bytes long.
       
       .. cpp:enumerator:: kCompressionDont = 3
