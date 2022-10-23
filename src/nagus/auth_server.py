@@ -74,6 +74,8 @@ VAULT_NODE_REFS_FETCHED_HEADER = struct.Struct("<III")
 VAULT_INIT_AGE_REQUEST_HEADER = struct.Struct("<I16s16s")
 VAULT_INIT_AGE_REQUEST_FOOTER = struct.Struct("<ii")
 VAULT_INIT_AGE_REPLY = struct.Struct("<IIII")
+VAULT_NODE_FIND_HEADER = struct.Struct("<II")
+VAULT_NODE_FIND_REPLY_HEADER = struct.Struct("<III")
 AGE_REQUEST_HEADER = struct.Struct("<I")
 AGE_REPLY = struct.Struct("<III16sII")
 
@@ -613,6 +615,31 @@ class AuthConnection(base.BaseMOULConnection):
 			await self.vault_init_age_reply(trans_id, base.NetError.internal_error, 0, 0)
 		else:
 			await self.vault_init_age_reply(trans_id, base.NetError.success, age_node_id, age_info_node_id)
+	
+	async def vault_node_find_reply(self, trans_id: int, result: base.NetError, found_node_ids: typing.Sequence[int]) -> None:
+		logger.debug("Sending vault node find reply: transaction ID %d, result %r, found node IDs %r", trans_id, result, found_node_ids)
+		message = bytearray(VAULT_NODE_FIND_REPLY_HEADER.pack(trans_id, result, len(found_node_ids)))
+		
+		for node_id in found_node_ids:
+			message.extend(structs.UINT32.pack(node_id))
+		
+		await self.write_message(31, message)
+	
+	@base.message_handler(33)
+	async def vault_node_find(self) -> None:
+		trans_id, packed_template_length = await self.read_unpack(VAULT_NODE_FIND_HEADER)
+		packed_template = await self.read(packed_template_length)
+		logger.debug("Vault node find: transaction ID %d, template %r", trans_id, packed_template)
+		try:
+			template = state.VaultNodeData.unpack(packed_template)
+			found_node_ids = []
+			async for node_id in self.server_state.find_vault_nodes(template):
+				found_node_ids.append(node_id)
+		except Exception:
+			logger.error("Unhandled exception while finding vault node", exc_info=True)
+			await self.vault_node_find_reply(trans_id, base.NetError.internal_error, [])
+		else:
+			await self.vault_node_find_reply(trans_id, base.NetError.success if found_node_ids else base.NetError.vault_node_not_found, found_node_ids)
 	
 	async def age_reply(self, trans_id: int, result: base.NetError, mcp_id: int, instance_uuid: uuid.UUID, age_node_id: int, server_ip: ipaddress.IPv4Address) -> None:
 		logger.debug("Sending age reply: transaction ID %d, result %r, MCP ID %d, instance UUID %s, Age node ID %d, server IP %s", trans_id, result, mcp_id, instance_uuid, age_node_id, server_ip)
