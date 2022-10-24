@@ -932,7 +932,7 @@ class NetMessageSDLState(NetMessageStreamedObject):
 		stream.write(NET_MESSAGE_SDL_STATE.pack(self.is_initial_state, self.persist_on_server, self.is_avatar_state))
 
 
-class NetMessageSDLStateBroadcast(NetMessageStreamedObject):
+class NetMessageSDLStateBroadcast(NetMessageSDLState):
 	pass
 
 
