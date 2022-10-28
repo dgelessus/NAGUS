@@ -422,9 +422,9 @@ class AuthConnection(base.BaseMOULConnection):
 	async def vault_node_create(self) -> None:
 		trans_id, packed_node_data_length = await self.read_unpack(VAULT_NODE_CREATE_HEADER)
 		packed_node_data = await self.read(packed_node_data_length)
-		logger.debug("Vault node create: transaction ID %d, node data %r", trans_id, packed_node_data)
+		node_data = state.VaultNodeData.unpack(packed_node_data)
+		logger.debug("Vault node create: transaction ID %d, node data %s", trans_id, node_data)
 		try:
-			node_data = state.VaultNodeData.unpack(packed_node_data)
 			node_id = await self.server_state.create_vault_node(node_data)
 		except Exception:
 			logger.error("Unhandled exception while creating vault node", exc_info=True)
@@ -433,8 +433,8 @@ class AuthConnection(base.BaseMOULConnection):
 			await self.vault_node_created(trans_id, base.NetError.success, node_id)
 	
 	async def vault_node_fetched(self, trans_id: int, result: base.NetError, node_data: typing.Optional[state.VaultNodeData]) -> None:
+		logger.debug("Sending fetched vault node: transaction ID %d, result %r, node data %s", trans_id, result, node_data)
 		packed_node_data = b"" if node_data is None else node_data.pack()
-		logger.debug("Sending fetched vault node: transaction ID %d, result %r, node data %r", trans_id, result, packed_node_data)
 		await self.write_message(24, VAULT_NODE_FETCHED_HEADER.pack(trans_id, result, len(packed_node_data)) + packed_node_data)
 	
 	@base.message_handler(26)
@@ -465,9 +465,9 @@ class AuthConnection(base.BaseMOULConnection):
 		trans_id, node_id, revision_id, packed_node_data_length = await self.read_unpack(VAULT_NODE_SAVE_HEADER)
 		revision_id = uuid.UUID(bytes_le=revision_id)
 		packed_node_data = await self.read(packed_node_data_length)
-		logger.debug("Vault node save: transaction ID %d, node ID %d, revision ID %s, node data %r", trans_id, node_id, revision_id, packed_node_data)
+		node_data = state.VaultNodeData.unpack(packed_node_data)
+		logger.debug("Vault node save: transaction ID %d, node ID %d, revision ID %s, node data %s", trans_id, node_id, revision_id, node_data)
 		try:
-			node_data = state.VaultNodeData.unpack(packed_node_data)
 			await self.server_state.update_vault_node(node_id, node_data)
 		except state.VaultNodeNotFound:
 			await self.vault_save_node_reply(trans_id, base.NetError.vault_node_not_found)
@@ -631,9 +631,9 @@ class AuthConnection(base.BaseMOULConnection):
 	async def vault_node_find(self) -> None:
 		trans_id, packed_template_length = await self.read_unpack(VAULT_NODE_FIND_HEADER)
 		packed_template = await self.read(packed_template_length)
-		logger.debug("Vault node find: transaction ID %d, template %r", trans_id, packed_template)
+		template = state.VaultNodeData.unpack(packed_template)
+		logger.debug("Vault node find: transaction ID %d, template %s", trans_id, template)
 		try:
-			template = state.VaultNodeData.unpack(packed_template)
 			found_node_ids = []
 			async for node_id in self.server_state.find_vault_nodes(template):
 				found_node_ids.append(node_id)
