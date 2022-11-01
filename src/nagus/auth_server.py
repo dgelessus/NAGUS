@@ -36,6 +36,10 @@ from . import structs
 logger = logging.getLogger(__name__)
 
 
+# Random placeholder UUID that identifies the one and only "account",
+# until I implement proper authentication and support for multiple accounts.
+PLACEHOLDER_ACCOUNT_UUID = uuid.UUID("192e8ae7-b263-4b44-996e-2b492a30da53")
+
 CONNECT_DATA = struct.Struct("<I16s")
 
 PING_HEADER = struct.Struct("<III")
@@ -326,7 +330,7 @@ class AuthConnection(base.BaseMOULConnection):
 			await self.disconnect_with_reason(base.NetError.service_forbidden, "Client attempted to log in without sending a client register request first")
 		
 		# TODO Implement actual authentication
-		self.client_state.account_uuid = structs.ZERO_UUID
+		self.client_state.account_uuid = PLACEHOLDER_ACCOUNT_UUID
 		
 		async for avatar in self.server_state.find_avatars(self.client_state.account_uuid):
 			await self.account_player_info(trans_id, avatar.player_node_id, avatar.name, avatar.shape, avatar.explorer)
