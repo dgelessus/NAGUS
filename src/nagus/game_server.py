@@ -127,41 +127,6 @@ class GroupId(object):
 		stream.write(bytes([self.flags]))
 
 
-class LoadMask(object):
-	ALWAYS: "LoadMask"
-	
-	quality: int
-	capability: int
-	
-	def __init__(self, quality: int, capability: int) -> None:
-		super().__init__()
-		
-		self.quality = quality
-		self.capability = capability
-	
-	def __eq__(self, other: object) -> bool:
-		if not isinstance(other, LoadMask):
-			return NotImplemented
-		
-		return self.quality == other.quality and self.capability == other.capability
-	
-	def __repr__(self) -> str:
-		return f"{type(self).__qualname__}({self.quality!r}, {self.capability!r})"
-	
-	@classmethod
-	def decode(cls, qc: int) -> "LoadMask":
-		return cls(
-			(qc >> 4 & 0xf) | 0xf0,
-			(qc >> 0 & 0xf) | 0xf0,
-		)
-	
-	def encode(self) -> int:
-		return (self.quality & 0xf) << 4 | (self.capability & 0xf) << 0
-
-
-LoadMask.ALWAYS = LoadMask(0xff, 0xff)
-
-
 class Uoid(object):
 	class Flags(enum.IntFlag):
 		has_clone_ids = 1 << 0
@@ -173,7 +138,7 @@ class Uoid(object):
 		)
 	
 	location: Location
-	load_mask: LoadMask
+	load_mask: int
 	class_type: int
 	object_id: int
 	object_name: bytes
@@ -182,8 +147,8 @@ class Uoid(object):
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = collections.OrderedDict()
 		fields["location"] = repr(self.location)
-		if self.load_mask != LoadMask.ALWAYS:
-			fields["load_mask"] = repr(self.load_mask)
+		if self.load_mask != 0xff:
+			fields["load_mask"] = hex(self.load_mask)
 		fields["class_type"] = f"0x{self.class_type:>04x}"
 		fields["object_id"] = repr(self.object_id)
 		fields["object_name"] = repr(self.object_name)
@@ -204,10 +169,9 @@ class Uoid(object):
 		self.location = Location.from_stream(stream)
 		
 		if Uoid.Flags.has_load_mask in flags:
-			(load_mask,) = structs.read_exact(stream, 1)
-			self.load_mask = LoadMask.decode(load_mask)
+			(self.load_mask,) = structs.read_exact(stream, 1)
 		else:
-			self.load_mask = LoadMask.ALWAYS
+			self.load_mask = 0xff
 		
 		self.class_type, self.object_id = structs.stream_unpack(stream, UOID_MID_PART)
 		self.object_name = structs.read_safe_string(stream)
@@ -226,7 +190,7 @@ class Uoid(object):
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		flags = Uoid.Flags(0)
-		if self.load_mask != LoadMask.ALWAYS:
+		if self.load_mask != 0xff:
 			flags |= Uoid.Flags.has_load_mask
 		if self.clone_ids is not None:
 			flags |= Uoid.Flags.has_clone_ids
@@ -234,8 +198,8 @@ class Uoid(object):
 		
 		self.location.write(stream)
 		
-		if self.load_mask != LoadMask.ALWAYS:
-			stream.write(bytes([self.load_mask.encode()]))
+		if self.load_mask != 0xff:
+			stream.write(bytes([self.load_mask]))
 		
 		stream.write(UOID_MID_PART.pack(self.class_type, self.object_id))
 		structs.write_safe_string(stream, self.object_name)
