@@ -78,24 +78,35 @@ Fan tools also use these same field names
   where the ID will be filled in by the server).
 * ``CreateTime``: 4-byte unsigned int.
   Unix timestamp indicating when this node was created.
+  Always present and set automatically by the server.
+  The client never uses this field.
 * ``ModifyTime``: 4-byte unsigned int.
   Unix timestamp indicating when this node was last modified.
+  Always present and set/updated automatically by the server.
 * ``CreateAgeName``: Variable-length, zero-terminated UTF-16 string.
-  File name of the age in which this node was created (?).
-  Unset for nodes that weren't created in a particular age.
+  File name of the age in which this node was created.
+  Unset for nodes that weren't created in a particular age instance.
   DIRTSAND limits this to 64 characters,
   but MOSS doesn't.
 * ``CreateAgeUuid``: 16-byte UUID.
-  UUID of the age instance in which this node was created (?).
-  Unset for nodes that weren't created in a particular age.
+  UUID of the age instance in which this node was created.
+  Unset for nodes that weren't created in a particular age instance.
+  The client never uses this field.
 * ``CreatorAcct``: 16-byte UUID.
-  UUID of the account (or other thing?) that created the node.
-  This field is apparently always present,
-  but set to all zeroes for nodes that don't have an obvious creator.
+  UUID of the account that created the node,
+  or alternatively sometimes the UUID of the age instance to which this node belongs,
+  or all zeroes if the node has no obvious creator
+  (e. g. the :ref:`vault_node_system` node).
+  Always present and set automatically by the server
+  (although DIRTSAND doesn't fill in the creator info for most nodes).
+  The client never uses this field.
 * ``CreatorId``: 4-byte unsigned integer.
-  Vault node ID (KI number) of the avatar (or other thing?) that created the node.
-  This field is apparently always present,
-  but set to zero for nodes that that don't have an obvious creator.
+  :ref:`vault_node_player` node ID (KI number) of the avatar that created the node,
+  or alternatively sometimes the :ref:`vault_node_age` node ID of the age instance to which this node belongs,
+  or zero if the node has no obvious creator
+  (e. g. the :ref:`vault_node_system` node).
+  Always present and set automatically by the server
+  (although DIRTSAND doesn't fill in the creator info for most nodes).
 * ``NodeType``: 4-byte unsigned integer.
   Indicates the meaning of the remaining generic fields.
   See :ref:`vault_node_types` for a list of all node types and corresponding field meanings.

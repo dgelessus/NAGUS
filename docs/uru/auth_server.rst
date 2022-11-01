@@ -1445,11 +1445,11 @@ The following fields have special behavior though:
   Ignored when set by the client.
 * ``CreateTime``, ``ModifyTime``: Initialized by the server to the current time.
   Ignored when set by the client.
-* ``CreatorAcct``, ``CreatorId``: MOSS initializes them to the client's current account/avatar info,
+* ``CreatorAcct``, ``CreatorId``: Cyan's server software and MOSS always set these fields to the client's current account/avatar info,
   ignoring any values sent by the client.
   DIRTSAND uses whatever values the client sends,
-  or if the client leaves them unset (which is usually the case),
-  it sets the respective fields to zero.
+  or zero if the client leaves them unset
+  (which is always the case in practice).
 * ``NodeType``: Should always be set.
   MOSS *requires* this field and replies with :cpp:enumerator:`kNetErrBadServerData` if left unset.
   DIRTSAND technically allows creating a node without a type.
