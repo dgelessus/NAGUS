@@ -714,7 +714,7 @@ class VaultNodeRef(object):
 	owner_id: int
 	seen: bool
 	
-	def __init__(self, parent_id: int, child_id: int, owner_id: int = 0, seen: bool = True) -> None:
+	def __init__(self, parent_id: int, child_id: int, owner_id: int = 0, seen: bool = False) -> None:
 		super().__init__()
 		
 		self.parent_id = parent_id
@@ -729,7 +729,7 @@ class VaultNodeRef(object):
 		desc = f"{self.parent_id} -> {self.child_id}"
 		if self.owner_id:
 			desc += f", owner: {self.owner_id}"
-		if not self.seen:
+		if self.seen:
 			desc += f", seen: {self.seen}"
 		
 		return f"<ref {desc}>"
