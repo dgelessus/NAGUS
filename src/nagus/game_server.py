@@ -833,50 +833,57 @@ class NetMessageObject(NetMessage):
 
 
 class NetMessageStream(NetMessage):
+	uncompressed_length: int
 	compression_type: CompressionType
-	data: bytes
+	stream_data: bytes
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
+		if self.uncompressed_length != 0:
+			fields["uncompressed_length"] = repr(self.uncompressed_length)
 		if self.compression_type != CompressionType.none:
 			fields["compression_type"] = str(self.compression_type)
-		fields["data"] = repr(self.data)
+		fields["stream_data"] = repr(self.stream_data)
 		return fields
+	
+	def decompress_data(self) -> bytes:
+		if self.compression_type == CompressionType.zlib:
+			if len(self.stream_data) < 2:
+				raise ValueError(f"Stream message zlib compression requires at least 2 bytes of data, but got {len(self.stream_data)}")
+			data = self.stream_data[:2] + zlib.decompress(self.stream_data[2:])
+			if self.uncompressed_length != len(data):
+				raise ValueError(f"plNetMsgStreamedObject uncompressed length {self.uncompressed_length} doesn't match actual length of data after decompression: {len(data)}")
+			return data
+		else:
+			if self.uncompressed_length != 0:
+				raise ValueError(f"plNetMsgStreamedObject uncompressed length {self.uncompressed_length} should be 0 for non-compressed data")
+			return self.stream_data
+	
+	def compress_and_set_data(self, data: bytes) -> None:
+		if self.compression_type == CompressionType.zlib:
+			self.uncompressed_length = len(data)
+			if self.uncompressed_length < 2:
+				raise ValueError(f"Stream message zlib compression requires at least 2 bytes of data, but got {self.uncompressed_length}")
+			self.stream_data = data[:2] + zlib.compress(data[2:])
+		else:
+			self.uncompressed_length = 0
+			self.stream_data = data
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		super().read(stream)
 		
-		uncompressed_length, compression_type, stream_length = structs.stream_unpack(stream, NET_MESSAGE_STREAMED_OBJECT_HEADER)
+		self.uncompressed_length, compression_type, stream_length = structs.stream_unpack(stream, NET_MESSAGE_STREAMED_OBJECT_HEADER)
 		self.compression_type = CompressionType(compression_type)
 		if self.compression_type == CompressionType.failed:
 			raise ValueError("plNetMsgStreamedObject has its compression type set to failed, this should never happen!")
 		
-		stream_data = structs.read_exact(stream, stream_length)
-		if self.compression_type == CompressionType.zlib:
-			if len(stream_data) < 2:
-				raise ValueError(f"Stream message zlib compression requires at least 2 bytes of data, but got {len(stream_data)}")
-			self.data = stream_data[:2] + zlib.decompress(stream_data[2:])
-			if uncompressed_length != len(self.data):
-				raise ValueError(f"plNetMsgStreamedObject uncompressed length {uncompressed_length} doesn't match actual length of data after decompression: {len(self.data)}")
-		else:
-			self.data = stream_data
-			if uncompressed_length != 0:
-				raise ValueError(f"plNetMsgStreamedObject uncompressed length {uncompressed_length} should be 0  for non-compressed data")
+		self.stream_data = structs.read_exact(stream, stream_length)
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
 		
-		if self.compression_type == CompressionType.zlib:
-			uncompressed_length = len(self.data)
-			if uncompressed_length < 2:
-				raise ValueError(f"Stream message zlib compression requires at least 2 bytes of data, but got {uncompressed_length}")
-			stream_data = self.data[:2] + zlib.compress(self.data[2:])
-		else:
-			uncompressed_length = 0
-			stream_data = self.data
-		
-		stream.write(NET_MESSAGE_STREAMED_OBJECT_HEADER.pack(uncompressed_length, self.compression_type, len(stream_data)))
-		stream.write(stream_data)
+		stream.write(NET_MESSAGE_STREAMED_OBJECT_HEADER.pack(self.uncompressed_length, self.compression_type, len(self.stream_data)))
+		stream.write(self.stream_data)
 
 
 class NetMessageStreamedObject(NetMessageStream, NetMessageObject):
