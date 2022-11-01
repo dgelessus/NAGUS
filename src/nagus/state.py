@@ -735,7 +735,13 @@ class VaultNodeRef(object):
 		return f"<ref {desc}>"
 	
 	def __repr__(self) -> str:
-		return f"{type(self).__qualname__}(parent_id={self.parent_id}, child_id={self.child_id}, owner_id={self.owner_id}, seen={self.seen})"
+		rep = f"{type(self).__qualname__}({self.parent_id}, {self.child_id}"
+		if self.owner_id:
+			rep += f", owner_id={self.owner_id}"
+		if self.seen:
+			rep += f", seen={self.seen}"
+		rep += ")"
+		return rep
 
 
 class VaultNodeFolderType(enum.IntEnum):
