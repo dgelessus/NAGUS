@@ -105,6 +105,7 @@ class AuthClientState(object):
 	cleanup_handle: asyncio.TimerHandle
 	token: uuid.UUID
 	server_challenge: int
+	account_uuid: uuid.UUID
 	ki_number: int
 
 
@@ -325,11 +326,12 @@ class AuthConnection(base.BaseMOULConnection):
 			await self.disconnect_with_reason(base.NetError.service_forbidden, "Client attempted to log in without sending a client register request first")
 		
 		# TODO Implement actual authentication
+		self.client_state.account_uuid = structs.ZERO_UUID
 		
-		async for avatar in self.server_state.find_avatars(structs.ZERO_UUID):
+		async for avatar in self.server_state.find_avatars(self.client_state.account_uuid):
 			await self.account_player_info(trans_id, avatar.player_node_id, avatar.name, avatar.shape, avatar.explorer)
 		
-		await self.account_login_reply(trans_id, base.NetError.success, structs.ZERO_UUID, AccountFlags.user, AccountBillingType.paid_subscriber, (0, 0, 0, 0))
+		await self.account_login_reply(trans_id, base.NetError.success, self.client_state.account_uuid, AccountFlags.user, AccountBillingType.paid_subscriber, (0, 0, 0, 0))
 	
 	async def account_set_player_reply(self, trans_id: int, result: base.NetError) -> None:
 		logger.debug("Sending set player reply: transaction ID %d, result %r", trans_id, result)
@@ -388,7 +390,7 @@ class AuthConnection(base.BaseMOULConnection):
 			return
 		
 		try:
-			ki_number, _ = await self.server_state.create_avatar(avatar_name, avatar_shape, 1, structs.ZERO_UUID)
+			ki_number, _ = await self.server_state.create_avatar(avatar_name, avatar_shape, 1, self.client_state.account_uuid)
 		except ValueError:
 			# More correct would be invalid_parameter,
 			# but the client assumes that means an invalid invite code.
@@ -424,6 +426,10 @@ class AuthConnection(base.BaseMOULConnection):
 		packed_node_data = await self.read(packed_node_data_length)
 		node_data = state.VaultNodeData.unpack(packed_node_data)
 		logger.debug("Vault node create: transaction ID %d, node data %s", trans_id, node_data)
+		
+		node_data.creator_account_uuid = self.client_state.account_uuid
+		node_data.creator_id = self.client_state.ki_number
+		
 		try:
 			node_id = await self.server_state.create_vault_node(node_data)
 		except Exception:

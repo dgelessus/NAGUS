@@ -943,8 +943,8 @@ class ServerState(object):
 				ModifyTime integer not null,
 				CreateAgeName text,
 				CreateAgeUuid blob,
-				CreatorAcct blob not null default x'00000000000000000000000000000000',
-				CreatorId integer not null default 0,
+				CreatorAcct blob not null,
+				CreatorId integer not null,
 				NodeType integer not null,
 				Int32_1 integer,
 				Int32_2 integer,
@@ -991,8 +991,8 @@ class ServerState(object):
 			system = await self.find_system_vault_node()
 		except VaultNodeNotFound:
 			logger.info("No system node found in vault! Assuming this is a fresh database, so creating a new one.")
-			system = await self.create_vault_node(VaultNodeData(node_type=VaultNodeType.system))
-			global_inbox_folder = await self.create_vault_node(VaultNodeData(node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.global_inbox))
+			system = await self.create_vault_node(VaultNodeData(creator_account_uuid=structs.ZERO_UUID, creator_id=0, node_type=VaultNodeType.system))
+			global_inbox_folder = await self.create_vault_node(VaultNodeData(creator_account_uuid=structs.ZERO_UUID, creator_id=0, node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.global_inbox))
 			await self.add_vault_node_ref(VaultNodeRef(system, global_inbox_folder))
 		
 		logger.debug("System node: %d", system)
@@ -1001,7 +1001,7 @@ class ServerState(object):
 			all_players_id = await self.find_all_players_vault_node()
 		except VaultNodeNotFound:
 			logger.info("No All Players list node found in vault! Creating a new one.")
-			all_players_id = await self.create_vault_node(VaultNodeData(node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.all_players))
+			all_players_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=structs.ZERO_UUID, creator_id=0, node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.all_players))
 		
 		logger.debug("All Players list node: %d", all_players_id)
 		
@@ -1232,7 +1232,7 @@ class ServerState(object):
 		
 		system_id = await self.find_system_vault_node()
 		
-		age_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=instance_uuid, node_type=VaultNodeType.age, uuid_1=instance_uuid, uuid_2=parent_instance_uuid, string64_1=age_file_name))
+		age_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=instance_uuid, creator_id=0, node_type=VaultNodeType.age, uuid_1=instance_uuid, uuid_2=parent_instance_uuid, string64_1=age_file_name))
 		age_info_id = await self.create_vault_node(VaultNodeData(
 			creator_account_uuid=instance_uuid,
 			creator_id=age_id,
