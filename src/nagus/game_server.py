@@ -621,11 +621,7 @@ class NetMessage(object):
 			self = NetMessagePagingRoom()
 		elif class_index == NetMessageClassIndex.game_state_request:
 			self = NetMessageGameStateRequest()
-		elif class_index in {
-			NetMessageClassIndex.object,
-			NetMessageClassIndex.get_shared_state,
-			NetMessageClassIndex.object_state_request,
-		}:
+		elif class_index == NetMessageClassIndex.object:
 			self = NetMessageObject()
 		elif class_index == NetMessageClassIndex.streamed_object:
 			self = NetMessageStreamedObject()
@@ -637,6 +633,10 @@ class NetMessage(object):
 			self = NetMessageSDLState()
 		elif class_index == NetMessageClassIndex.sdl_state_broadcast:
 			self = NetMessageSDLStateBroadcast()
+		elif class_index == NetMessageClassIndex.get_shared_state:
+			self = NetMessageGetSharedState()
+		elif class_index == NetMessageClassIndex.object_state_request:
+			self = NetMessageObjectStateRequest()
 		elif class_index == NetMessageClassIndex.stream:
 			self = NetMessageStream()
 		elif class_index == NetMessageClassIndex.game_message:
@@ -904,6 +904,30 @@ class NetMessageSDLState(NetMessageStreamedObject):
 
 
 class NetMessageSDLStateBroadcast(NetMessageSDLState):
+	pass
+
+
+class NetMessageGetSharedState(NetMessageObject):
+	shared_state_name: bytes
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["shared_state_name"] = repr(self.shared_state_name)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		shared_state_name = structs.read_exact(stream, 32)
+		self.shared_state_name = shared_state_name[:shared_state_name.index(b"\x00")]
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		if len(self.shared_state_name) >= 32:
+			raise ValueError(f"Shared state name must be less than 32 bytes, but found {len(self.shared_state_name)}")
+		stream.write(self.shared_state_name.ljust(32, b"\x00"))
+
+
+class NetMessageObjectStateRequest(NetMessageObject):
 	pass
 
 
