@@ -128,7 +128,7 @@ def write_bit_vector(stream: typing.BinaryIO, bits: int) -> None:
 
 def unpack_unified_time(data: bytes) -> datetime.datetime:
 	timestamp, micros = UNIFIED_TIME.unpack(data)
-	return datetime.datetime.fromtimestamp(timestamp) + datetime.timedelta(microseconds=micros)
+	return datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc) + datetime.timedelta(microseconds=micros)
 
 
 def read_unified_time(stream: typing.BinaryIO) -> datetime.datetime:
