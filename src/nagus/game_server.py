@@ -517,6 +517,8 @@ class CompressionType(enum.Enum):
 
 
 class NetMessage(object):
+	CLASS_INDEX = NetMessageClassIndex.net_message
+	
 	class_index: NetMessageClassIndex
 	flags: NetMessageFlags
 	protocol_version: typing.Optional[typing.Tuple[int, int]]
@@ -529,8 +531,8 @@ class NetMessage(object):
 	def __init__(self) -> None:
 		super().__init__()
 		
-		self.class_index = NetMessageClassIndex.net_message
-		self.flags = NetMessageFlags(0)
+		self.class_index = type(self).CLASS_INDEX
+		self.flags = NetMessageFlags.needs_reliable_send
 		self.protocol_version = None
 		self.time_sent = None
 		self.context = None
@@ -711,7 +713,13 @@ class NetMessage(object):
 
 
 class NetMessageRoomsList(NetMessage):
+	CLASS_INDEX = NetMessageClassIndex.rooms_list
+	
 	rooms: typing.List[typing.Tuple[Location, bytes]]
+	
+	def __init__(self) -> None:
+		super().__init__()
+		self.flags |= NetMessageFlags.is_system_message
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
@@ -746,6 +754,8 @@ class NetMessagePagingRoom(NetMessageRoomsList):
 		request_state = 1 << 2
 		final_room_in_age = 1 << 3
 	
+	CLASS_INDEX = NetMessageClassIndex.paging_room
+	
 	page_flags: "NetMessagePagingRoom.Flags"
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
@@ -764,20 +774,19 @@ class NetMessagePagingRoom(NetMessageRoomsList):
 
 
 class NetMessageGameStateRequest(NetMessageRoomsList):
+	CLASS_INDEX = NetMessageClassIndex.game_state_request
+	
 	async def handle(self, connection: "GameConnection") -> None:
 		initial_age_state_sent = NetMessageInitialAgeStateSent()
-		initial_age_state_sent.class_index = NetMessageClassIndex.initial_age_state_sent
-		initial_age_state_sent.flags = (
-			NetMessageFlags.has_time_sent
-			| NetMessageFlags.is_system_message
-			| NetMessageFlags.needs_reliable_send
-		)
+		initial_age_state_sent.flags |= NetMessageFlags.has_time_sent
 		initial_age_state_sent.time_sent = datetime.datetime.now(tz=datetime.timezone.utc)
 		initial_age_state_sent.initial_sdl_state_count = 0
 		await connection.send_propagat_buffer(initial_age_state_sent)
 
 
 class NetMessageObject(NetMessage):
+	CLASS_INDEX = NetMessageClassIndex.object
+	
 	uoid: Uoid
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
@@ -797,6 +806,8 @@ class NetMessageObject(NetMessage):
 
 
 class NetMessageStream(NetMessage):
+	CLASS_INDEX = NetMessageClassIndex.stream
+	
 	uncompressed_length: int
 	compression_type: CompressionType
 	stream_data: bytes
@@ -852,10 +863,12 @@ class NetMessageStream(NetMessage):
 
 class NetMessageStreamedObject(NetMessageStream, NetMessageObject):
 	# Multiple inheritance, yo!
-	pass
+	CLASS_INDEX = NetMessageClassIndex.streamed_object
 
 
 class NetMessageSharedState(NetMessageStreamedObject):
+	CLASS_INDEX = NetMessageClassIndex.shared_state
+	
 	lock_request: bool
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
@@ -876,10 +889,12 @@ class NetMessageSharedState(NetMessageStreamedObject):
 
 
 class NetMessageTestAndSet(NetMessageSharedState):
-	pass
+	CLASS_INDEX = NetMessageClassIndex.test_and_set
 
 
 class NetMessageSDLState(NetMessageStreamedObject):
+	CLASS_INDEX = NetMessageClassIndex.sdl_state
+	
 	is_initial_state: bool
 	persist_on_server: bool
 	is_avatar_state: bool
@@ -904,10 +919,12 @@ class NetMessageSDLState(NetMessageStreamedObject):
 
 
 class NetMessageSDLStateBroadcast(NetMessageSDLState):
-	pass
+	CLASS_INDEX = NetMessageClassIndex.sdl_state_broadcast
 
 
 class NetMessageGetSharedState(NetMessageObject):
+	CLASS_INDEX = NetMessageClassIndex.get_shared_state
+	
 	shared_state_name: bytes
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
@@ -928,10 +945,16 @@ class NetMessageGetSharedState(NetMessageObject):
 
 
 class NetMessageObjectStateRequest(NetMessageObject):
-	pass
+	CLASS_INDEX = NetMessageClassIndex.object_state_request
+	
+	def __init__(self) -> None:
+		super().__init__()
+		self.flags |= NetMessageFlags.is_system_message
 
 
 class NetMessageGameMessage(NetMessageStream):
+	CLASS_INDEX = NetMessageClassIndex.game_message
+	
 	delivery_time: datetime.datetime
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
@@ -958,6 +981,8 @@ class NetMessageGameMessage(NetMessageStream):
 
 
 class NetMessageGameMessageDirected(NetMessageGameMessage):
+	CLASS_INDEX = NetMessageClassIndex.game_message_directed
+	
 	receivers: typing.List[int]
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
@@ -981,6 +1006,8 @@ class NetMessageGameMessageDirected(NetMessageGameMessage):
 
 
 class NetMessageLoadClone(NetMessageGameMessage):
+	CLASS_INDEX = NetMessageClassIndex.load_clone
+	
 	uoid: Uoid
 	is_player: bool
 	is_loading: bool
@@ -1009,15 +1036,27 @@ class NetMessageLoadClone(NetMessageGameMessage):
 
 
 class NetMessageMembersListRequest(NetMessage):
-	pass
+	CLASS_INDEX = NetMessageClassIndex.members_list_req
+	
+	def __init__(self) -> None:
+		super().__init__()
+		self.flags |= NetMessageFlags.is_system_message
 
 
 class NetMessageServerToClient(NetMessage):
+	CLASS_INDEX = NetMessageClassIndex.server_to_client
+	
+	def __init__(self) -> None:
+		super().__init__()
+		self.flags |= NetMessageFlags.is_system_message
+	
 	async def handle(self, connection: "GameConnection") -> None:
 		raise base.ProtocolError(f"A server-to-client message {self.class_index!r} was sent from a client to the server!")
 
 
 class NetMessageGroupOwner(NetMessageServerToClient):
+	CLASS_INDEX = NetMessageClassIndex.group_owner
+	
 	groups: typing.List[typing.Tuple[GroupId, bool]]
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
@@ -1045,6 +1084,8 @@ class NetMessageGroupOwner(NetMessageServerToClient):
 
 
 class NetMessageMembersList(NetMessageServerToClient):
+	CLASS_INDEX = NetMessageClassIndex.members_list
+	
 	members: typing.List[MemberInfo]
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
@@ -1064,6 +1105,8 @@ class NetMessageMembersList(NetMessageServerToClient):
 
 
 class NetMessageMemberUpdate(NetMessageServerToClient):
+	CLASS_INDEX = NetMessageClassIndex.member_update
+	
 	member: MemberInfo
 	was_added: bool
 	
@@ -1086,6 +1129,8 @@ class NetMessageMemberUpdate(NetMessageServerToClient):
 
 
 class NetMessageInitialAgeStateSent(NetMessageServerToClient):
+	CLASS_INDEX = NetMessageClassIndex.initial_age_state_sent
+	
 	initial_sdl_state_count: int
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
@@ -1103,6 +1148,8 @@ class NetMessageInitialAgeStateSent(NetMessageServerToClient):
 
 
 class NetMessageRelevanceRegions(NetMessage):
+	CLASS_INDEX = NetMessageClassIndex.relevance_regions
+	
 	regions_i_care_about: int
 	regions_im_in: int
 	
@@ -1124,6 +1171,8 @@ class NetMessageRelevanceRegions(NetMessage):
 
 
 class NetMessagePlayerPage(NetMessage):
+	CLASS_INDEX = NetMessageClassIndex.player_page
+	
 	unload: bool
 	uoid: Uoid
 	
