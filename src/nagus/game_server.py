@@ -723,7 +723,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 		initial_age_state_sent.flags |= NetMessageFlags.has_time_sent
 		initial_age_state_sent.time_sent = datetime.datetime.now(tz=datetime.timezone.utc)
 		initial_age_state_sent.initial_sdl_state_count = 0
-		await connection.send_propagat_buffer(initial_age_state_sent)
+		await connection.send_propagate_buffer(initial_age_state_sent)
 
 
 class NetMessageObject(NetMessage):
@@ -1193,7 +1193,7 @@ class GameConnection(base.BaseMOULConnection):
 		
 		await self.join_age_reply(trans_id, base.NetError.success)
 	
-	async def send_propagat_buffer(self, message: NetMessage) -> None:
+	async def send_propagate_buffer(self, message: NetMessage) -> None:
 		logger.debug("Sending propagate buffer: %r", message)
 		
 		with io.BytesIO() as stream:
