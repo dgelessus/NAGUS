@@ -1421,3 +1421,25 @@ class ServerState(object):
 		await self.add_vault_node_ref(VaultNodeRef(all_players_id, player_info_id))
 		
 		return player_id, player_info_id
+	
+	async def delete_avatar(self, ki_number: int, account_id: uuid.UUID) -> None:
+		# Check that the KI number is indeed a Player node belonging to the expected account.
+		try:
+			player_data = await self.fetch_vault_node(ki_number)
+		except VaultNodeNotFound:
+			raise AvatarNotFound(f"Cannot delete avatar with KI number {ki_number} as it doesn't exist")
+		
+		if player_data.node_type != VaultNodeType.player:
+			raise AvatarNotFound(f"Cannot delete avatar with KI number {ki_number} as it's not a Player node (actual type {player_data.node_type})")
+		
+		if player_data.uuid_1 != account_id:
+			raise AvatarNotFound(f"Cannot delete avatar with KI number {ki_number} as it doesn't belong to the expected account {account_id}")
+		
+		logger.info("Deleting avatar %d, avatar shape %r, explorer? %r, account UUID %s", ki_number, player_data.string64_1, player_data.int32_2, account_id)
+		
+		# Remove all direct child refs of the Player node.
+		async for ref in self.fetch_vault_node_child_refs(ki_number):
+			await self.remove_vault_node_ref(ki_number, ref.child_id)
+		
+		# Delete the Player node itself.
+		await self.delete_vault_node(ki_number)

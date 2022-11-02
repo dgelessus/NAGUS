@@ -361,8 +361,16 @@ class AuthConnection(base.BaseMOULConnection):
 			# Can't delete current avatar
 			await self.player_delete_reply(trans_id, base.NetError.invalid_parameter)
 			return
-		# TODO Actually implement this
-		await self.player_delete_reply(trans_id, base.NetError.success)
+		
+		try:
+			await self.server_state.delete_avatar(ki_number, self.client_state.account_uuid)
+		except state.AvatarNotFound:
+			await self.player_delete_reply(trans_id, base.NetError.player_not_found)
+		except Exception:
+			logger.error("Unhandled exception while deleting avatar", exc_info=True)
+			await self.player_delete_reply(trans_id, base.NetError.internal_error)
+		else:
+			await self.player_delete_reply(trans_id, base.NetError.success)
 	
 	async def player_create_reply(
 		self,
