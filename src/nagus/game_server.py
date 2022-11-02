@@ -439,36 +439,6 @@ class MemberInfo(object):
 		self.avatar_uoid.write(stream)
 
 
-class NetMessageClassIndex(enum.IntEnum):
-	paging_room = 0x0218
-	net_message = 0x025e
-	rooms_list = 0x0263
-	group_owner = 0x0264
-	game_state_request = 0x0265
-	object = 0x0268
-	game_message = 0x026b
-	stream = 0x026c
-	voice = 0x0279
-	streamed_object = 0x027b
-	shared_state = 0x027c
-	test_and_set = 0x027d
-	get_shared_state = 0x027e
-	object_state_request = 0x0286
-	object_update_filter = 0x029d
-	members_list_req = 0x02ad
-	members_list = 0x02ae
-	member_update = 0x02b1
-	server_to_client = 0x02b2
-	initial_age_state_sent = 0x02b8
-	listen_list_update = 0x02c8
-	sdl_state = 0x02cd
-	sdl_state_broadcast = 0x0329
-	game_message_directed = 0x032e
-	relevance_regions = 0x03ac
-	load_clone = 0x03b3
-	player_page = 0x03b4
-
-
 class NetMessageFlags(enum.IntFlag):
 	has_time_sent = 1 << 0
 	has_game_message_receivers = 1 << 1
@@ -517,9 +487,9 @@ class CompressionType(enum.Enum):
 
 
 class NetMessage(object):
-	CLASS_INDEX = NetMessageClassIndex.net_message
+	CLASS_INDEX = 0x025e
 	
-	class_index: NetMessageClassIndex
+	class_index: int
 	flags: NetMessageFlags
 	protocol_version: typing.Optional[typing.Tuple[int, int]]
 	time_sent: typing.Optional[datetime.datetime]
@@ -533,7 +503,7 @@ class NetMessage(object):
 		super().__init_subclass__(**kwargs)
 		
 		if cls.CLASS_INDEX in NET_MESSAGE_CLASSES_BY_INDEX:
-			raise ValueError(f"Attempted to create NetMessage subclass {cls.__qualname__} with class index {cls.CLASS_INDEX} which is already used by existing subclass {NET_MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX].__qualname__}")
+			raise ValueError(f"Attempted to create NetMessage subclass {cls.__qualname__} with class index 0x{cls.CLASS_INDEX:>04x} which is already used by existing subclass {NET_MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX].__qualname__}")
 		
 		NET_MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX] = cls
 	
@@ -551,7 +521,7 @@ class NetMessage(object):
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = collections.OrderedDict()
-		fields["class_index"] = repr(self.class_index)
+		fields["class_index"] = f"0x{self.class_index:>04x}"
 		fields["flags"] = repr(self.flags)
 		
 		if self.protocol_version is not None:
@@ -578,9 +548,12 @@ class NetMessage(object):
 		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
 		return f"<{type(self).__qualname__}: {joined_fields}>"
 	
+	@property
+	def class_description(self) -> str:
+		return f"{type(self).__qualname__} (0x{self.class_index:>04x})"
+	
 	def read(self, stream: typing.BinaryIO) -> None:
-		class_index, flags = structs.stream_unpack(stream, NET_MESSAGE_HEADER)
-		self.class_index = NetMessageClassIndex(class_index)
+		self.class_index, flags = structs.stream_unpack(stream, NET_MESSAGE_HEADER)
 		self.flags = NetMessageFlags(flags)
 		
 		if NetMessageFlags.has_version in self.flags:
@@ -622,8 +595,6 @@ class NetMessage(object):
 			class_index, _ = structs.stream_unpack(stream, NET_MESSAGE_HEADER)
 		finally:
 			stream.seek(pos)
-		
-		class_index = NetMessageClassIndex(class_index)
 		
 		try:
 			clazz = NET_MESSAGE_CLASSES_BY_INDEX[class_index]
@@ -675,16 +646,16 @@ class NetMessage(object):
 			assert self.account_uuid is None
 	
 	async def handle(self, connection: "GameConnection") -> None:
-		logger.error("Don't know how to handle plNetMessage of class %r - ignoring", self.class_index)
+		logger.error("Don't know how to handle plNetMessage of class %s - ignoring", self.class_description)
 
 
-NET_MESSAGE_CLASSES_BY_INDEX: typing.Dict[NetMessageClassIndex, typing.Type[NetMessage]] = {
+NET_MESSAGE_CLASSES_BY_INDEX: typing.Dict[int, typing.Type[NetMessage]] = {
 	NetMessage.CLASS_INDEX: NetMessage,
 }
 
 
 class NetMessageRoomsList(NetMessage):
-	CLASS_INDEX = NetMessageClassIndex.rooms_list
+	CLASS_INDEX = 0x0263
 	
 	rooms: typing.List[typing.Tuple[Location, bytes]]
 	
@@ -725,7 +696,7 @@ class NetMessagePagingRoom(NetMessageRoomsList):
 		request_state = 1 << 2
 		final_room_in_age = 1 << 3
 	
-	CLASS_INDEX = NetMessageClassIndex.paging_room
+	CLASS_INDEX = 0x0218
 	
 	page_flags: "NetMessagePagingRoom.Flags"
 	
@@ -745,7 +716,7 @@ class NetMessagePagingRoom(NetMessageRoomsList):
 
 
 class NetMessageGameStateRequest(NetMessageRoomsList):
-	CLASS_INDEX = NetMessageClassIndex.game_state_request
+	CLASS_INDEX = 0x0265
 	
 	async def handle(self, connection: "GameConnection") -> None:
 		initial_age_state_sent = NetMessageInitialAgeStateSent()
@@ -756,7 +727,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 
 
 class NetMessageObject(NetMessage):
-	CLASS_INDEX = NetMessageClassIndex.object
+	CLASS_INDEX = 0x0268
 	
 	uoid: Uoid
 	
@@ -777,7 +748,7 @@ class NetMessageObject(NetMessage):
 
 
 class NetMessageStream(NetMessage):
-	CLASS_INDEX = NetMessageClassIndex.stream
+	CLASS_INDEX = 0x026c
 	
 	uncompressed_length: int
 	compression_type: CompressionType
@@ -834,11 +805,11 @@ class NetMessageStream(NetMessage):
 
 class NetMessageStreamedObject(NetMessageStream, NetMessageObject):
 	# Multiple inheritance, yo!
-	CLASS_INDEX = NetMessageClassIndex.streamed_object
+	CLASS_INDEX = 0x027b
 
 
 class NetMessageSharedState(NetMessageStreamedObject):
-	CLASS_INDEX = NetMessageClassIndex.shared_state
+	CLASS_INDEX = 0x027c
 	
 	lock_request: bool
 	
@@ -860,11 +831,11 @@ class NetMessageSharedState(NetMessageStreamedObject):
 
 
 class NetMessageTestAndSet(NetMessageSharedState):
-	CLASS_INDEX = NetMessageClassIndex.test_and_set
+	CLASS_INDEX = 0x027d
 
 
 class NetMessageSDLState(NetMessageStreamedObject):
-	CLASS_INDEX = NetMessageClassIndex.sdl_state
+	CLASS_INDEX = 0x02cd
 	
 	is_initial_state: bool
 	persist_on_server: bool
@@ -890,11 +861,11 @@ class NetMessageSDLState(NetMessageStreamedObject):
 
 
 class NetMessageSDLStateBroadcast(NetMessageSDLState):
-	CLASS_INDEX = NetMessageClassIndex.sdl_state_broadcast
+	CLASS_INDEX = 0x0329
 
 
 class NetMessageGetSharedState(NetMessageObject):
-	CLASS_INDEX = NetMessageClassIndex.get_shared_state
+	CLASS_INDEX = 0x027e
 	
 	shared_state_name: bytes
 	
@@ -916,7 +887,7 @@ class NetMessageGetSharedState(NetMessageObject):
 
 
 class NetMessageObjectStateRequest(NetMessageObject):
-	CLASS_INDEX = NetMessageClassIndex.object_state_request
+	CLASS_INDEX = 0x0286
 	
 	def __init__(self) -> None:
 		super().__init__()
@@ -924,7 +895,7 @@ class NetMessageObjectStateRequest(NetMessageObject):
 
 
 class NetMessageGameMessage(NetMessageStream):
-	CLASS_INDEX = NetMessageClassIndex.game_message
+	CLASS_INDEX = 0x026b
 	
 	delivery_time: datetime.datetime
 	
@@ -952,7 +923,7 @@ class NetMessageGameMessage(NetMessageStream):
 
 
 class NetMessageGameMessageDirected(NetMessageGameMessage):
-	CLASS_INDEX = NetMessageClassIndex.game_message_directed
+	CLASS_INDEX = 0x032e
 	
 	receivers: typing.List[int]
 	
@@ -977,7 +948,7 @@ class NetMessageGameMessageDirected(NetMessageGameMessage):
 
 
 class NetMessageLoadClone(NetMessageGameMessage):
-	CLASS_INDEX = NetMessageClassIndex.load_clone
+	CLASS_INDEX = 0x03b3
 	
 	uoid: Uoid
 	is_player: bool
@@ -1007,7 +978,7 @@ class NetMessageLoadClone(NetMessageGameMessage):
 
 
 class NetMessageMembersListRequest(NetMessage):
-	CLASS_INDEX = NetMessageClassIndex.members_list_req
+	CLASS_INDEX = 0x02ad
 	
 	def __init__(self) -> None:
 		super().__init__()
@@ -1015,18 +986,18 @@ class NetMessageMembersListRequest(NetMessage):
 
 
 class NetMessageServerToClient(NetMessage):
-	CLASS_INDEX = NetMessageClassIndex.server_to_client
+	CLASS_INDEX = 0x02b2
 	
 	def __init__(self) -> None:
 		super().__init__()
 		self.flags |= NetMessageFlags.is_system_message
 	
 	async def handle(self, connection: "GameConnection") -> None:
-		raise base.ProtocolError(f"A server-to-client message {self.class_index!r} was sent from a client to the server!")
+		raise base.ProtocolError(f"A server-to-client message {self.class_description} was sent from a client to the server!")
 
 
 class NetMessageGroupOwner(NetMessageServerToClient):
-	CLASS_INDEX = NetMessageClassIndex.group_owner
+	CLASS_INDEX = 0x0264
 	
 	groups: typing.List[typing.Tuple[GroupId, bool]]
 	
@@ -1055,7 +1026,7 @@ class NetMessageGroupOwner(NetMessageServerToClient):
 
 
 class NetMessageMembersList(NetMessageServerToClient):
-	CLASS_INDEX = NetMessageClassIndex.members_list
+	CLASS_INDEX = 0x02ae
 	
 	members: typing.List[MemberInfo]
 	
@@ -1076,7 +1047,7 @@ class NetMessageMembersList(NetMessageServerToClient):
 
 
 class NetMessageMemberUpdate(NetMessageServerToClient):
-	CLASS_INDEX = NetMessageClassIndex.member_update
+	CLASS_INDEX = 0x02b1
 	
 	member: MemberInfo
 	was_added: bool
@@ -1100,7 +1071,7 @@ class NetMessageMemberUpdate(NetMessageServerToClient):
 
 
 class NetMessageInitialAgeStateSent(NetMessageServerToClient):
-	CLASS_INDEX = NetMessageClassIndex.initial_age_state_sent
+	CLASS_INDEX = 0x02b8
 	
 	initial_sdl_state_count: int
 	
@@ -1119,7 +1090,7 @@ class NetMessageInitialAgeStateSent(NetMessageServerToClient):
 
 
 class NetMessageRelevanceRegions(NetMessage):
-	CLASS_INDEX = NetMessageClassIndex.relevance_regions
+	CLASS_INDEX = 0x03ac
 	
 	regions_i_care_about: int
 	regions_im_in: int
@@ -1142,7 +1113,7 @@ class NetMessageRelevanceRegions(NetMessage):
 
 
 class NetMessagePlayerPage(NetMessage):
-	CLASS_INDEX = NetMessageClassIndex.player_page
+	CLASS_INDEX = 0x03b4
 	
 	unload: bool
 	uoid: Uoid
@@ -1234,29 +1205,28 @@ class GameConnection(base.BaseMOULConnection):
 	@base.message_handler(2)
 	async def receive_propagate_buffer(self) -> None:
 		buffer_type, buffer_length = await self.read_unpack(PROPAGATE_BUFFER_HEADER)
-		buffer_type = NetMessageClassIndex(buffer_type)
 		
 		with io.BytesIO(await self.read(buffer_length)) as buffer:
 			message = NetMessage.from_stream(buffer)
 			extra_data = buffer.read()
 		
 		if buffer_type != message.class_index:
-			raise base.ProtocolError(f"PropagateBuffer type {buffer_type!r} doesn't match class index in serialized message: {message.class_index!r}")
+			raise base.ProtocolError(f"PropagateBuffer type 0x{buffer_type:>04x} doesn't match class index in serialized message: 0x{message.class_index:>04x}")
 		
 		logger.debug("Received propagate buffer: %r", message)
 		
 		unsupported_flags = message.flags & ~NetMessageFlags.all_handled
 		if unsupported_flags:
-			logger.warning("PropagateBuffer message %r has flags set that we can't handle yet: %r", message.class_index, unsupported_flags)
+			logger.warning("PropagateBuffer message %s has flags set that we can't handle yet: %r", message.class_description, unsupported_flags)
 		if message.protocol_version is not None:
-			logger.warning("PropagateBuffer message %r contains protocol version: %r", message.class_index, message.protocol_version)
+			logger.warning("PropagateBuffer message %s contains protocol version: %r", message.class_description, message.protocol_version)
 		if message.context is not None:
-			logger.warning("PropagateBuffer message %r contains context: %d", message.class_index, message.context)
+			logger.warning("PropagateBuffer message %s contains context: %d", message.class_description, message.context)
 		if message.trans_id is not None:
-			logger.warning("PropagateBuffer message %r contains transaction ID: %d", message.class_index, message.trans_id)
+			logger.warning("PropagateBuffer message %s contains transaction ID: %d", message.class_description, message.trans_id)
 		if message.account_uuid is not None:
-			logger.warning("PropagateBuffer message %r contains account UUID: %s", message.class_index, message.account_uuid)
+			logger.warning("PropagateBuffer message %s contains account UUID: %s", message.class_description, message.account_uuid)
 		if extra_data:
-			logger.warning("PropagateBuffer message %r has extra trailing data: %r", message.class_index, extra_data)
+			logger.warning("PropagateBuffer message %s has extra trailing data: %r", message.class_description, extra_data)
 		
 		await message.handle(self)
