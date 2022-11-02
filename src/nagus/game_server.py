@@ -528,6 +528,15 @@ class NetMessage(object):
 	ki_number: typing.Optional[int]
 	account_uuid: typing.Optional[uuid.UUID]
 	
+	@classmethod
+	def __init_subclass__(cls, **kwargs) -> None:
+		super().__init_subclass__(**kwargs)
+		
+		if cls.CLASS_INDEX in NET_MESSAGE_CLASSES_BY_INDEX:
+			raise ValueError(f"Attempted to create NetMessage subclass {cls.__qualname__} with class index {cls.CLASS_INDEX} which is already used by existing subclass {NET_MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX].__qualname__}")
+		
+		NET_MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX] = cls
+	
 	def __init__(self) -> None:
 		super().__init__()
 		
@@ -616,55 +625,12 @@ class NetMessage(object):
 		
 		class_index = NetMessageClassIndex(class_index)
 		
-		self: NetMessage
-		if class_index == NetMessageClassIndex.rooms_list:
-			self = NetMessageRoomsList()
-		elif class_index == NetMessageClassIndex.paging_room:
-			self = NetMessagePagingRoom()
-		elif class_index == NetMessageClassIndex.game_state_request:
-			self = NetMessageGameStateRequest()
-		elif class_index == NetMessageClassIndex.object:
-			self = NetMessageObject()
-		elif class_index == NetMessageClassIndex.streamed_object:
-			self = NetMessageStreamedObject()
-		elif class_index == NetMessageClassIndex.shared_state:
-			self = NetMessageSharedState()
-		elif class_index == NetMessageClassIndex.test_and_set:
-			self = NetMessageTestAndSet()
-		elif class_index == NetMessageClassIndex.sdl_state:
-			self = NetMessageSDLState()
-		elif class_index == NetMessageClassIndex.sdl_state_broadcast:
-			self = NetMessageSDLStateBroadcast()
-		elif class_index == NetMessageClassIndex.get_shared_state:
-			self = NetMessageGetSharedState()
-		elif class_index == NetMessageClassIndex.object_state_request:
-			self = NetMessageObjectStateRequest()
-		elif class_index == NetMessageClassIndex.stream:
-			self = NetMessageStream()
-		elif class_index == NetMessageClassIndex.game_message:
-			self = NetMessageGameMessage()
-		elif class_index == NetMessageClassIndex.game_message_directed:
-			self = NetMessageGameMessageDirected()
-		elif class_index == NetMessageClassIndex.load_clone:
-			self = NetMessageLoadClone()
-		elif class_index == NetMessageClassIndex.members_list_req:
-			self = NetMessageMembersListRequest()
-		elif class_index == NetMessageClassIndex.server_to_client:
-			self = NetMessageServerToClient()
-		elif class_index == NetMessageClassIndex.group_owner:
-			self = NetMessageGroupOwner()
-		elif class_index == NetMessageClassIndex.members_list:
-			self = NetMessageMembersList()
-		elif class_index == NetMessageClassIndex.member_update:
-			self = NetMessageMemberUpdate()
-		elif class_index == NetMessageClassIndex.initial_age_state_sent:
-			self = NetMessageInitialAgeStateSent()
-		elif class_index == NetMessageClassIndex.relevance_regions:
-			self = NetMessageRelevanceRegions()
-		elif class_index == NetMessageClassIndex.player_page:
-			self = NetMessagePlayerPage()
-		else:
+		try:
+			clazz = NET_MESSAGE_CLASSES_BY_INDEX[class_index]
+		except KeyError:
 			self = cls()
+		else:
+			self = clazz()
 		
 		self.read(stream)
 		return self
@@ -710,6 +676,11 @@ class NetMessage(object):
 	
 	async def handle(self, connection: "GameConnection") -> None:
 		logger.error("Don't know how to handle plNetMessage of class %r - ignoring", self.class_index)
+
+
+NET_MESSAGE_CLASSES_BY_INDEX: typing.Dict[NetMessageClassIndex, typing.Type[NetMessage]] = {
+	NetMessage.CLASS_INDEX: NetMessage,
+}
 
 
 class NetMessageRoomsList(NetMessage):
