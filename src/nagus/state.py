@@ -1138,7 +1138,7 @@ class ServerState(object):
 			if await cursor.fetchone() is None:
 				raise VaultNodeNotFound(f"Couldn't fetch refs for vault node ID {parent_id} as it doesn't exist")
 			
-			await cursor.execute("select (ChildId, OwnerId, Seen) from VaultNodeRefs where ParentId = ?", (parent_id,))
+			await cursor.execute("select ChildId, OwnerId, Seen from VaultNodeRefs where ParentId = ?", (parent_id,))
 			async for child_id, owner_id, seen in cursor:
 				yield VaultNodeRef(parent_id, child_id, owner_id, seen)
 	
