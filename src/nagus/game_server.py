@@ -521,7 +521,6 @@ class NetMessage(object):
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = collections.OrderedDict()
-		fields["class_index"] = f"0x{self.class_index:>04x}"
 		fields["flags"] = repr(self.flags)
 		
 		if self.protocol_version is not None:
@@ -546,7 +545,7 @@ class NetMessage(object):
 	
 	def __repr__(self) -> str:
 		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
-		return f"<{type(self).__qualname__}: {joined_fields}>"
+		return f"<{self.class_description}: {joined_fields}>"
 	
 	@property
 	def class_description(self) -> str:
