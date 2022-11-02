@@ -1018,12 +1018,25 @@ Delete an existing avatar.
 Sent by the client when the player uses the "Delete Explorer" button on the avatar selection screen.
 
 Deleting an avatar removes it from the account and allows its name to be reused for a new avatar.
-However,
-it *doesn't* delete the avatar's vault node and other related data,
-so the deleted avatar will continue to appear in its neighborhood member list
-and in other players' buddies/recent lists until deleted.
-In general,
-there's no way for other players to tell that the avatar has been deleted.
+Some other data related to the avatar is also deleted,
+though the details of this depend on the server implementation.
+
+Cyan's server software deletes only the avatar's :ref:`vault_node_player` vault node.
+All other nodes belonging to the avatar remain in the vault,
+most notably the :ref:`vault_node_player_info` node.
+As a result,
+the deletion isn't noticeable to other players ---
+the deleted avatar will continue to appear in its neighborhood member list
+and in other players' buddies/recent lists
+(until the other player removes it).
+
+MOSS and DIRTSAND delete the avatar's :ref:`vault_node_player_info` node,
+removing it from all avatar lists in which it appears.
+DIRTSAND doesn't delete any other vault nodes belonging to the avatar,
+notably the :ref:`vault_node_player` node and its children.
+MOSS thoroughly deletes all vault nodes under the :ref:`vault_node_player` node,
+as well as any associated marker game data,
+if they aren't referenced anywhere else.
 
 .. _auth2cli_player_delete_reply:
 
