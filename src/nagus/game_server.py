@@ -499,7 +499,7 @@ class NetMessage(object):
 	account_uuid: typing.Optional[uuid.UUID]
 	
 	@classmethod
-	def __init_subclass__(cls, **kwargs) -> None:
+	def __init_subclass__(cls, **kwargs: typing.Any) -> None:
 		super().__init_subclass__(**kwargs)
 		
 		if cls.CLASS_INDEX in NET_MESSAGE_CLASSES_BY_INDEX:
