@@ -823,15 +823,17 @@ Common data types
    * **Header:** :cpp:class:`plNetMsgStream`.
    * **Delivery time present:** 1-byte boolean.
      Whether the following delivery time field is set.
-     MOSS, DIRTSAND, and the open-sourced client code always set it to false.
    * **Delivery time:** 8-byte :cpp:class:`plUnifiedTime`.
      Only present if the preceding boolean field is true,
      otherwise defaults to all zeroes
      (i. e. the Unix epoch).
-     The open-sourced client code never sets this field,
-     but handles it if received.
-     MOSS and DIRTSAND ignore this field and never set it.
-     Unclear if Cyan's server software does anything with it.
+     Set by the client when sending based on the wrapped ``plMessage``'s timestamp field:
+     if the timestamp lies in the future,
+     it's converted from local game time to an absolute time and stored in this field,
+     otherwise the timestamp is set to zero and this field is left unset.
+     It seems that all server implementations ignore this field and pass it on unmodified.
+     If this field is set when received by the client,
+     it's converted to the client's local game time and stored in the ``plMessage``'s timestamp field.
    
    Wraps a ``plMessage`` to be sent between clients.
    The stream data contains the serialized ``plMessage``
