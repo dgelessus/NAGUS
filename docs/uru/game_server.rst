@@ -498,7 +498,8 @@ Common data types
       
       .. cpp:enumerator:: kHasGameMsgRcvrs = 1 << 1
          
-         Set for :cpp:class:`plNetMsgGameMessage` (or subclass) messages if they use "direct communication".
+         Set for :cpp:class:`plNetMsgGameMessage` (or subclass) messages
+         if the wrapped ``plMessage`` has at least one receiver whose :cpp:class:`plLocation` is not virtual or reserved.
          Should never be set for other message types.
          According to comments in the open-sourced client code,
          this flag is meant to allow some server-side optimization.
@@ -595,6 +596,8 @@ Common data types
          Set for :cpp:class:`plNetMsgGameMessage` (or subclass) messages
          if the wrapped ``plMessage`` has the ``kNetAllowInterAge`` flag set
          (unless :cpp:enumerator:`kRouteToAllPlayers`/``kCCRSendToAllPlayers`` is also set).
+         This should only happen for :cpp:class:`plNetMsgGameMessageDirected` messages
+         where the wrapped ``plMessage`` is a ``pfKIMsg``, ``plCCRCommunicationMsg``, ``plLinkingMgrMsg``, or ``plLinkToAgeMsg``.
          Should never be set for other message types.
          Ignored by MOSS and DIRTSAND.
       
@@ -625,12 +628,15 @@ Common data types
          If this flag is set,
          :cpp:enumerator:`kInterAgeRouting` should be unset.
          The client sets this flag for :cpp:class:`plNetMsgGameMessage` (or subclass) messages
-         if the client is :ref:`internal <internal_external_client>`,
-         the current :ref:`CCR level <ccr_level>` is greater than 0,
+         if the client is :ref:`internal <internal_external_client>`
          and the wrapped ``plMessage`` has the ``kCCRSendToAllPlayers`` flag set.
          Should never be set for other message types.
+         The open-sourced client code and OpenUru clients never set this flag ---
+         most likely only Cyan's internal CCR client used it.
+         Internal H'uru clients set this flag when sending CCR broadcast chat messages
+         (using the ``/system`` chat command or the All Players list).
          DIRTSAND implements this flag,
-         but only respects it if the sender is permitted to send unsafe messages
+         but only respects it if the sender is permitted to send unsafe ``plMessage``\s
          (i. e. if the sender's account has the :cpp:var:`kAccountRoleAdmin` flag set).
          MOSS doesn't implement this flag at all and always ignores it.
    
@@ -727,6 +733,7 @@ Common data types
    
    * **Header:** :cpp:class:`plNetMsgObject`.
    * **Stream:** :cpp:class:`plNetMsgStreamHelper`.
+     The format of the stream data depends on the subclass.
 
 :cpp:class:`plNetMsgSharedState`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -804,6 +811,7 @@ Common data types
    
    * **Header:** :cpp:class:`plNetMessage`.
    * **Stream:** :cpp:class:`plNetMsgStreamHelper`.
+     The format of the stream data depends on the subclass.
 
 :cpp:class:`plNetMsgGameMessage`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -824,6 +832,60 @@ Common data types
      but handles it if received.
      MOSS and DIRTSAND ignore this field and never set it.
      Unclear if Cyan's server software does anything with it.
+   
+   Wraps a ``plMessage`` to be sent between clients.
+   The stream data contains the serialized ``plMessage``
+   in the format produced by ``hsResMgr::WriteCreatable``
+   and understood by ``hsResMgr::ReadCreatable``.
+   
+   If the contained ``plMessage`` is an instance of ``plLoadCloneMsg``,
+   then the wrapper message must have the class :cpp:class:`plNetMsgLoadClone` instead.
+   
+   When the client sends (locally) a ``plMessage`` that has the ``kNetPropagate`` flag set,
+   it wraps the ``plMessage`` in a :cpp:class:`plNetMsgGameMessage`
+   (or one of its subclasses)
+   and sends it to the game server.
+   Afterwards,
+   the ``plMessage`` is also sent locally on the client side
+   if it has the ``kLocalPropagate`` flag set
+   (which is the case by default).
+   
+   When the server receives this message,
+   by default it forwards it to all other clients in the same age instance.
+   
+   If the message has the :cpp:enumerator:`~plNetMessage::BitVectorFlags::kEchoBackToSender` flag set,
+   it's also repeated back to the sender.
+   MOSS doesn't support this flag.
+   DIRTSAND ignores it for :cpp:class:`plNetMsgGameMessageDirected` messages.
+   
+   If the message has the :cpp:enumerator:`~plNetMessage::BitVectorFlags::kRouteToAllPlayers` flag set,
+   it's forwarded to *all* clients on the entire shard,
+   even ones in other age instances.
+   MOSS doesn't support this flag.
+   DIRTSAND only allows it if the sender's account has the :cpp:var:`kAccountRoleAdmin` flag set
+   and the message class is exactly :cpp:class:`plNetMsgGameMessage`.
+   
+   DIRTSAND by default blocks forwarding of certain ``plMessage``\s
+   that cannot occur during normal gameplay and should only be used by CCRs and developers.
+   Such messages are silently dropped and not forwarded to anyone,
+   unless the sender's account has the :cpp:var:`kAccountRoleAdmin` flag set,
+   which allows bypassing this check.
+   
+   The server forwards the message completely unmodified,
+   with the following exceptions:
+   
+   * If the message has the :cpp:enumerator:`~BitVectorFlags::kHasTimeSent` flag set
+     (which is always the case in practice),
+     MOSS updates the time sent to the current time when forwarding the message.
+     DIRTSAND leaves it untouched and keeps the time sent that was originally set by the sending client.
+     (TODO What does Cyan's server software do?)
+     This difference shouldn't be noticeable in practice.
+   * DIRTSAND sets the ``kNetNonLocal`` flag on the wrapped ``plMessage`` before forwarding it
+     (unless the wrapper message is a :cpp:class:`plNetMsgLoadClone` ---
+     but that might just be a bug).
+     MOSS never sets this flag
+     and that apparently has no negative effect on gameplay.
+     (TODO What does Cyan's server software do?)
 
 :cpp:class:`plNetMsgGameMessageDirected`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -837,6 +899,27 @@ Common data types
      Element count of the following receiver array.
    * **Receivers:** Variable-length array of 4-byte unsigned ints,
      each a KI number of an avatar that should receive this message.
+     Note that this is independent of the wrapped ``plMessage``'s list of receiver keys ---
+     in fact,
+     the latter is usually empty for directed messages.
+   
+   Behaves like its superclass :cpp:class:`plNetMsgGameMessage`,
+   except that the server only forwards it to the specified list of receivers,
+   not all avatars in the age instance.
+   The wrapped ``plMessage`` should be an instance of ``pfKIMsg``, ``plCCRCommunicationMsg``, ``plAvatarInputStateMsg``, ``plInputIfaceMgrMsg``, or ``plNotifyMsg``.
+   
+   By default,
+   the message is only forwarded to receivers that are in the same age instance as the sender.
+   If the :cpp:enumerator:`~plNetMessage::BitVectorFlags::kInterAgeRouting` flag is set,
+   it's also forwarded to receivers in other age instances.
+   MOSS and DIRTSAND ignore this flag though
+   and always forward the message to all receivers,
+   regardless of which age instance they're in.
+   
+   DIRTSAND ignores the :cpp:enumerator:`~plNetMessage::BitVectorFlags::kEchoBackToSender` for directed messages
+   and instead repeats the message back if and only if the sender's KI number is in the list of receivers.
+   
+   The :cpp:enumerator:`~plNetMessage::BitVectorFlags::kRouteToAllPlayers` flag shouldn't be used with directed messages.
 
 :cpp:class:`plNetMsgLoadClone`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -850,6 +933,13 @@ Common data types
    * **Is player:** 1-byte boolean.
    * **Is loading:** 1-byte boolean.
    * **Is initial state:** 1-byte boolean.
+   
+   Special case of :cpp:class:`plNetMsgGameMessage`
+   used if the wrapped ``plMessage`` is an instance of ``plLoadCloneMsg``
+   (or its only subclass ``plLoadAvatarMsg``).
+   
+   These messages are always forwarded to all clients within the same age instance ---
+   they cannot be directed and should never have the :cpp:enumerator:`~plNetMessage::BitVectorFlags::kInterAgeRouting` or :cpp:enumerator:`~plNetMessage::BitVectorFlags::kRouteToAllPlayers` flags set.
 
 :cpp:class:`plNetMsgVoice`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
