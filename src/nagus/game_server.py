@@ -465,6 +465,8 @@ class NetMessageFlags(enum.IntFlag):
 	# All other flags generate a warning log message.
 	all_handled = (
 		has_time_sent
+		| has_game_message_receivers
+		| echo_back_to_sender
 		| has_context
 		| has_transaction_id
 		| new_sdl_state
@@ -476,6 +478,7 @@ class NetMessageFlags(enum.IntFlag):
 		| has_version
 		| is_system_message
 		| needs_reliable_send
+		| route_to_all_players
 	)
 
 
@@ -917,6 +920,16 @@ class NetMessageGameMessage(NetMessageStream):
 		else:
 			stream.write(b"\x01")
 			structs.write_unified_time(stream, self.delivery_time)
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		# TODO Set kNetNonLocal flag on the wrapped plMessage before forwarding?
+		# TODO Forward to other clients
+		
+		if NetMessageFlags.echo_back_to_sender in self.flags:
+			await connection.send_propagate_buffer(self)
+		
+		if NetMessageFlags.route_to_all_players in self.flags:
+			logger.warning("Ignoring route_to_all_players flag - CCR broadcast messages not supported yet")
 
 
 class NetMessageGameMessageDirected(NetMessageGameMessage):
@@ -942,6 +955,10 @@ class NetMessageGameMessageDirected(NetMessageGameMessage):
 		stream.write(bytes([len(self.receivers)]))
 		for receiver in self.receivers:
 			stream.write(structs.UINT32.pack(receiver))
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		logger.warning("Directed game messages not supported yet - treating it like a broadcast message for now")
+		await super().handle(connection)
 
 
 class NetMessageLoadClone(NetMessageGameMessage):
@@ -1216,9 +1233,26 @@ class GameConnection(base.BaseMOULConnection):
 		
 		logger.debug("Received propagate buffer: %r", message)
 		
+		# Check for unsupported and unexpected flags,
+		# possibly depending on the message class.
 		unsupported_flags = message.flags & ~NetMessageFlags.all_handled
 		if unsupported_flags:
 			logger.warning("PropagateBuffer message %s has flags set that we can't handle yet: %r", message.class_description, unsupported_flags)
+		if NetMessageFlags.has_game_message_receivers in message.flags and not isinstance(message, NetMessageGameMessage):
+			logger.warning("PropagateBuffer message %s has has_game_message_receivers flag set even though it's not a game message", message.class_description)
+		if NetMessageFlags.echo_back_to_sender in message.flags and not isinstance(message, NetMessageGameMessage):
+			logger.warning("PropagateBuffer message %s has echo_back_to_sender flag set even though it's not a game message", message.class_description)
+		if NetMessageFlags.new_sdl_state in message.flags and not isinstance(message, NetMessageSDLState):
+			logger.warning("PropagateBuffer message %s has new_sdl_state flag set even though it's not an SDL state message", message.class_description)
+		if NetMessageFlags.initial_age_state_request in message.flags and not isinstance(message, NetMessageGameStateRequest):
+			logger.warning("PropagateBuffer message %s has initial_age_state_request flag set even though it's not a game state request message", message.class_description)
+		if NetMessageFlags.use_relevance_regions in message.flags and not isinstance(message, (NetMessageSDLState, NetMessageGameMessage)):
+			logger.warning("PropagateBuffer message %s has use_relevance_regions flag set even though it's not an SDL state or game message", message.class_description)
+		if NetMessageFlags.inter_age_routing in message.flags and not isinstance(message, NetMessageGameMessageDirected):
+			logger.warning("PropagateBuffer message %s has inter_age_routing flag set even though it's not a directed game message", message.class_description)
+		if NetMessageFlags.route_to_all_players in message.flags and type(message) != NetMessageGameMessage:
+			logger.warning("PropagateBuffer message %s has route_to_all_players flag set even though its class is not plNetMsgGameMessage", message.class_description)
+		
 		if message.protocol_version is not None:
 			logger.warning("PropagateBuffer message %s contains protocol version: %r", message.class_description, message.protocol_version)
 		if message.context is not None:
