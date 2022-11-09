@@ -713,6 +713,50 @@ Common data types
    *Class index = 0x0265 = 613*
    
    Identical structure to its superclass :cpp:class:`plNetMsgRoomsList`.
+   
+   Request the current state of the age instance.
+   Sent by the client exactly once as part of the link-in/loading process,
+   immediately after the :cpp:class:`plNetMsgMembersListReq`.
+   
+   The rooms list can be used to limit the request only to objects in certain rooms,
+   but in practice the client always sends an empty list,
+   which requests the state for all rooms loaded by the client.
+   MOSS has code for handling both empty and non-empty rooms lists.
+   DIRTSAND ignores the rooms list and unconditionally sends all states.
+   
+   The server replies immediately with the following messages:
+   
+   * One :cpp:class:`plNetMsgLoadClone` for every clone currently in the age instance.
+     DIRTSAND actually sends these messages in response to :cpp:class:`plNetMsgMembersListReq` already,
+     but this makes no practical difference,
+     because the messages are sent in the same order either way.
+     DIRTSAND also doesn't count them towards the total number of sent states (see below),
+     but this is also not a problem,
+     because the communication is TCP-based and so there's no possibility of any state messages getting lost.
+   * One :cpp:class:`plNetMsgSDLState` for the state of every object currently in the age instance.
+     This notably includes the age SDL state (if any),
+     which is sent as the SDL state for the ``AgeSDLHook`` object.
+   * A single :cpp:class:`plNetMsgInitialAgeStateSent` containing the number of state messages that were sent.
+     DIRTSAND doesn't include :cpp:class:`plNetMsgLoadClone` messages in this count.
+   
+   After sending the request,
+   the client blocks the link-in/loading process
+   until it has received the :cpp:class:`plNetMsgInitialAgeStateSent` message and the indicated number of state mesages.
+   
+   The exact order of the reply messages doesn't matter,
+   except that an object's :cpp:class:`plNetMsgLoadClone` message must be sent before any other messages referring to that object.
+   
+   DIRTSAND uses the following order:
+   
+   * :cpp:class:`plNetMsgLoadClone`\s for all non-avatar clones
+   * :cpp:class:`plNetMsgLoadClone`\s for all avatars
+   * :cpp:class:`plNetMsgSDLState` for the ``AgeSDLHook`` (if any)
+   * :cpp:class:`plNetMsgSDLState`\s for all other objects
+   * :cpp:class:`plNetMsgInitialAgeStateSent`
+   
+   MOSS sends all clones and states in the order in which they were first received,
+   except that the clone of the requester's avatar is skipped.
+   The :cpp:class:`plNetMsgInitialAgeStateSent` message is sent last.
 
 :cpp:class:`plNetMsgObject`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1023,6 +1067,16 @@ Common data types
    *Class index = 0x02ad = 685*
    
    Identical structure to its superclass :cpp:class:`plNetMessage`.
+   
+   Request a list of all other clients/avatars currently in the age instance.
+   Sent by the client exactly once as part of the link-in/loading process,
+   after it has finished loading the age and avatar.
+   
+   The server replies immediately with a :cpp:class:`plNetMsgMembersList` message.
+   DIRTSAND also uses this as the trigger for sending :cpp:class:`plNetMsgLoadClone` messages for all existing clones in the age instance.
+   MOSS sends the :cpp:class:`plNetMsgLoadClone` messages in response to :cpp:class:`plNetMsgGameStateRequest` instead.
+   This makes practically no difference,
+   because the two request messages are sent immediately after one another.
 
 :cpp:class:`plNetMsgServerToClient`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1065,6 +1119,12 @@ Common data types
      even though it can never be negative).
      Element count for the following member array.
    * **Members:** Variable-length array of :cpp:class:`plNetMsgMemberInfoHelper`\s.
+   
+   Reply to a :cpp:class:`plNetMsgMembersListReq`.
+   The members list contains information about every other client currently in the age instance
+   and the UOID of each corresponding avatar.
+   The state of each of these avatars is sent separately,
+   in response to the :cpp:class:`plNetMsgGameStateRequest`.
 
 :cpp:class:`plNetMsgMemberUpdate`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1088,6 +1148,13 @@ Common data types
    
    * **Header:** :cpp:class:`plNetMsgServerToClient`.
    * **Initial SDL state count:** 4-byte unsigned int.
+     The number of :cpp:class:`plNetMsgLoadClone` and :cpp:class:`plNetMsgSDLState` messages sent by the server.
+   
+   Reply to a :cpp:class:`plNetMsgGameStateRequest`.
+   Once the client has received this message and the expected number of clone/state messages,
+   it finishes the link-in/loading process,
+   hides the loading screen,
+   and finally allows the player to interact with the game again.
 
 :cpp:class:`plNetMsgListenListUpdate`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
