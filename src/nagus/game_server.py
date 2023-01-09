@@ -57,6 +57,8 @@ NET_MESSAGE_STREAMED_OBJECT_HEADER = struct.Struct("<IBI")
 NET_MESSAGE_SDL_STATE = struct.Struct("<???")
 NET_MESSAGE_LOAD_CLONE_BOOLS = struct.Struct("<???")
 
+COMPRESSION_THRESHOLD = 256
+
 
 class Location(object):
 	class Flags(enum.IntFlag):
@@ -776,7 +778,14 @@ class NetMessageStream(NetMessage):
 				raise ValueError(f"plNetMsgStreamedObject uncompressed length {self.uncompressed_length} should be 0 for non-compressed data")
 			return self.stream_data
 	
-	def compress_and_set_data(self, data: bytes) -> None:
+	def compress_and_set_data(self, data: bytes, compression_type: typing.Optional[CompressionType] = None) -> None:
+		if compression_type is not None:
+			self.compression_type = compression_type
+		elif len(data) > COMPRESSION_THRESHOLD:
+			self.compression_type = CompressionType.zlib
+		else:
+			self.compression_type = CompressionType.none
+		
 		if self.compression_type == CompressionType.zlib:
 			self.uncompressed_length = len(data)
 			if self.uncompressed_length < 2:
@@ -799,7 +808,7 @@ class NetMessageStream(NetMessage):
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
 		
-		stream.write(NET_MESSAGE_STREAMED_OBJECT_HEADER.pack(self.uncompressed_length, self.compression_type, len(self.stream_data)))
+		stream.write(NET_MESSAGE_STREAMED_OBJECT_HEADER.pack(self.uncompressed_length, self.compression_type.value, len(self.stream_data)))
 		stream.write(self.stream_data)
 
 
