@@ -723,8 +723,58 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 	CLASS_INDEX = 0x0265
 	
 	async def handle(self, connection: "GameConnection") -> None:
+		if self.rooms:
+			logger.warning("Ignoring non-empty rooms list in game state request: %r", self.rooms)
+		
+		count = 0
+		
+		# TODO Send currently loaded clones
+		
+		try:
+			age_sdl_node_id = await connection.server_state.find_unique_vault_node(
+				state.VaultNodeData(node_type=state.VaultNodeType.sdl),
+				parent_id=connection.client_state.age_info_node_id,
+			)
+		except state.VaultNodeNotFound:
+			# No age SDL saved for this instance -
+			# assuming that this age has no AgeSDLHook.
+			pass
+		else:
+			# TODO Support global SDL and such
+			age_sdl_node_data = await connection.server_state.fetch_vault_node(age_sdl_node_id)
+			
+			if age_sdl_node_data.string64_1 != connection.client_state.age_file_name:
+				raise base.ProtocolError(f"SDL node {age_sdl_node_id} has SDL name {age_sdl_node_data.string64_1!r}, which doesn't match the age file name {connection.client_state.age_file_name!r}")
+			
+			if age_sdl_node_data.blob_1:
+				try:
+					age_sequence_prefix = connection.client_state.age_sequence_prefix
+				except AttributeError:
+					logger.warning("Client requested game state, but hasn't yet sent any messages that would allow guessing the age sequence prefix! Not sending AgeSDLHook state - this will probably break age state and scripts!")
+				else:
+					count += 1
+					
+					age_sdl_hook_uoid = Uoid()
+					age_sdl_hook_uoid.location = Location((age_sequence_prefix << 16) + 33 - 2, Location.Flags.built_in)
+					age_sdl_hook_uoid.load_mask = 0xff
+					age_sdl_hook_uoid.class_type = 0x0001 # Scene Object
+					age_sdl_hook_uoid.object_id = 1
+					age_sdl_hook_uoid.object_name = b"AgeSDLHook"
+					age_sdl_hook_uoid.clone_ids = None
+					
+					age_sdl_hook_state = NetMessageSDLState()
+					age_sdl_hook_state.uoid = age_sdl_hook_uoid
+					# TODO It's probably not enough to send the SDL blob from the vault as-is!
+					age_sdl_hook_state.compress_and_set_data(age_sdl_node_data.blob_1)
+					age_sdl_hook_state.is_initial_state = True
+					age_sdl_hook_state.persist_on_server = True
+					age_sdl_hook_state.is_avatar_state = False
+					await connection.send_propagate_buffer(age_sdl_hook_state)
+		
+		# TODO Send all other states
+		
 		initial_age_state_sent = NetMessageInitialAgeStateSent()
-		initial_age_state_sent.initial_sdl_state_count = 0
+		initial_age_state_sent.initial_sdl_state_count = count
 		await connection.send_propagate_buffer(initial_age_state_sent)
 
 
@@ -1162,6 +1212,11 @@ class NetMessagePlayerPage(NetMessage):
 
 class GameClientState(object):
 	mcp_id: int
+	age_node_id: int
+	age_info_node_id: int
+	age_instance_uuid: uuid.UUID
+	age_file_name: str
+	age_sequence_prefix: int
 	account_uuid: uuid.UUID
 	ki_number: int
 
@@ -1210,7 +1265,59 @@ class GameConnection(base.BaseMOULConnection):
 			await self.join_age_reply(trans_id, base.NetError.invalid_parameter)
 			raise base.ProtocolError(f"Client attempted to join another age instance ({mcp_id}) with an already established game server connection (for age instance {self.client_state.mcp_id})")
 		
+		# As a shortcut for now,
+		# the auth server sends the age node ID as the MCP ID.
+		# This might change in the future.
+		age_node_id = mcp_id
+		
+		try:
+			age_node_data = await self.server_state.fetch_vault_node(age_node_id)
+		except state.VaultNodeNotFound:
+			await self.join_age_reply(trans_id, base.NetError.age_not_found)
+			raise base.ProtocolError(f"Client attempted to join age instance with nonexistant ID {age_node_id}")
+		
+		logger.debug("Age node: %s", age_node_data)
+		
+		if age_node_data.node_type != state.VaultNodeType.age:
+			await self.join_age_reply(trans_id, base.NetError.age_not_found)
+			raise base.ProtocolError(f"Client attempted to join age instance with ID {age_node_id}, which is of type {age_node_data.node_type}, not Age")
+		
+		age_instance_uuid = age_node_data.uuid_1
+		if age_instance_uuid is None:
+			await self.join_age_reply(trans_id, base.NetError.internal_error)
+			raise base.ProtocolError(f"Age instance with ID {age_node_id} has no age instance UUID")
+		
+		age_file_name = age_node_data.string64_1
+		if age_file_name is None:
+			await self.join_age_reply(trans_id, base.NetError.internal_error)
+			raise base.ProtocolError(f"Age instance with ID {age_node_id} has no age file name")
+		
+		try:
+			age_info_node_id = await self.server_state.find_unique_vault_node(state.VaultNodeData(node_type=state.VaultNodeType.age_info), parent_id=age_node_id)
+		except state.VaultNodeNotFound:
+			await self.join_age_reply(trans_id, base.NetError.vault_node_not_found)
+			raise base.ProtocolError(f"Age instance with ID {age_node_id} has no Age Info child node")
+		
+		age_info_node_data = await self.server_state.fetch_vault_node(age_info_node_id)
+		logger.debug("Age Info node: %s", age_info_node_data)
+		
+		if age_info_node_data.uint32_1 != age_node_id:
+			await self.join_age_reply(trans_id, base.NetError.internal_error)
+			raise base.ProtocolError(f"Age Info node {age_info_node_id} has its Age ID field set to {age_info_node_data.uint32_1}, but its parent Age node is actually {age_node_id}")
+		
+		if age_info_node_data.uuid_1 != age_instance_uuid:
+			await self.join_age_reply(trans_id, base.NetError.internal_error)
+			raise base.ProtocolError(f"Age Info node {age_info_node_id} has age instance UUID {age_info_node_data.uuid_1}, but its parent Age node {age_node_id} has age instance UUID {age_instance_uuid}")
+		
+		if age_info_node_data.string64_2 != age_file_name:
+			await self.join_age_reply(trans_id, base.NetError.internal_error)
+			raise base.ProtocolError(f"Age Info node {age_info_node_id} has age file name {age_info_node_data.string64_2!r}, but its parent Age node {age_node_id} has age file name {age_file_name!r}")
+		
 		self.client_state.mcp_id = mcp_id
+		self.client_state.age_node_id = age_node_id
+		self.client_state.age_info_node_id = age_info_node_id
+		self.client_state.age_instance_uuid = age_instance_uuid
+		self.client_state.age_file_name = age_file_name
 		self.client_state.account_uuid = account_uuid
 		self.client_state.ki_number = ki_number
 		
@@ -1272,5 +1379,30 @@ class GameConnection(base.BaseMOULConnection):
 			logger.warning("PropagateBuffer message %s contains account UUID: %s", message.class_description, message.account_uuid)
 		if extra_data:
 			logger.warning("PropagateBuffer message %s has extra trailing data: %r", message.class_description, extra_data)
+		
+		# The client never directly sends the age sequence prefix,
+		# but the server needs to know it so it can send the AgeSDLHook in reply to the GameStateRequest.
+		# Normally the server would look up the sequence prefix in the corresponding .age file,
+		# but I don't want to implement that yet
+		# (and also would like to avoid depending on age-specific data files as much as possible).
+		# So as a workaround,
+		# wait for a message from the client that contains a non-global location
+		# and extract the sequence prefix from there.
+		# This is pretty janky -
+		# it requires that before the client sends the GameStateRequest,
+		# it sends at least one message with a non-global location,
+		# and that message is for the current age.
+		# This seems to work in practice,
+		# thanks to TestAndSet messages,
+		# which get sent early during link-in before the GameStateRequest
+		# (except for some simple ages like AvatarCustomization,
+		# but that one doesn't have age SDL either,
+		# so it doesn't matter there).
+		if not hasattr(self.client_state, "age_sequence_prefix") and isinstance(message, NetMessageObject):
+			loc = message.uoid.location
+			if loc.sequence_number < 0x80000000:
+				assert Location.Flags.reserved not in loc.flags
+				self.client_state.age_sequence_prefix = (loc.sequence_number - 33) >> 16
+				logger.debug("Received message with non-global location %r - assuming that this age's sequence prefix is %d", loc, self.client_state.age_sequence_prefix)
 		
 		await message.handle(self)
