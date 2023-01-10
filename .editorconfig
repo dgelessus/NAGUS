@@ -6,7 +6,10 @@ indent_style = tab
 insert_final_newline = true
 
 [*.rst]
-# reStructuredText sometimes requires visually-aligned indents,
-# which makes it impossible to consistently indent with tabs.
+# reStructuredText requires visually-aligned indents in bulleted and numbered lists.
+# This makes it impossible to use a single consistent indent size everywhere
+# (let alone tabs).
+# 2 spaces is the best compromise IMO,
+# because it works everywhere except in numbered lists.
 indent_style = space
-indent_size = 4
+indent_size = 2

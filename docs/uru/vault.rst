@@ -1,5 +1,5 @@
 .. index:: vault
-   :name: vault
+  :name: vault
 
 The vault
 =========
@@ -200,51 +200,51 @@ but are not real node types ---
 they should never appear in the actual vault database or over the network.
 
 .. hlist::
-   
-   * *Invalid* = 0
-   * *VNodeMgrLow* = 1
-   * :ref:`vault_node_player` = 2
-   * :ref:`vault_node_age` = 3
-   * *VNodeMgr_UNUSED00* = 4
-   * *VNodeMgr_UNUSED01* = 5
-   * *VNodeMgr_UNUSED02* = 6
-   * *VNodeMgr_UNUSED03* = 7
-   * *VNodeMgrHigh* = 21
-   * :ref:`vault_node_folder` = 22
-   * :ref:`vault_node_player_info` = 23
-   * :ref:`vault_node_system` = 24
-   * :ref:`vault_node_image` = 25
-   * :ref:`vault_node_text_note` = 26
-   * :ref:`vault_node_sdl` = 27
-   * :ref:`vault_node_age_link` = 28
-   * :ref:`vault_node_chronicle` = 29
-   * :ref:`vault_node_player_info_list` = 30
-   * *UNUSED00* = 31
-   * *UNUSED01* = 32
-   * :ref:`vault_node_age_info` = 33
-   * :ref:`vault_node_age_info_list` = 34
-   * :ref:`vault_node_marker_game` = 35
+  
+  * *Invalid* = 0
+  * *VNodeMgrLow* = 1
+  * :ref:`vault_node_player` = 2
+  * :ref:`vault_node_age` = 3
+  * *VNodeMgr_UNUSED00* = 4
+  * *VNodeMgr_UNUSED01* = 5
+  * *VNodeMgr_UNUSED02* = 6
+  * *VNodeMgr_UNUSED03* = 7
+  * *VNodeMgrHigh* = 21
+  * :ref:`vault_node_folder` = 22
+  * :ref:`vault_node_player_info` = 23
+  * :ref:`vault_node_system` = 24
+  * :ref:`vault_node_image` = 25
+  * :ref:`vault_node_text_note` = 26
+  * :ref:`vault_node_sdl` = 27
+  * :ref:`vault_node_age_link` = 28
+  * :ref:`vault_node_chronicle` = 29
+  * :ref:`vault_node_player_info_list` = 30
+  * *UNUSED00* = 31
+  * *UNUSED01* = 32
+  * :ref:`vault_node_age_info` = 33
+  * :ref:`vault_node_age_info_list` = 34
+  * :ref:`vault_node_marker_game` = 35
 
 .. commented out - this is way too wide
-   csv-table:: Vault node types and field meanings
-   :name: vault_node_types
-   :header: #,Type Desc.,Int32_1,Int32_2,Int32_3,UInt32_1,UInt32_2,UInt32_3,Uuid_1,Uuid_2,String64_1,String64_2,String64_3,String64_4,IString64_1,Text_1,Text_2,Blob_1
-   :widths: auto
-   
-   2,Player,Disabled,Explorer,,OnlineTime,,,AccountUuid,InviteUuid,AvatarShapeName,,,,PlayerName,,,
-   3,Age,,,,,,,AgeInstanceGuid,ParentAgeInstanceGuid,AgeName,,,,,,,
-   22,Folder,FolderType,,,,,,,,FolderName,,,,,,,
-   23,Player Info,Online,CCRLevel,,PlayerId,,,AgeInstUuid,,AgeInstName,,,,PlayerName,,,
-   24,System,CCRStatus,,,,,,,,,,,,,,,
-   25,Image,ImageType,,,,,,,,ImageTitle,,,,,,,ImageData
-   26,Text Note,NoteType,NoteSubType,,,,,,,NoteTitle,,,,,NoteText,,
-   27,SDL,SDLIdent,,,,,,,,SDLName,,,,,,,SDLData
-   28,Age Link,Unlocked,Volatile,,,,,,,,,,,,,,SpawnPoints
-   29,Chronicle,EntryType,,,,,,,,EntryName,,,,,EntryValue,,
-   30,Player Info List,folderType,,,,,,,,folderName,,,,,,,
-   33,Age Info,AgeSequenceNumber,IsPublic,AgeLanguage,AgeId,AgeCzarId,AgeInfoFlags,AgeInstanceGuid,ParentAgeInstanceGuid,,AgeFilename,AgeInstanceName,AgeUserDefinedName,,AgeDescription,,
-   34,Age Info List,folderType,,,,,,,,folderName,,,,,,,
-   35,Marker Game,,,,,,,GameGuid,,,,,,,GameName,Reward (H'uru),MarkerData (H'uru)
+  csv-table:: Vault node types and field meanings
+  :name: vault_node_types
+  :header: #,Type Desc.,Int32_1,Int32_2,Int32_3,UInt32_1,UInt32_2,UInt32_3,Uuid_1,Uuid_2,String64_1,String64_2,String64_3,String64_4,IString64_1,Text_1,Text_2,Blob_1
+  :widths: auto
+  
+  2,Player,Disabled,Explorer,,OnlineTime,,,AccountUuid,InviteUuid,AvatarShapeName,,,,PlayerName,,,
+  3,Age,,,,,,,AgeInstanceGuid,ParentAgeInstanceGuid,AgeName,,,,,,,
+  22,Folder,FolderType,,,,,,,,FolderName,,,,,,,
+  23,Player Info,Online,CCRLevel,,PlayerId,,,AgeInstUuid,,AgeInstName,,,,PlayerName,,,
+  24,System,CCRStatus,,,,,,,,,,,,,,,
+  25,Image,ImageType,,,,,,,,ImageTitle,,,,,,,ImageData
+  26,Text Note,NoteType,NoteSubType,,,,,,,NoteTitle,,,,,NoteText,,
+  27,SDL,SDLIdent,,,,,,,,SDLName,,,,,,,SDLData
+  28,Age Link,Unlocked,Volatile,,,,,,,,,,,,,,SpawnPoints
+  29,Chronicle,EntryType,,,,,,,,EntryName,,,,,EntryValue,,
+  30,Player Info List,folderType,,,,,,,,folderName,,,,,,,
+  33,Age Info,AgeSequenceNumber,IsPublic,AgeLanguage,AgeId,AgeCzarId,AgeInfoFlags,AgeInstanceGuid,ParentAgeInstanceGuid,,AgeFilename,AgeInstanceName,AgeUserDefinedName,,AgeDescription,,
+  34,Age Info List,folderType,,,,,,,,folderName,,,,,,,
+  35,Marker Game,,,,,,,GameGuid,,,,,,,GameName,Reward (H'uru),MarkerData (H'uru)
 
 .. _vault_node_player:
 
@@ -895,39 +895,39 @@ Types in *italics* are effectively unused ---
 they are never added to the vault by the client or any known server implementation.
 
 .. csv-table::
-   :header: #,Folder type,Used in node type
-   :widths: auto
-   
-   0,UserDefinedNode,:ref:`vault_node_folder`
-   1,InboxFolder,:ref:`vault_node_folder`
-   2,BuddyListFolder,:ref:`vault_node_player_info_list`
-   3,IgnoreListFolder,:ref:`vault_node_player_info_list`
-   4,PeopleIKnowAboutFolder,:ref:`vault_node_player_info_list`
-   5,*VaultMgrGlobalDataFolder*,*unused*
-   6,ChronicleFolder,:ref:`vault_node_folder`
-   7,AvatarOutfitFolder,:ref:`vault_node_folder`
-   8,AgeTypeJournalFolder,:ref:`vault_node_folder`
-   9,SubAgesFolder,:ref:`vault_node_age_info_list`
-   10,DeviceInboxFolder,:ref:`vault_node_folder`
-   11,*HoodMembersFolder*,*unused in vault*
-   12,AllPlayersFolder,:ref:`vault_node_player_info_list`
-   13,*AgeMembersFolder*,*unused in vault*
-   14,AgeJournalsFolder,:ref:`vault_node_folder`
-   15,AgeDevicesFolder,:ref:`vault_node_folder`
-   16,*AgeInstanceSDLNode*,*unused*
-   17,*AgeGlobalSDLNode*,*unused*
-   18,CanVisitFolder,:ref:`vault_node_player_info_list`
-   19,AgeOwnersFolder,:ref:`vault_node_player_info_list`
-   20,*AllAgeGlobalSDLNodesFolder*,*unused*
-   21,*PlayerInfoNode*,*unused*
-   22,*PublicAgesFolder*,*unused*
-   23,AgesIOwnFolder,:ref:`vault_node_age_info_list`
-   24,AgesICanVisitFolder,:ref:`vault_node_age_info_list`
-   25,AvatarClosetFolder,:ref:`vault_node_folder`
-   26,*AgeInfoNode*,*unused*
-   27,*SystemNode*,*unused*
-   28,PlayerInviteFolder,:ref:`vault_node_folder`
-   29,*CCRPlayersFolder*,*unused*
-   30,GlobalInboxFolder,:ref:`vault_node_folder`
-   31,ChildAgesFolder,:ref:`vault_node_age_info_list`
-   32,*GameScoresFolder*,*unused*
+  :header: #,Folder type,Used in node type
+  :widths: auto
+  
+  0,UserDefinedNode,:ref:`vault_node_folder`
+  1,InboxFolder,:ref:`vault_node_folder`
+  2,BuddyListFolder,:ref:`vault_node_player_info_list`
+  3,IgnoreListFolder,:ref:`vault_node_player_info_list`
+  4,PeopleIKnowAboutFolder,:ref:`vault_node_player_info_list`
+  5,*VaultMgrGlobalDataFolder*,*unused*
+  6,ChronicleFolder,:ref:`vault_node_folder`
+  7,AvatarOutfitFolder,:ref:`vault_node_folder`
+  8,AgeTypeJournalFolder,:ref:`vault_node_folder`
+  9,SubAgesFolder,:ref:`vault_node_age_info_list`
+  10,DeviceInboxFolder,:ref:`vault_node_folder`
+  11,*HoodMembersFolder*,*unused in vault*
+  12,AllPlayersFolder,:ref:`vault_node_player_info_list`
+  13,*AgeMembersFolder*,*unused in vault*
+  14,AgeJournalsFolder,:ref:`vault_node_folder`
+  15,AgeDevicesFolder,:ref:`vault_node_folder`
+  16,*AgeInstanceSDLNode*,*unused*
+  17,*AgeGlobalSDLNode*,*unused*
+  18,CanVisitFolder,:ref:`vault_node_player_info_list`
+  19,AgeOwnersFolder,:ref:`vault_node_player_info_list`
+  20,*AllAgeGlobalSDLNodesFolder*,*unused*
+  21,*PlayerInfoNode*,*unused*
+  22,*PublicAgesFolder*,*unused*
+  23,AgesIOwnFolder,:ref:`vault_node_age_info_list`
+  24,AgesICanVisitFolder,:ref:`vault_node_age_info_list`
+  25,AvatarClosetFolder,:ref:`vault_node_folder`
+  26,*AgeInfoNode*,*unused*
+  27,*SystemNode*,*unused*
+  28,PlayerInviteFolder,:ref:`vault_node_folder`
+  29,*CCRPlayersFolder*,*unused*
+  30,GlobalInboxFolder,:ref:`vault_node_folder`
+  31,ChildAgesFolder,:ref:`vault_node_age_info_list`
+  32,*GameScoresFolder*,*unused*

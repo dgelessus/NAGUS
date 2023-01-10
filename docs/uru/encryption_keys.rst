@@ -7,14 +7,14 @@ because some of these are used during network communication
 and some of the keys vary between shards.
 
 .. index::
-   single: encryption; data file
-   single: encryption; whatdoyousee
-   single: encryption; WDYS
-   single: encryption; XTEA
-   single: whatdoyousee
-   single: WDYS
-   single: XTEA
-   :name: whatdoyousee
+  single: encryption; data file
+  single: encryption; whatdoyousee
+  single: encryption; WDYS
+  single: encryption; XTEA
+  single: whatdoyousee
+  single: WDYS
+  single: XTEA
+  :name: whatdoyousee
 
 Data file encryption: whatdoyousee (XTEA)
 -----------------------------------------
@@ -41,16 +41,16 @@ and will not read them if unencrypted.
 OpenUru-based :ref:`internal clients <internal_external_client>` and all H'uru clients accept both encrypted and unencrypted files.
 
 .. index::
-   single: encryption; secure file
-   single: encryption; notthedroids
-   single: encryption; droid
-   single: encryption; NTD
-   single: encryption; XXTEA
-   single: notthedroids
-   single: droid
-   single: NTD
-   single: XXTEA
-   :name: notthedroids
+  single: encryption; secure file
+  single: encryption; notthedroids
+  single: encryption; droid
+  single: encryption; NTD
+  single: encryption; XXTEA
+  single: notthedroids
+  single: droid
+  single: NTD
+  single: XXTEA
+  :name: notthedroids
 
 "Secure" file encryption: notthedroids (XXTEA)
 ----------------------------------------------
@@ -72,25 +72,25 @@ OpenUru-based external clients *require* the file types listed above to be encry
 whereas OpenUru internal clients and all H'uru clients also accept them unencrypted.
 
 .. index::
-   single: encryption; connection
-   single: encryption; RC4
-   single: RC4
-   single: Diffie-Hellman
-   single: server keys
-   :name: dh_keys
+  single: encryption; connection
+  single: encryption; RC4
+  single: RC4
+  single: Diffie-Hellman
+  single: server keys
+  :name: dh_keys
 
 Connection encryption (Diffie-Hellman, RC4)
 -------------------------------------------
 
 .. warning::
-   
-   I don't know much about cryptography.
-   Everything in this section should be taken with a grain of salt
-   (even more than the rest of this documentation).
-   
-   .. note::
-      
-      Har har, `salt <https://en.wikipedia.org/wiki/Salt_(cryptography)>`__, geddit?
+  
+  I don't know much about cryptography.
+  Everything in this section should be taken with a grain of salt
+  (even more than the rest of this documentation).
+  
+  .. note::
+    
+    Har har, `salt <https://en.wikipedia.org/wiki/Salt_(cryptography)>`__, geddit?
 
 The MOUL network protocol uses RC4 encryption for most connections.
 Every encrypted connection uses a different RC4 key,
@@ -126,25 +126,25 @@ The private keys *a* are not publicly known,
 for obvious reasons.
 
 .. note::
-   
-   Each *n* and *x* value below is a single hex integer
-   (i. e. in big-endian order).
-   Ignore the spaces/line breaks, they are only for layout.
-   The *g* values are given in decimal.
+  
+  Each *n* and *x* value below is a single hex integer
+  (i. e. in big-endian order).
+  Ignore the spaces/line breaks, they are only for layout.
+  The *g* values are given in decimal.
 
 .. seealso::
-   
-   :doc:`server_config` for details on the different key formats used by OpenUru and H'uru clients.
+  
+  :doc:`server_config` for details on the different key formats used by OpenUru and H'uru clients.
 
 .. csv-table:: Encryption keys (Cyan MOULa)
-   :name: encryption_keys_cyan
-   :header: Server,*g*,*n*,*x*
-   :widths: auto
-   
-   GateKeeper,4,``b523446ba38021d7 c36f2f29fa55bc60 ec6a0d92f5554c15 1cf1dbc74d4cb8dc 50d549fcb6559816 2e66ab340f219aa3 237ad7d1814b25ab 50507af8e635fa8d``,``1af3b71960d06969 caf99489c5328268 47ce8d6c09c4cb7c e47f6fbea0be9c0f 389b0f61a6a95ecd fcb3f3a93935fa39 050f9d839862bc07 2e2b70900bff88b3``
-   Auth,41,``8f56a6a397be203f c5873812126dab6b 349b66385711610a 1a54c266cb5b314d e4b7780cc8035e47 b98ec3431b45fe72 eee5754388617c29 918f71eb4219172d``,``1be9d855f3036ffa bccd3d6ab3bbb2da 3f758cb99eb143ea ef64d52e5501ece5 eb5b23fbee9a2720 f9590df48fbbc105 55b9dd2561ce3653 ad23c008c61dcf21``
-   Game,73,``904b28d049d224d9 20c90b55c943bc20 6033cbd71582d119 1b70f2fecd2eadd6 20bbea2650fd3fde c42284de44389aaa 5d09766a123b7227 c7a6d74369f7a438``,``3ddb3d8fb358584f 68e9657aa3cf0484 6733cf147f369362 9879fdc8bab65fdc 6801d8841f5c7647 5c3f3b99f05afdc2 3e65443e09bd21a9 4872bd02bd93b2f9``
-   Csr,97,``6dd6cdd805e7c6f0 99420062b173477c 03fa6c86f170df97 44f7919828e50b97 69b3c950ee22daf8 75aebc4b8f3773d7 deeceb888c7a8e76 0d7427ed1703f8bd``,``34c3782cd45ee434 2c5759bb6d593658 061276a4492d2a37 db5f73e911e974f3 215168066a87275e 96b70e13813a9886 e6c24228be3166a8 a663923662831d03``
+  :name: encryption_keys_cyan
+  :header: Server,*g*,*n*,*x*
+  :widths: auto
+  
+  GateKeeper,4,``b523446ba38021d7 c36f2f29fa55bc60 ec6a0d92f5554c15 1cf1dbc74d4cb8dc 50d549fcb6559816 2e66ab340f219aa3 237ad7d1814b25ab 50507af8e635fa8d``,``1af3b71960d06969 caf99489c5328268 47ce8d6c09c4cb7c e47f6fbea0be9c0f 389b0f61a6a95ecd fcb3f3a93935fa39 050f9d839862bc07 2e2b70900bff88b3``
+  Auth,41,``8f56a6a397be203f c5873812126dab6b 349b66385711610a 1a54c266cb5b314d e4b7780cc8035e47 b98ec3431b45fe72 eee5754388617c29 918f71eb4219172d``,``1be9d855f3036ffa bccd3d6ab3bbb2da 3f758cb99eb143ea ef64d52e5501ece5 eb5b23fbee9a2720 f9590df48fbbc105 55b9dd2561ce3653 ad23c008c61dcf21``
+  Game,73,``904b28d049d224d9 20c90b55c943bc20 6033cbd71582d119 1b70f2fecd2eadd6 20bbea2650fd3fde c42284de44389aaa 5d09766a123b7227 c7a6d74369f7a438``,``3ddb3d8fb358584f 68e9657aa3cf0484 6733cf147f369362 9879fdc8bab65fdc 6801d8841f5c7647 5c3f3b99f05afdc2 3e65443e09bd21a9 4872bd02bd93b2f9``
+  Csr,97,``6dd6cdd805e7c6f0 99420062b173477c 03fa6c86f170df97 44f7919828e50b97 69b3c950ee22daf8 75aebc4b8f3773d7 deeceb888c7a8e76 0d7427ed1703f8bd``,``34c3782cd45ee434 2c5759bb6d593658 061276a4492d2a37 db5f73e911e974f3 215168066a87275e 96b70e13813a9886 e6c24228be3166a8 a663923662831d03``
 
 Connections to the file server are never encrypted (see :ref:`connection_encryption`),
 so it has no corresponding Diffie-Hellman values.

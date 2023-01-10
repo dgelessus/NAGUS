@@ -22,10 +22,10 @@ Below is a list of *all* different kinds of version/build/product metadata,
 including some bits that *aren't* displayed in the product string.
 
 .. index::
-   single: core name
-   single: short name
-   single: long name
-   :name: core_name
+  single: core name
+  single: short name
+  single: long name
+  :name: core_name
 
 Core name, short name, long name
 --------------------------------
@@ -51,7 +51,7 @@ Gehn uses core name "UruGehn" and long name "Uru - Gehn Shard",
 and TOC-Moul uses core name "TOC" and long name "The Open Cave".
 
 .. index:: product UUID
-   :name: product_uuid
+  :name: product_uuid
 
 Product ID (UUID/GUID)
 ----------------------
@@ -62,7 +62,7 @@ This value is sent to the server during :ref:`connection setup <connect_packet>`
 It has no other effect on the client.
 
 .. index:: build type
-   :name: build_type
+  :name: build_type
 
 Build type
 ----------
@@ -89,7 +89,7 @@ For H'uru clients,
 the build type has no functional effect on the client.
 
 .. index:: branch ID
-   :name: branch_id
+  :name: branch_id
 
 Branch ID
 ---------
@@ -103,7 +103,7 @@ This value is sent to the server during :ref:`connection setup <connect_packet>`
 It has no other effect on the client.
 
 .. index:: build ID
-   :name: build_id
+  :name: build_id
 
 Build ID
 --------
@@ -126,9 +126,9 @@ Cyan MOULa build IDs
 ^^^^^^^^^^^^^^^^^^^^
 
 .. note::
-   
-   There are probably some builds missing between 1.866 and 1.897,
-   because during that period Cyan didn't post detailed update notes on the forum.
+  
+  There are probably some builds missing between 1.866 and 1.897,
+  because during that period Cyan didn't post detailed update notes on the forum.
 
 * Build 1.866:
   Released `2010-02-11 <https://web.archive.org/web/20100220152603/http://www.fileplanet.com/209790/200000/fileinfo/Myst-Online:-URU-Live-Client-v.866>`__.
@@ -160,7 +160,7 @@ Cyan MOULa build IDs
   All later client updates (as of 2022) also use this build number.
 
 .. index:: factory ID
-   :name: factory_id
+  :name: factory_id
 
 Factory ID
 ----------
@@ -180,11 +180,11 @@ which serves a similar purpose.
 This value is not sent over the network and has no other effect on the client.
 
 .. index::
-   single: internal client
-   single: client; internal
-   single: external client
-   single: client; external
-   :name: internal_external_client
+  single: internal client
+  single: client; internal
+  single: external client
+  single: client; external
+  :name: internal_external_client
 
 Internal/external client
 ------------------------
@@ -207,9 +207,9 @@ The main exception is when updating through the file server,
 where internal clients will request different manifests than external clients.
 
 .. index::
-   single: debug build
-   single: release build
-   :name: debug_release_build
+  single: debug build
+  single: release build
+  :name: debug_release_build
 
 Debug/release build
 -------------------

@@ -12,8 +12,8 @@ the :ref:`status server <status_server>` uses standard HTTP on the conventional 
 instead of the MOUL protocol.
 
 .. seealso::
-   
-   :doc:`architecture` for a high-level overview of the different MOUL server types.
+  
+  :doc:`architecture` for a high-level overview of the different MOUL server types.
 
 The protocol mostly uses packed binary data structures.
 Unless indicated otherwise,
@@ -37,14 +37,14 @@ the address 184.73.198.22 would be represented as the integer 0xb849c616 (= 3091
 and transmitted as bytes ``16 c6 49 b8``.
 
 .. note::
-   
-   The MOULa client code internally uses C ``struct``\s to encode/decode network data.
-   This is generally not a good idea,
-   because the exact format of ``struct``\s in memory varies depending on the target architecture and C compiler.
-   In the case of MOULa,
-   this is not a big problem in practice,
-   because all supported architectures are little-endian
-   and the code explicitly disables field padding/alignment.
+  
+  The MOULa client code internally uses C ``struct``\s to encode/decode network data.
+  This is generally not a good idea,
+  because the exact format of ``struct``\s in memory varies depending on the target architecture and C compiler.
+  In the case of MOULa,
+  this is not a big problem in practice,
+  because all supported architectures are little-endian
+  and the code explicitly disables field padding/alignment.
 
 .. _packet_boundaries:
 
@@ -59,7 +59,7 @@ by setting ``TCP_NODELAY``
 (this also reduces latency).
 
 .. index:: connect packet
-   :name: connect_packet
+  :name: connect_packet
 
 Connect packet
 --------------
@@ -202,11 +202,11 @@ Here are the exact formats for all types
     * Max = 2 (based on comments, this probably stands for 3DS Max, not "maximum" --- although this is also the highest defined channel ID!)
 
 .. note::
-   
-   After the connect packet,
-   SimpleNet connections use a different protocol than all other connection types.
-   I won't cover SimpleNet further here,
-   because it's practically unused.
+  
+  After the connect packet,
+  SimpleNet connections use a different protocol than all other connection types.
+  I won't cover SimpleNet further here,
+  because it's practically unused.
 
 .. _connection_encryption:
 
@@ -366,11 +366,11 @@ if a message with an unknown type is received,
 it's impossible to safely process that message and any further ones after it.
 
 .. note::
-   
-   In the rest of this documentation,
-   if I say "message type",
-   assume that I mean the *logical* message type,
-   i. e. the combination of message type number, communication direction, and connection type.
+  
+  In the rest of this documentation,
+  if I say "message type",
+  assume that I mean the *logical* message type,
+  i. e. the combination of message type number, communication direction, and connection type.
 
 Handling of unknown message types
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -428,137 +428,137 @@ with each connection type having its own subdirectory.
 Message types are declared with the following macro:
 
 .. c:macro:: NET_MSG(msgId, msgFields)
-   
-   Initializer for a ``NetMsg`` struct.
-   
-   :param msgId: Name of the integer constant for the message type number.
-       By convention,
-       this constant should be named :samp:`k{Sender}2{Receiver}_{MessageName}`,
-       e.g. ``kCli2Auth_PingRequest`` or ``kAuth2Cli_PingReply``.
-   :param msgFields: Name of a ``NetMsgField []`` variable describing the types of all fields in the message.
+  
+  Initializer for a ``NetMsg`` struct.
+  
+  :param msgId: Name of the integer constant for the message type number.
+    By convention,
+    this constant should be named :samp:`k{Sender}2{Receiver}_{MessageName}`,
+    e.g. ``kCli2Auth_PingRequest`` or ``kAuth2Cli_PingReply``.
+  :param msgFields: Name of a ``NetMsgField []`` variable describing the types of all fields in the message.
 
 A simple message type declaration might look like this:
 
 .. code-block:: cpp
-   
-   // header file
-   enum {
-       kCli2Whatever_SomeMessage,
-   };
-   extern const NetMsg kNetMsg_Cli2Whatever_SomeMessage;
-   
-   // source file
-   static const NetMsgField kSomeMessageFields[] = {
-       NET_MSG_FIELD_DWORD(),
-       NET_MSG_FIELD_STRING(64),
-   };
-   const NetMsg kNetMsg_Cli2Whatever_SomeMessage =
-       NET_MSG(kCli2Whatever_SomeMessage, kSomeMessageFields);
+  
+  // header file
+  enum {
+      kCli2Whatever_SomeMessage,
+  };
+  extern const NetMsg kNetMsg_Cli2Whatever_SomeMessage;
+  
+  // source file
+  static const NetMsgField kSomeMessageFields[] = {
+      NET_MSG_FIELD_DWORD(),
+      NET_MSG_FIELD_STRING(64),
+  };
+  const NetMsg kNetMsg_Cli2Whatever_SomeMessage =
+      NET_MSG(kCli2Whatever_SomeMessage, kSomeMessageFields);
 
 The following basic message field types are defined:
 
 .. c:macro::
-   NET_MSG_FIELD_BYTE()
-   NET_MSG_FIELD_WORD()
-   NET_MSG_FIELD_DWORD()
-   NET_MSG_FIELD_QWORD()
-   
-   A single integer,
-   1, 2, 4, or 8 bytes large,
-   respectively.
-   Only :c:macro:`NET_MSG_FIELD_BYTE` and :c:macro:`NET_MSG_FIELD_DWORD` are actively used.
+  NET_MSG_FIELD_BYTE()
+  NET_MSG_FIELD_WORD()
+  NET_MSG_FIELD_DWORD()
+  NET_MSG_FIELD_QWORD()
+  
+  A single integer,
+  1, 2, 4, or 8 bytes large,
+  respectively.
+  Only :c:macro:`NET_MSG_FIELD_BYTE` and :c:macro:`NET_MSG_FIELD_DWORD` are actively used.
 
 .. c:macro::
-   NET_MSG_FIELD_FLOAT()
-   NET_MSG_FIELD_DOUBLE()
-   
-   A single floating-point number,
-   4 or 8 bytes large,
-   respectively.
-   Not actively used.
+  NET_MSG_FIELD_FLOAT()
+  NET_MSG_FIELD_DOUBLE()
+  
+  A single floating-point number,
+  4 or 8 bytes large,
+  respectively.
+  Not actively used.
 
 .. c:macro::
-   NET_MSG_FIELD_BYTE_ARRAY(maxCount)
-   NET_MSG_FIELD_WORD_ARRAY(maxCount)
-   NET_MSG_FIELD_DWORD_ARRAY(maxCount)
-   NET_MSG_FIELD_QWORD_ARRAY(maxCount)
-   NET_MSG_FIELD_FLOAT_ARRAY(maxCount)
-   NET_MSG_FIELD_DOUBLE_ARRAY(maxCount)
-   
-   A fixed-length array of any of the above types.
-   Only :c:macro:`NET_MSG_FIELD_DWORD_ARRAY` is actively used.
-   
-   :param maxCount: Number of elements in the array.
-       Contrary to the *max* in the name,
-       the array must always have *exactly* this many elements and not fewer.
+  NET_MSG_FIELD_BYTE_ARRAY(maxCount)
+  NET_MSG_FIELD_WORD_ARRAY(maxCount)
+  NET_MSG_FIELD_DWORD_ARRAY(maxCount)
+  NET_MSG_FIELD_QWORD_ARRAY(maxCount)
+  NET_MSG_FIELD_FLOAT_ARRAY(maxCount)
+  NET_MSG_FIELD_DOUBLE_ARRAY(maxCount)
+  
+  A fixed-length array of any of the above types.
+  Only :c:macro:`NET_MSG_FIELD_DWORD_ARRAY` is actively used.
+  
+  :param maxCount: Number of elements in the array.
+    Contrary to the *max* in the name,
+    the array must always have *exactly* this many elements and not fewer.
 
 .. c:macro:: NET_MSG_FIELD_STRING(maxLength)
-   
-   A little-endian UTF-16 string,
-   prefixed with a 16-bit unsigned int length field
-   (counted in 16-bit code units, not bytes).
-   
-   :param maxCount: Maximum length of the string in code units **plus one**.
-       The extra code unit is reserved for the zero terminator,
-       which is not transmitted over the network,
-       but is implicitly added by the client when it receives the string.
+  
+  A little-endian UTF-16 string,
+  prefixed with a 16-bit unsigned int length field
+  (counted in 16-bit code units, not bytes).
+  
+  :param maxCount: Maximum length of the string in code units **plus one**.
+    The extra code unit is reserved for the zero terminator,
+    which is not transmitted over the network,
+    but is implicitly added by the client when it receives the string.
 
 .. c:macro::
-   NET_MSG_FIELD_DATA(maxBytes)    
-   NET_MSG_FIELD_PTR(maxBytes)     
-   NET_MSG_FIELD_RAW_DATA(maxBytes)
-   NET_MSG_FIELD_RAW_PTR(maxBytes)
-   
-   A fixed-length field of bytes with no declared structure.
-   There is no functional difference between these four types.
-   Only :c:macro:`NET_MSG_FIELD_DATA` and :c:macro:`NET_MSG_FIELD_RAW_DATA` are actively used ---
-   in fact,
-   the open-sourced client code doesn't implement reading for :c:macro:`NET_MSG_FIELD_PTR` and :c:macro:`NET_MSG_FIELD_RAW_PTR`,
-   only writing.
-   
-   :param maxCount: Size in bytes of the field.
-       Contrary to the *max* in the name,
-       the data must be *exactly* this long and not shorter.
+  NET_MSG_FIELD_DATA(maxBytes)
+  NET_MSG_FIELD_PTR(maxBytes)
+  NET_MSG_FIELD_RAW_DATA(maxBytes)
+  NET_MSG_FIELD_RAW_PTR(maxBytes)
+  
+  A fixed-length field of bytes with no declared structure.
+  There is no functional difference between these four types.
+  Only :c:macro:`NET_MSG_FIELD_DATA` and :c:macro:`NET_MSG_FIELD_RAW_DATA` are actively used ---
+  in fact,
+  the open-sourced client code doesn't implement reading for :c:macro:`NET_MSG_FIELD_PTR` and :c:macro:`NET_MSG_FIELD_RAW_PTR`,
+  only writing.
+  
+  :param maxCount: Size in bytes of the field.
+    Contrary to the *max* in the name,
+    the data must be *exactly* this long and not shorter.
 
 .. c:macro:: NET_MSG_FIELD_VAR_COUNT(elemSize, maxCount)
-   
-   A 4-byte unsigned integer indicating the number of elements in the following variable-length array field
-   (:c:macro:`NET_MSG_FIELD_VAR_PTR` or :c:macro:`NET_MSG_FIELD_RAW_VAR_PTR`).
-   
-   :param elemSize: Size in bytes of each array element.
-   :param maxCount: Maximum number of elements in the array.
+  
+  A 4-byte unsigned integer indicating the number of elements in the following variable-length array field
+  (:c:macro:`NET_MSG_FIELD_VAR_PTR` or :c:macro:`NET_MSG_FIELD_RAW_VAR_PTR`).
+  
+  :param elemSize: Size in bytes of each array element.
+  :param maxCount: Maximum number of elements in the array.
 
 .. c:macro::
-   NET_MSG_FIELD_VAR_PTR()    
-   NET_MSG_FIELD_RAW_VAR_PTR()
-   
-   A variable-length array of fixed-size elements.
-   The structure of the individual elements isn't declared further.
-   There is no functional difference between these two types.
-   
-   There can be at most one variable-length array field per message.
-   If there is one,
-   it must be the last field in the message
-   and it must be directly preceded by a :c:macro:`NET_MSG_FIELD_VAR_COUNT` field.
+  NET_MSG_FIELD_VAR_PTR()
+  NET_MSG_FIELD_RAW_VAR_PTR()
+  
+  A variable-length array of fixed-size elements.
+  The structure of the individual elements isn't declared further.
+  There is no functional difference between these two types.
+  
+  There can be at most one variable-length array field per message.
+  If there is one,
+  it must be the last field in the message
+  and it must be directly preceded by a :c:macro:`NET_MSG_FIELD_VAR_COUNT` field.
 
 A few higher-level aliases for some field types are defined in :file:`Plasma/NucleusLib/pnNetProtocol/Private/pnNpCommon.h`.
 They are not always used consistently ---
 e.g. some ``transId`` fields are declared as :c:macro:`NET_MSG_FIELD_DWORD` instead of :cpp:var:`kNetMsgFieldTransId`.
 
 .. cpp:var::
-   const NetMsgField kNetMsgFieldAccountName = NET_MSG_FIELD_STRING(64)
-   const NetMsgField kNetMsgFieldPlayerName = NET_MSG_FIELD_STRING(40)
-   const NetMsgField kNetMsgFieldShaDigest = NET_MSG_FIELD_RAW_DATA(20)
-   const NetMsgField kNetMsgFieldUuid = NET_MSG_FIELD_DATA(16)
-   const NetMsgField kNetMsgFieldTransId = NET_MSG_FIELD_DWORD()
-   const NetMsgField kNetMsgFieldTimeMs = NET_MSG_FIELD_DWORD()
-   const NetMsgField kNetMsgFieldENetError = NET_MSG_FIELD_DWORD()
-   const NetMsgField kNetMsgFieldEAgeId = NET_MSG_FIELD_DWORD()
-   const NetMsgField kNetMsgFieldNetNode = NET_MSG_FIELD_DWORD()
-   const NetMsgField kNetMsgFieldBuildId = NET_MSG_FIELD_DWORD()
+  const NetMsgField kNetMsgFieldAccountName = NET_MSG_FIELD_STRING(64)
+  const NetMsgField kNetMsgFieldPlayerName = NET_MSG_FIELD_STRING(40)
+  const NetMsgField kNetMsgFieldShaDigest = NET_MSG_FIELD_RAW_DATA(20)
+  const NetMsgField kNetMsgFieldUuid = NET_MSG_FIELD_DATA(16)
+  const NetMsgField kNetMsgFieldTransId = NET_MSG_FIELD_DWORD()
+  const NetMsgField kNetMsgFieldTimeMs = NET_MSG_FIELD_DWORD()
+  const NetMsgField kNetMsgFieldENetError = NET_MSG_FIELD_DWORD()
+  const NetMsgField kNetMsgFieldEAgeId = NET_MSG_FIELD_DWORD()
+  const NetMsgField kNetMsgFieldNetNode = NET_MSG_FIELD_DWORD()
+  const NetMsgField kNetMsgFieldBuildId = NET_MSG_FIELD_DWORD()
 
 .. index:: ping
-   :name: ping
+  :name: ping
 
 Ping messages
 -------------
@@ -615,203 +615,203 @@ but sometimes also with their numeric code,
 which is why e. g. "Net 6" is well-known in the player community.
 
 .. cpp:enum:: ENetError : dword
-   
-   .. cpp:enumerator:: kNetPending = -1
-      
-      "Pending"
-   
-   .. cpp:enumerator:: kNetSuccess = 0
-      
-      "Success"
-   
-   .. cpp:enumerator:: kNetErrInternalError = 1
-      
-      "Internal Error"
-   
-   .. cpp:enumerator:: kNetErrTimeout = 2
-      
-      "No Response From Server"
-   
-   .. cpp:enumerator:: kNetErrBadServerData = 3
-      
-      "Invalid Server Data"
-   
-   .. cpp:enumerator:: kNetErrAgeNotFound = 4
-      
-      "Age Not Found"
-   
-   .. cpp:enumerator:: kNetErrConnectFailed = 5
-      
-      "Network Connection Failed"
-   
-   .. cpp:enumerator:: kNetErrDisconnected = 6
-      
-      "Disconnected From Server"
-   
-   .. cpp:enumerator:: kNetErrFileNotFound = 7
-      
-      "File Not Found"
-   
-   .. cpp:enumerator:: kNetErrOldBuildId = 8
-      
-      "Old Build"
-   
-   .. cpp:enumerator:: kNetErrRemoteShutdown = 9
-      
-      "Remote Shutdown"
-   
-   .. cpp:enumerator:: kNetErrTimeoutOdbc = 10
-      
-      "Database Timeout"
-   
-   .. cpp:enumerator:: kNetErrAccountAlreadyExists = 11
-      
-      "Account Already Exists"
-   
-   .. cpp:enumerator:: kNetErrPlayerAlreadyExists = 12
-      
-      "Player Already Exists"
-   
-   .. cpp:enumerator:: kNetErrAccountNotFound = 13
-      
-      "Account Not Found"
-   
-   .. cpp:enumerator:: kNetErrPlayerNotFound = 14
-      
-      "Player Not Found"
-   
-   .. cpp:enumerator:: kNetErrInvalidParameter = 15
-      
-      "Invalid Parameter"
-   
-   .. cpp:enumerator:: kNetErrNameLookupFailed = 16
-      
-      "Name Lookup Failed"
-   
-   .. cpp:enumerator:: kNetErrLoggedInElsewhere = 17
-      
-      "Logged In Elsewhere"
-   
-   .. cpp:enumerator:: kNetErrVaultNodeNotFound = 18
-      
-      "Vault Node Not Found"
-   
-   .. cpp:enumerator:: kNetErrMaxPlayersOnAcct = 19
-      
-      "Max Players On Account"
-   
-   .. cpp:enumerator:: kNetErrAuthenticationFailed = 20
-      
-      "Authentication Failed"
-   
-   .. cpp:enumerator:: kNetErrStateObjectNotFound = 21
-      
-      "State Object Not Found"
-   
-   .. cpp:enumerator:: kNetErrLoginDenied = 22
-      
-      "Login Denied"
-   
-   .. cpp:enumerator:: kNetErrCircularReference = 23
-      
-      "Circular Reference"
-   
-   .. cpp:enumerator:: kNetErrAccountNotActivated = 24
-      
-      "Account Not Activated"
-   
-   .. cpp:enumerator:: kNetErrKeyAlreadyUsed = 25
-      
-      "Key Already Used"
-   
-   .. cpp:enumerator:: kNetErrKeyNotFound = 26
-      
-      "Key Not Found"
-   
-   .. cpp:enumerator:: kNetErrActivationCodeNotFound = 27
-      
-      "Activation Code Not Found"
-   
-   .. cpp:enumerator:: kNetErrPlayerNameInvalid = 28
-      
-      "Player Name Invalid"
-   
-   .. cpp:enumerator:: kNetErrNotSupported = 29
-      
-      "Not Supported"
-   
-   .. cpp:enumerator:: kNetErrServiceForbidden = 30
-      
-      "Service Forbidden"
-   
-   .. cpp:enumerator:: kNetErrAuthTokenTooOld = 31
-      
-      "Auth Token Too Old"
-   
-   .. cpp:enumerator:: kNetErrMustUseGameTapClient = 32
-      
-      "Must Use GameTap Client"
-   
-   .. cpp:enumerator:: kNetErrTooManyFailedLogins = 33
-      
-      "Too Many Failed Logins"
-   
-   .. cpp:enumerator:: kNetErrGameTapConnectionFailed = 34
-      
-      "GameTap: Connection Failed"
-   
-   .. cpp:enumerator:: kNetErrGTTooManyAuthOptions = 35
-      
-      "GameTap: Too Many Auth Options"
-   
-   .. cpp:enumerator:: kNetErrGTMissingParameter = 36
-      
-      "GameTap: Missing Parameter"
-   
-   .. cpp:enumerator:: kNetErrGTServerError = 37
-      
-      "GameTap: Server Error"
-   
-   .. cpp:enumerator:: kNetErrAccountBanned = 38
-      
-      "Account has been banned"
-   
-   .. cpp:enumerator:: kNetErrKickedByCCR = 39
-      
-      "Account kicked by CCR"
-   
-   .. cpp:enumerator:: kNetErrScoreWrongType = 40
-      
-      "Wrong score type for operation"
-   
-   .. cpp:enumerator:: kNetErrScoreNotEnoughPoints = 41
-      
-      "Not enough points"
-   
-   .. cpp:enumerator:: kNetErrScoreAlreadyExists = 42
-      
-      "Non-fixed score already exists"
-   
-   .. cpp:enumerator:: kNetErrScoreNoDataFound = 43
-      
-      "No score data found"
-   
-   .. cpp:enumerator:: kNetErrInviteNoMatchingPlayer = 44
-      
-      "Invite: Couldn't find player"
-   
-   .. cpp:enumerator:: kNetErrInviteTooManyHoods = 45
-      
-      "Invite: Too many hoods"
-   
-   .. cpp:enumerator:: kNetErrNeedToPay = 46
-      
-      "Payments not up to date"
-   
-   .. cpp:enumerator:: kNetErrServerBusy = 47
-      
-      "Server Busy"
-   
-   .. cpp:enumerator:: kNetErrVaultNodeAccessViolation = 48
-      
-      "Vault Node Access Violation"
+  
+  .. cpp:enumerator:: kNetPending = -1
+    
+    "Pending"
+  
+  .. cpp:enumerator:: kNetSuccess = 0
+    
+    "Success"
+  
+  .. cpp:enumerator:: kNetErrInternalError = 1
+    
+    "Internal Error"
+  
+  .. cpp:enumerator:: kNetErrTimeout = 2
+    
+    "No Response From Server"
+  
+  .. cpp:enumerator:: kNetErrBadServerData = 3
+    
+    "Invalid Server Data"
+  
+  .. cpp:enumerator:: kNetErrAgeNotFound = 4
+    
+    "Age Not Found"
+  
+  .. cpp:enumerator:: kNetErrConnectFailed = 5
+    
+    "Network Connection Failed"
+  
+  .. cpp:enumerator:: kNetErrDisconnected = 6
+    
+    "Disconnected From Server"
+  
+  .. cpp:enumerator:: kNetErrFileNotFound = 7
+    
+    "File Not Found"
+  
+  .. cpp:enumerator:: kNetErrOldBuildId = 8
+    
+    "Old Build"
+  
+  .. cpp:enumerator:: kNetErrRemoteShutdown = 9
+    
+    "Remote Shutdown"
+  
+  .. cpp:enumerator:: kNetErrTimeoutOdbc = 10
+    
+    "Database Timeout"
+  
+  .. cpp:enumerator:: kNetErrAccountAlreadyExists = 11
+    
+    "Account Already Exists"
+  
+  .. cpp:enumerator:: kNetErrPlayerAlreadyExists = 12
+    
+    "Player Already Exists"
+  
+  .. cpp:enumerator:: kNetErrAccountNotFound = 13
+    
+    "Account Not Found"
+  
+  .. cpp:enumerator:: kNetErrPlayerNotFound = 14
+    
+    "Player Not Found"
+  
+  .. cpp:enumerator:: kNetErrInvalidParameter = 15
+    
+    "Invalid Parameter"
+  
+  .. cpp:enumerator:: kNetErrNameLookupFailed = 16
+    
+    "Name Lookup Failed"
+  
+  .. cpp:enumerator:: kNetErrLoggedInElsewhere = 17
+    
+    "Logged In Elsewhere"
+  
+  .. cpp:enumerator:: kNetErrVaultNodeNotFound = 18
+    
+    "Vault Node Not Found"
+  
+  .. cpp:enumerator:: kNetErrMaxPlayersOnAcct = 19
+    
+    "Max Players On Account"
+  
+  .. cpp:enumerator:: kNetErrAuthenticationFailed = 20
+    
+    "Authentication Failed"
+  
+  .. cpp:enumerator:: kNetErrStateObjectNotFound = 21
+    
+    "State Object Not Found"
+  
+  .. cpp:enumerator:: kNetErrLoginDenied = 22
+    
+    "Login Denied"
+  
+  .. cpp:enumerator:: kNetErrCircularReference = 23
+    
+    "Circular Reference"
+  
+  .. cpp:enumerator:: kNetErrAccountNotActivated = 24
+    
+    "Account Not Activated"
+  
+  .. cpp:enumerator:: kNetErrKeyAlreadyUsed = 25
+    
+    "Key Already Used"
+  
+  .. cpp:enumerator:: kNetErrKeyNotFound = 26
+    
+    "Key Not Found"
+  
+  .. cpp:enumerator:: kNetErrActivationCodeNotFound = 27
+    
+    "Activation Code Not Found"
+  
+  .. cpp:enumerator:: kNetErrPlayerNameInvalid = 28
+    
+    "Player Name Invalid"
+  
+  .. cpp:enumerator:: kNetErrNotSupported = 29
+    
+    "Not Supported"
+  
+  .. cpp:enumerator:: kNetErrServiceForbidden = 30
+    
+    "Service Forbidden"
+  
+  .. cpp:enumerator:: kNetErrAuthTokenTooOld = 31
+    
+    "Auth Token Too Old"
+  
+  .. cpp:enumerator:: kNetErrMustUseGameTapClient = 32
+    
+    "Must Use GameTap Client"
+  
+  .. cpp:enumerator:: kNetErrTooManyFailedLogins = 33
+    
+    "Too Many Failed Logins"
+  
+  .. cpp:enumerator:: kNetErrGameTapConnectionFailed = 34
+    
+    "GameTap: Connection Failed"
+  
+  .. cpp:enumerator:: kNetErrGTTooManyAuthOptions = 35
+    
+    "GameTap: Too Many Auth Options"
+  
+  .. cpp:enumerator:: kNetErrGTMissingParameter = 36
+    
+    "GameTap: Missing Parameter"
+  
+  .. cpp:enumerator:: kNetErrGTServerError = 37
+    
+    "GameTap: Server Error"
+  
+  .. cpp:enumerator:: kNetErrAccountBanned = 38
+    
+    "Account has been banned"
+  
+  .. cpp:enumerator:: kNetErrKickedByCCR = 39
+    
+    "Account kicked by CCR"
+  
+  .. cpp:enumerator:: kNetErrScoreWrongType = 40
+    
+    "Wrong score type for operation"
+  
+  .. cpp:enumerator:: kNetErrScoreNotEnoughPoints = 41
+    
+    "Not enough points"
+  
+  .. cpp:enumerator:: kNetErrScoreAlreadyExists = 42
+    
+    "Non-fixed score already exists"
+  
+  .. cpp:enumerator:: kNetErrScoreNoDataFound = 43
+    
+    "No score data found"
+  
+  .. cpp:enumerator:: kNetErrInviteNoMatchingPlayer = 44
+    
+    "Invite: Couldn't find player"
+  
+  .. cpp:enumerator:: kNetErrInviteTooManyHoods = 45
+    
+    "Invite: Too many hoods"
+  
+  .. cpp:enumerator:: kNetErrNeedToPay = 46
+    
+    "Payments not up to date"
+  
+  .. cpp:enumerator:: kNetErrServerBusy = 47
+    
+    "Server Busy"
+  
+  .. cpp:enumerator:: kNetErrVaultNodeAccessViolation = 48
+    
+    "Vault Node Access Violation"

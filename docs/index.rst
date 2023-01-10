@@ -17,36 +17,36 @@ tell me on the `issue tracker <https://github.com/dgelessus/NAGUS/issues>`__
 and I'll try to fix the code and/or docs.)
 
 .. seealso::
-   
-   If you're looking for a proper MOULa server implementation that you can actually play on,
-   check out OpenUru's `MOSS <https://wiki.openuru.org/index.php/MOSS>`__ and H'uru's `DIRTSAND <https://guildofwriters.org/wiki/DIRTSAND>`__.
-   
-   A lot of Uru-related documentation can be found on the `Guild of Writers <https://www.guildofwriters.org/wiki/>`__ and `OpenUru <https://wiki.openuru.org/>`__ wikis.
-   Most of the information there focuses on age creation and server administration,
-   but especially the GoW wiki also has `some high-level docs <https://www.guildofwriters.org/wiki/Plasma>`__ about the :ref:`Plasma <plasma>` engine and its architecture.
+  
+  If you're looking for a proper MOULa server implementation that you can actually play on,
+  check out OpenUru's `MOSS <https://wiki.openuru.org/index.php/MOSS>`__ and H'uru's `DIRTSAND <https://guildofwriters.org/wiki/DIRTSAND>`__.
+  
+  A lot of Uru-related documentation can be found on the `Guild of Writers <https://www.guildofwriters.org/wiki/>`__ and `OpenUru <https://wiki.openuru.org/>`__ wikis.
+  Most of the information there focuses on age creation and server administration,
+  but especially the GoW wiki also has `some high-level docs <https://www.guildofwriters.org/wiki/Plasma>`__ about the :ref:`Plasma <plasma>` engine and its architecture.
 
 Contents
 --------
 
 .. toctree::
-   :maxdepth: 1
-   :caption: MOUL internals
-   
-   uru/names
-   uru/architecture
-   uru/product_id
-   uru/encryption_keys
-   uru/server_config
-   uru/protocol
-   uru/vault
-   uru/auth_server
-   uru/game_server
+  :maxdepth: 1
+  :caption: MOUL internals
+  
+  uru/names
+  uru/architecture
+  uru/product_id
+  uru/encryption_keys
+  uru/server_config
+  uru/protocol
+  uru/vault
+  uru/auth_server
+  uru/game_server
 
 .. toctree::
-   :maxdepth: 1
-   :caption: NAGUS
-   
-   nagus
+  :maxdepth: 1
+  :caption: NAGUS
+  
+  nagus
 
 Indices and tables
 ------------------
@@ -62,8 +62,8 @@ Documentation
 ^^^^^^^^^^^^^
 
 .. image:: https://i.creativecommons.org/l/by-sa/4.0/88x31.png
-   :target: http://creativecommons.org/licenses/by-sa/4.0/
-   :alt: Creative Commons License
+  :target: http://creativecommons.org/licenses/by-sa/4.0/
+  :alt: Creative Commons License
 
 This work is licensed under a `Creative Commons Attribution-ShareAlike 4.0 International License <http://creativecommons.org/licenses/by-sa/4.0/>`__.
 

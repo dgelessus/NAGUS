@@ -8,7 +8,7 @@ but most aspects of gameplay are managed by the clients,
 without much logic and checks on the server side.
 
 .. index:: server
-   :name: server
+  :name: server
 
 The server side of MOUL actually consists of multiple servers that are mostly independent from each other.
 Each of these servers may be hosted at a different address or port,
@@ -30,8 +30,8 @@ Server types
 These are all the server types used by the open-sourced MOULa client code:
 
 * .. index:: status server
-     single: server; status
-     :name: status_server
+    single: server; status
+    :name: status_server
   
   **Status server:**
   Serves the status message (unsurprisingly)
@@ -44,9 +44,9 @@ These are all the server types used by the open-sourced MOULa client code:
   DIRTSAND also includes an optional minimal HTTP server for the status message.
 
 * .. index:: gatekeeper server
-     single: server; gatekeeper
-     single: GateKeeperSrv
-     :name: gatekeeper_server
+    single: server; gatekeeper
+    single: GateKeeperSrv
+    :name: gatekeeper_server
   
   **Gatekeeper server (GateKeeperSrv):**
   Used by the patcher and game to get the address of the file server.
@@ -55,9 +55,9 @@ These are all the server types used by the open-sourced MOULa client code:
   that file server is always used and the gatekeeper server is not contacted.
 
 * .. index:: file server
-     single: server; file
-     single: FileSrv
-     :name: file_server
+    single: server; file
+    single: FileSrv
+    :name: file_server
   
   **File server (FileSrv):**
   Used by the patcher and game to update the data files.
@@ -83,8 +83,8 @@ These are all the server types used by the open-sourced MOULa client code:
   but in practice all MOULa servers use a single game server for all age instances.
 
 * .. index:: CsrSrv
-     single: server; CSR
-     :name: csr_server
+    single: server; CSR
+    :name: csr_server
   
   **CsrSrv:**
   It's not clear what "CSR" stands for --- "customer support representative" (or "remote")?
@@ -96,7 +96,7 @@ These are all the server types used by the open-sourced MOULa client code:
   and H'uru has dropped all CSR-related code.
 
 * .. index:: SimpleNet
-     :name: simplenet
+    :name: simplenet
   
   **SimpleNet:**
   A generic unencrypted network protocol meant for remote connections *to* a client.
@@ -136,6 +136,6 @@ Minkata uses foundry.openuru.org aka urufoundry.haverhillcoop.net (70.91.173.88)
 and Gehn uses guildofwriters.org (155.254.30.63).
 
 .. warning::
-   
-   You probably shouldn't hardcode these IP addresses anywhere,
-   although they seem to be quite stable.
+  
+  You probably shouldn't hardcode these IP addresses anywhere,
+  although they seem to be quite stable.

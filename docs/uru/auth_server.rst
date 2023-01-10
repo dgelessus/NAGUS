@@ -1,7 +1,7 @@
 .. index:: auth server
-   single: server; auth
-   single: AuthSrv
-   :name: auth_server
+  single: server; auth
+  single: AuthSrv
+  :name: auth_server
 
 Auth server
 ===========
@@ -36,147 +36,147 @@ nothing is known about them,
 not even their structure.
 
 .. csv-table:: Global
-   :name: auth_messages_global
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   0,:ref:`PingRequest <cli2auth_ping_request>`,:ref:`PingReply <auth2cli_ping_reply>`,0
-   ,,:ref:`ServerAddr <auth2cli_server_addr>`,1
-   ,,:ref:`NotifyNewBuild <auth2cli_notify_new_build>`,2
+  :name: auth_messages_global
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  0,:ref:`PingRequest <cli2auth_ping_request>`,:ref:`PingReply <auth2cli_ping_reply>`,0
+  ,,:ref:`ServerAddr <auth2cli_server_addr>`,1
+  ,,:ref:`NotifyNewBuild <auth2cli_notify_new_build>`,2
 
 .. csv-table:: Client
-   :name: auth_messages_client
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   1,:ref:`ClientRegisterRequest <cli2auth_client_register_request>`,:ref:`ClientRegisterReply <auth2cli_client_register_reply>`,3
-   2,:ref:`ClientSetCCRLevel <cli2auth_client_set_ccr_level>`,,
+  :name: auth_messages_client
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  1,:ref:`ClientRegisterRequest <cli2auth_client_register_request>`,:ref:`ClientRegisterReply <auth2cli_client_register_reply>`,3
+  2,:ref:`ClientSetCCRLevel <cli2auth_client_set_ccr_level>`,,
 
 .. csv-table:: Account
-   :name: auth_messages_account
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   3,:ref:`AcctLoginRequest <cli2auth_acct_login_request>`,:ref:`AcctPlayerInfo <auth2cli_acct_player_info>`,6
-   ,,:ref:`AcctLoginReply <auth2cli_acct_login_reply>`,4
-   4,*AcctSetEulaVersion*,,
-   5,*AcctSetDataRequest*,*AcctData*,5
-   6,:ref:`AcctSetPlayerRequest <cli2auth_acct_set_player_request>`,:ref:`AcctSetPlayerReply <auth2cli_acct_set_player_reply>`,7
-   7,:ref:`AcctCreateRequest <cli2auth_acct_create_request>`,:ref:`AcctCreateReply <auth2cli_acct_create_reply>`,8
-   8,:ref:`AcctChangePasswordRequest <cli2auth_acct_change_password_request>`,:ref:`AcctChangePasswordReply <cli2auth_acct_change_password_reply>`,9
-   9,:ref:`AcctSetRolesRequest <cli2auth_acct_set_roles_request>`,:ref:`AcctSetRolesReply <auth2cli_acct_set_roles_reply>`,10
-   10,:ref:`AcctSetBillingTypeRequest <cli2auth_acct_set_billing_type_request>`,:ref:`AcctSetBillingTypeReply <auth2cli_acct_set_billing_type_reply>`,11
-   11,:ref:`AcctActivateRequest <cli2auth_acct_activate_request>`,:ref:`AcctActivateReply <auth2cli_acct_activate_reply>`,12
-   12,:ref:`AcctCreateFromKeyRequest <cli2auth_acct_create_from_key_request>`,:ref:`AcctCreateFromKeyReply <auth2cli_acct_create_from_key_reply>`,13
-   53,:ref:`AccountExistsRequest <cli2auth_account_exists_request>`,:ref:`AccountExistsReply <auth2cli_account_exists_reply>`,48
+  :name: auth_messages_account
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  3,:ref:`AcctLoginRequest <cli2auth_acct_login_request>`,:ref:`AcctPlayerInfo <auth2cli_acct_player_info>`,6
+  ,,:ref:`AcctLoginReply <auth2cli_acct_login_reply>`,4
+  4,*AcctSetEulaVersion*,,
+  5,*AcctSetDataRequest*,*AcctData*,5
+  6,:ref:`AcctSetPlayerRequest <cli2auth_acct_set_player_request>`,:ref:`AcctSetPlayerReply <auth2cli_acct_set_player_reply>`,7
+  7,:ref:`AcctCreateRequest <cli2auth_acct_create_request>`,:ref:`AcctCreateReply <auth2cli_acct_create_reply>`,8
+  8,:ref:`AcctChangePasswordRequest <cli2auth_acct_change_password_request>`,:ref:`AcctChangePasswordReply <cli2auth_acct_change_password_reply>`,9
+  9,:ref:`AcctSetRolesRequest <cli2auth_acct_set_roles_request>`,:ref:`AcctSetRolesReply <auth2cli_acct_set_roles_reply>`,10
+  10,:ref:`AcctSetBillingTypeRequest <cli2auth_acct_set_billing_type_request>`,:ref:`AcctSetBillingTypeReply <auth2cli_acct_set_billing_type_reply>`,11
+  11,:ref:`AcctActivateRequest <cli2auth_acct_activate_request>`,:ref:`AcctActivateReply <auth2cli_acct_activate_reply>`,12
+  12,:ref:`AcctCreateFromKeyRequest <cli2auth_acct_create_from_key_request>`,:ref:`AcctCreateFromKeyReply <auth2cli_acct_create_from_key_reply>`,13
+  53,:ref:`AccountExistsRequest <cli2auth_account_exists_request>`,:ref:`AccountExistsReply <auth2cli_account_exists_reply>`,48
 
 .. csv-table:: Player
-   :name: auth_messages_player
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   ,,*PlayerList*,14
-   13,:ref:`PlayerDeleteRequest <cli2auth_player_delete_request>`,:ref:`PlayerDeleteReply <auth2cli_player_delete_reply>`,17
-   14,*PlayerUndeleteRequest*,,
-   15,*PlayerSelectRequest*,,
-   16,*PlayerRenameRequest*,,
-   17,:ref:`PlayerCreateRequest <cli2auth_player_create_request>`,:ref:`PlayerCreateReply <auth2cli_player_create_reply>`,16
-   18,*PlayerSetStatus*,,
-   19,*PlayerChat*,*PlayerChat*,15
-   20,:ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`,:ref:`UpgradeVisitorReply <auth2cli_upgrade_visitor_reply>`,18
-   21,:ref:`SetPlayerBanStatusRequest <cli2auth_set_player_ban_status_request>`,:ref:`SetPlayerBanStatusReply <auth2cli_set_player_ban_status_reply>`,19
-   22,:ref:`KickPlayer <cli2auth_kick_player>`,:ref:`KickedOff <auth2cli_kicked_off>`,39
-   23,:ref:`ChangePlayerNameRequest <cli2auth_change_player_name_request>`,:ref:`ChangePlayerNameReply <auth2cli_change_player_name_reply>`,20
+  :name: auth_messages_player
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  ,,*PlayerList*,14
+  13,:ref:`PlayerDeleteRequest <cli2auth_player_delete_request>`,:ref:`PlayerDeleteReply <auth2cli_player_delete_reply>`,17
+  14,*PlayerUndeleteRequest*,,
+  15,*PlayerSelectRequest*,,
+  16,*PlayerRenameRequest*,,
+  17,:ref:`PlayerCreateRequest <cli2auth_player_create_request>`,:ref:`PlayerCreateReply <auth2cli_player_create_reply>`,16
+  18,*PlayerSetStatus*,,
+  19,*PlayerChat*,*PlayerChat*,15
+  20,:ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`,:ref:`UpgradeVisitorReply <auth2cli_upgrade_visitor_reply>`,18
+  21,:ref:`SetPlayerBanStatusRequest <cli2auth_set_player_ban_status_request>`,:ref:`SetPlayerBanStatusReply <auth2cli_set_player_ban_status_reply>`,19
+  22,:ref:`KickPlayer <cli2auth_kick_player>`,:ref:`KickedOff <auth2cli_kicked_off>`,39
+  23,:ref:`ChangePlayerNameRequest <cli2auth_change_player_name_request>`,:ref:`ChangePlayerNameReply <auth2cli_change_player_name_reply>`,20
 
 .. csv-table:: Friends
-   :name: auth_messages_friends
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   24,:ref:`SendFriendInviteRequest <cli2auth_send_friend_invite_request>`,:ref:`SendFriendInviteReply <auth2cli_send_friend_invite_reply>`,21
-   ,,*FriendNotify*,22
+  :name: auth_messages_friends
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  24,:ref:`SendFriendInviteRequest <cli2auth_send_friend_invite_request>`,:ref:`SendFriendInviteReply <auth2cli_send_friend_invite_reply>`,21
+  ,,*FriendNotify*,22
 
 .. csv-table:: Vault
-   :name: auth_messages_vault
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   25,:ref:`VaultNodeCreate <cli2auth_vault_node_create>`,:ref:`VaultNodeCreated <auth2cli_vault_node_created>`,23
-   26,:ref:`VaultNodeFetch <cli2auth_vault_node_fetch>`,:ref:`VaultNodeFetched <auth2cli_vault_node_fetched>`,24
-   ,,:ref:`VaultNodeChanged <auth2cli_vault_node_changed>`,25
-   27,:ref:`VaultNodeSave <cli2auth_vault_node_save>`,:ref:`VaultSaveNodeReply <auth2cli_vault_save_node_reply>`,32
-   28,*VaultNodeDelete*,:ref:`VaultNodeDeleted <auth2cli_vault_node_deleted>`,26
-   ,,:ref:`VaultNodeAdded <auth2cli_vault_node_added>`,27
-   29,:ref:`VaultNodeAdd <cli2auth_vault_node_add>`,:ref:`VaultAddNodeReply <auth2cli_vault_add_node_reply>`,33
-   ,,:ref:`VaultNodeRemoved <auth2cli_vault_node_removed>`,28
-   30,:ref:`VaultNodeRemove <cli2auth_vault_node_remove>`,:ref:`VaultRemoveNodeReply <auth2cli_vault_remove_node_reply>`,34
-   31,:ref:`VaultFetchNodeRefs <cli2auth_vault_fetch_node_refs>`,:ref:`VaultNodeRefsFetched <auth2cli_vault_node_refs_fetched>`,29
-   32,:ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`,:ref:`VaultInitAgeReply <auth2cli_vault_init_age_reply>`,30
-   33,:ref:`VaultNodeFind <cli2auth_vault_node_find>`,:ref:`VaultNodeFindReply <auth2cli_vault_node_find_reply>`,31
-   34,:ref:`VaultSetSeen <cli2auth_vault_set_seen>`,,
-   35,:ref:`VaultSendNode <cli2auth_vault_send_node>`,,
+  :name: auth_messages_vault
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  25,:ref:`VaultNodeCreate <cli2auth_vault_node_create>`,:ref:`VaultNodeCreated <auth2cli_vault_node_created>`,23
+  26,:ref:`VaultNodeFetch <cli2auth_vault_node_fetch>`,:ref:`VaultNodeFetched <auth2cli_vault_node_fetched>`,24
+  ,,:ref:`VaultNodeChanged <auth2cli_vault_node_changed>`,25
+  27,:ref:`VaultNodeSave <cli2auth_vault_node_save>`,:ref:`VaultSaveNodeReply <auth2cli_vault_save_node_reply>`,32
+  28,*VaultNodeDelete*,:ref:`VaultNodeDeleted <auth2cli_vault_node_deleted>`,26
+  ,,:ref:`VaultNodeAdded <auth2cli_vault_node_added>`,27
+  29,:ref:`VaultNodeAdd <cli2auth_vault_node_add>`,:ref:`VaultAddNodeReply <auth2cli_vault_add_node_reply>`,33
+  ,,:ref:`VaultNodeRemoved <auth2cli_vault_node_removed>`,28
+  30,:ref:`VaultNodeRemove <cli2auth_vault_node_remove>`,:ref:`VaultRemoveNodeReply <auth2cli_vault_remove_node_reply>`,34
+  31,:ref:`VaultFetchNodeRefs <cli2auth_vault_fetch_node_refs>`,:ref:`VaultNodeRefsFetched <auth2cli_vault_node_refs_fetched>`,29
+  32,:ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`,:ref:`VaultInitAgeReply <auth2cli_vault_init_age_reply>`,30
+  33,:ref:`VaultNodeFind <cli2auth_vault_node_find>`,:ref:`VaultNodeFindReply <auth2cli_vault_node_find_reply>`,31
+  34,:ref:`VaultSetSeen <cli2auth_vault_set_seen>`,,
+  35,:ref:`VaultSendNode <cli2auth_vault_send_node>`,,
 
 .. csv-table:: Ages
-   :name: auth_messages_ages
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   36,:ref:`AgeRequest <cli2auth_age_request>`,:ref:`AgeReply <auth2cli_age_reply>`,35
+  :name: auth_messages_ages
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  36,:ref:`AgeRequest <cli2auth_age_request>`,:ref:`AgeReply <auth2cli_age_reply>`,35
 
 .. csv-table:: File-related
-   :name: auth_messages_file_related
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   37,FileListRequest,FileListReply,36
-   38,FileDownloadRequest,FileDownloadChunk,37
-   39,FileDownloadChunkAck,,
+  :name: auth_messages_file_related
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  37,FileListRequest,FileListReply,36
+  38,FileDownloadRequest,FileDownloadChunk,37
+  39,FileDownloadChunkAck,,
 
 .. csv-table:: Game
-   :name: auth_messages_game
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   40,PropagateBuffer,PropagateBuffer,38
+  :name: auth_messages_game
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  40,PropagateBuffer,PropagateBuffer,38
 
 .. csv-table:: Public ages
-   :name: auth_messages_public_ages
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   41,GetPublicAgeList,PublicAgeList,40
-   42,SetAgePublic,,
+  :name: auth_messages_public_ages
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  41,GetPublicAgeList,PublicAgeList,40
+  42,SetAgePublic,,
 
 .. csv-table:: Log messages
-   :name: auth_messages_log_messages
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   43,:ref:`LogPythonTraceback <cli2auth_log_python_traceback>`,,
-   44,:ref:`LogStackDump <cli2auth_log_stack_dump>`,,
-   45,:ref:`LogClientDebuggerConnect <cli2auth_log_client_debugger_connect>`,,
+  :name: auth_messages_log_messages
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  43,:ref:`LogPythonTraceback <cli2auth_log_python_traceback>`,,
+  44,:ref:`LogStackDump <cli2auth_log_stack_dump>`,,
+  45,:ref:`LogClientDebuggerConnect <cli2auth_log_client_debugger_connect>`,,
 
 .. csv-table:: Score
-   :name: auth_messages_score
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   46,ScoreCreate,ScoreCreateReply,41
-   47,ScoreDelete,ScoreDeleteReply,42
-   48,ScoreGetScores,ScoreGetScoresReply,43
-   49,ScoreAddPoints,ScoreAddPointsReply,44
-   50,ScoreTransferPoints,ScoreTransferPointsReply,45
-   51,ScoreSetPoints,ScoreSetPointsReply,46
-   52,ScoreGetRanks,ScoreGetRanksReply,47
+  :name: auth_messages_score
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  46,ScoreCreate,ScoreCreateReply,41
+  47,ScoreDelete,ScoreDeleteReply,42
+  48,ScoreGetScores,ScoreGetScoresReply,43
+  49,ScoreAddPoints,ScoreAddPointsReply,44
+  50,ScoreTransferPoints,ScoreTransferPointsReply,45
+  51,ScoreSetPoints,ScoreSetPointsReply,46
+  52,ScoreGetRanks,ScoreGetRanksReply,47
 
 .. csv-table:: H'uru extensions
-   :name: auth_messages_h_uru_extensions
-   :header: #,Cli2Auth,Auth2Cli,#
-   :widths: auto
-   
-   0x1000,AgeRequestEx,AgeReplyEx,0x1000
-   0x1001,ScoreGetHighScores,ScoreGetHighScoresReply,0x1001
-   ,,ServerCaps,0x1002
+  :name: auth_messages_h_uru_extensions
+  :header: #,Cli2Auth,Auth2Cli,#
+  :widths: auto
+  
+  0x1000,AgeRequestEx,AgeReplyEx,0x1000
+  0x1001,ScoreGetHighScores,ScoreGetHighScoresReply,0x1001
+  ,,ServerCaps,0x1002
 
 .. _cli2auth_ping_request:
 
@@ -286,10 +286,10 @@ Reply to the :ref:`ClientRegisterRequest <cli2auth_client_register_request>`.
 The client waits for this reply before sending any other messages (except pings) to the auth server.
 
 .. index:: CCR level
-   :name: ccr_level
+  :name: ccr_level
 
 .. index:: stealth mode
-   :name: stealth_mode
+  :name: stealth_mode
 
 .. _cli2auth_client_set_ccr_level:
 
@@ -372,25 +372,25 @@ unless the second-level domain of the email address is "gametap",
 in which case it's considered a plain username.
 
 .. note::
-   
-   For example,
-   the following account names are considered email addresses:
-   
-   * ``noreply@example.net``
-   * ``noreply@example.co.uk``
-   * ``noreply@gametap.co.uk``
-   
-   And these account names are considered plain usernames:
-   
-   * ``account``
-   * ``@example``
-   * ``@example.com``
-   * ``noreply@example``
-   * ``noreply@example.``
-   * ``noreply@.com``
-   * ``noreply@gametap.com``
-   * ``noreply@gametap.net``
-   * ``noreply@spam.gametap.net``
+  
+  For example,
+  the following account names are considered email addresses:
+  
+  * ``noreply@example.net``
+  * ``noreply@example.co.uk``
+  * ``noreply@gametap.co.uk``
+  
+  And these account names are considered plain usernames:
+  
+  * ``account``
+  * ``@example``
+  * ``@example.com``
+  * ``noreply@example``
+  * ``noreply@example.``
+  * ``noreply@.com``
+  * ``noreply@gametap.com``
+  * ``noreply@gametap.net``
+  * ``noreply@spam.gametap.net``
 
 .. _password_hash:
 
@@ -409,38 +409,38 @@ the truncation is based on ``wchar``\s,
 aka UTF-16 code units.)
 
 .. note::
-   
-   For example,
-   the password ``correct horse battery staple`` is truncated to ``correct horse b``.
-   
-   Not all shards replicate this truncation when *registering* an account,
-   meaning that if one chooses a password longer than 15 characters,
-   it may be impossible to log in with the game client
-   until the password is changed to a shorter one.
+  
+  For example,
+  the password ``correct horse battery staple`` is truncated to ``correct horse b``.
+  
+  Not all shards replicate this truncation when *registering* an account,
+  meaning that if one chooses a password longer than 15 characters,
+  it may be impossible to log in with the game client
+  until the password is changed to a shorter one.
 
 "SHA-1"
-    The password is encoded as UTF-8 (H'uru) or the ANSI code page (OpenUru) and hashed using SHA-1.
-    In the resulting hash,
-    every group of 4 bytes is byte-swapped
-    (as if the hash was a 5-element array of 4-byte ints).
+  The password is encoded as UTF-8 (H'uru) or the ANSI code page (OpenUru) and hashed using SHA-1.
+  In the resulting hash,
+  every group of 4 bytes is byte-swapped
+  (as if the hash was a 5-element array of 4-byte ints).
+  
+  .. note::
     
-    .. note::
-       
-       For example,
-       the password ``hunter2`` would be hashed as ``66bdbbf3f14b3da65740797410d0c38e1de23035``.
-       (Regular SHA-1 would be ``f3bbbd66a63d4bf1747940578ec3d0103530e21d``.)
+    For example,
+    the password ``hunter2`` would be hashed as ``66bdbbf3f14b3da65740797410d0c38e1de23035``.
+    (Regular SHA-1 would be ``f3bbbd66a63d4bf1747940578ec3d0103530e21d``.)
 
 "SHA-0"
-    The password is concatenated with the account name.
-    All ASCII letters in the account name are converted to lowercase.
-    The last character of the account name and password (respectively) is replaced with U+0000.
-    The resulting string is encoded as UTF-16 (little-endian) and hashed using SHA-0.
-    
-    .. note::
-       For example,
-       the password ``hunter2``
-       would be hashed as ``8598c0ad2f51fb1605c7433654baca9bdc589212`` if the account name is ``AzureDiamond``,
-       or as ``0ee474a4a95caf724b52e4931434108176860b25`` if the account name is ``AzureDiamond@example.com``.
+  The password is concatenated with the account name.
+  All ASCII letters in the account name are converted to lowercase.
+  The last character of the account name and password (respectively) is replaced with U+0000.
+  The resulting string is encoded as UTF-16 (little-endian) and hashed using SHA-0.
+  
+  .. note::
+    For example,
+    the password ``hunter2``
+    would be hashed as ``8598c0ad2f51fb1605c7433654baca9bdc589212`` if the account name is ``AzureDiamond``,
+    or as ``0ee474a4a95caf724b52e4931434108176860b25`` if the account name is ``AzureDiamond@example.com``.
 
 Recent OpenUru clients (since March 2017) will always attempt to log in using the "SHA-1" password hash first,
 and only if that fails fall back to "SHA-0".
@@ -465,12 +465,12 @@ then the challenge hash is derived from the password hash as follows:
    resulting in the challenge hash.
 
 .. note::
-   
-   For example,
-   if the client and server challenge are both 0,
-   then the password ``hunter2`` with account name ``AzureDiamond@example.com``
-   would produce the challenge hash ``475df2fc21a36ede01bf381ea10a5a8121a11c81`` (with "SHA-1" password hash)
-   or ``72650da5e84e37994acd3e07da5658915bf588fe`` (with "SHA-0" password hash).
+  
+  For example,
+  if the client and server challenge are both 0,
+  then the password ``hunter2`` with account name ``AzureDiamond@example.com``
+  would produce the challenge hash ``475df2fc21a36ede01bf381ea10a5a8121a11c81`` (with "SHA-1" password hash)
+  or ``72650da5e84e37994acd3e07da5658915bf588fe`` (with "SHA-0" password hash).
 
 If the account name is a plain username,
 the challenge hash is identical to the password hash
@@ -505,31 +505,31 @@ Automatic login using :option:`/SkipLoginDialog`
 enabled using the following command-line option:
 
 .. option:: /SkipLoginDialog
-   
-   Don't prompt the user for login information
-   and instead log in automatically using saved/pre-configured credentials.
-   
-   In H'uru clients,
-   this option will use the last saved credentials entered by the user.
-   If there are none
-   (i. e. the user never logged in before or didn't save the password),
-   the regular login dialog is shown.
-   
-   OpenUru clients instead read the account name and password from UruLive.cfg
-   (file name depends on the client :ref:`core name <core_name>`)
-   in the user data folder.
-   The UruLive.cfg must contain a section like this:
-   
-   .. code-block:: ini
-      
-      [Net.Account]
-          Username=noreply@example.net
-          Password=hunter2
-   
-   When using this automatic login method,
-   OpenUru clients always hash the password using SHA-0.
-   The SHA-1-based hash is never tried,
-   unlike when logging in manually.
+  
+  Don't prompt the user for login information
+  and instead log in automatically using saved/pre-configured credentials.
+  
+  In H'uru clients,
+  this option will use the last saved credentials entered by the user.
+  If there are none
+  (i. e. the user never logged in before or didn't save the password),
+  the regular login dialog is shown.
+  
+  OpenUru clients instead read the account name and password from UruLive.cfg
+  (file name depends on the client :ref:`core name <core_name>`)
+  in the user data folder.
+  The UruLive.cfg must contain a section like this:
+  
+  .. code-block:: ini
+    
+    [Net.Account]
+        Username=noreply@example.net
+        Password=hunter2
+  
+  When using this automatic login method,
+  OpenUru clients always hash the password using SHA-0.
+  The SHA-1-based hash is never tried,
+  unlike when logging in manually.
 
 .. _auth2cli_acct_player_info:
 
@@ -564,22 +564,22 @@ but because visitors are no longer used in MOULa,
 the practical limit is 5 avatars.
 
 .. index:: visitor
-   :name: visitor
+  :name: visitor
 
 .. index:: explorer
-   :name: explorer
+  :name: explorer
 
 .. note::
-   
-   Visitors are a holdover from GameTap-era MOUL,
-   where non-paying players were only allowed to create a single visitor avatar
-   that had limited customization options
-   and could only visit a restricted set of locations
-   (Relto, Cleft, Nexus, a single neighborhood and its Gahreesen).
-   With MOULa being free to play,
-   all accounts are considered "paying",
-   so visitor avatars no longer have any use and can't be created anymore.
-   H'uru clients no longer support visitor avatars at all.
+  
+  Visitors are a holdover from GameTap-era MOUL,
+  where non-paying players were only allowed to create a single visitor avatar
+  that had limited customization options
+  and could only visit a restricted set of locations
+  (Relto, Cleft, Nexus, a single neighborhood and its Gahreesen).
+  With MOULa being free to play,
+  all accounts are considered "paying",
+  so visitor avatars no longer have any use and can't be created anymore.
+  H'uru clients no longer support visitor avatars at all.
 
 .. _auth2cli_acct_login_reply:
 
@@ -647,48 +647,48 @@ although DIRTSAND doesn't do this and instead sets no flags at all for normal ac
 All other flags seem to be true flags that may be set in any combination on top of the primary "role".
 
 .. cpp:var:: const unsigned kAccountRoleDisabled = 0 << 0
-   
-   Default state if no role flags are set.
+  
+  Default state if no role flags are set.
 
 .. cpp:var:: const unsigned kAccountRoleAdmin = 1 << 0
-   
-   Exact original meaning unknown.
-   In DIRTSAND,
-   has the same effect as :cpp:var:`kAccountRoleBetaTester`
-   and additionally allows the player in question to send certain unsafe Plasma messages over the network.
+  
+  Exact original meaning unknown.
+  In DIRTSAND,
+  has the same effect as :cpp:var:`kAccountRoleBetaTester`
+  and additionally allows the player in question to send certain unsafe Plasma messages over the network.
 
 .. cpp:var:: const unsigned kAccountRoleDeveloper = 1 << 1
-   
-   Meaning unknown.
-   Not supported by any fan server implementation.
+  
+  Meaning unknown.
+  Not supported by any fan server implementation.
 
 .. cpp:var:: const unsigned kAccountRoleBetaTester = 1 << 2
-   
-   Exact original meaning unknown.
-   In DIRTSAND,
-   allows logging in to the account in question even when logins are restricted
-   (normally the login would fail with :cpp:enumerator:`kNetErrLoginDenied`).
+  
+  Exact original meaning unknown.
+  In DIRTSAND,
+  allows logging in to the account in question even when logins are restricted
+  (normally the login would fail with :cpp:enumerator:`kNetErrLoginDenied`).
 
 .. cpp:var:: const unsigned kAccountRoleUser = 1 << 3
-   
-   Apparently meant to indicate normal users.
-   MOSS sets this flag in all sucessful login replies
-   (and never any other flags).
-   DIRTSAND *never* sets this flag.
+  
+  Apparently meant to indicate normal users.
+  MOSS sets this flag in all sucessful login replies
+  (and never any other flags).
+  DIRTSAND *never* sets this flag.
 
 .. cpp:var:: const unsigned kAccountRoleSpecialEvent = 1 << 4
-   
-   Meaning unknown.
-   Not supported by any fan server implementation.
+  
+  Meaning unknown.
+  Not supported by any fan server implementation.
 
 .. cpp:var:: const unsigned kAccountRoleBanned = 1 << 16
-   
-   Supported by DIRTSAND ---
-   if set,
-   logging in to the account in question always fails with :cpp:enumerator:`kNetErrAccountBanned`.
-   Not used by MOSS ---
-   it handles account bans using an internal database flag
-   that isn't sent to the client.
+  
+  Supported by DIRTSAND ---
+  if set,
+  logging in to the account in question always fails with :cpp:enumerator:`kNetErrAccountBanned`.
+  Not used by MOSS ---
+  it handles account bans using an internal database flag
+  that isn't sent to the client.
 
 .. _billing_type:
 
@@ -698,36 +698,36 @@ Billing type
 The open-sourced client code defines the following billing types:
 
 .. cpp:var:: const unsigned kBillingTypeFree = 0 << 0
-   
-   Technically the default state,
-   but no longer used in MOULa,
-   as all accounts are considered "paid subscribers".
+  
+  Technically the default state,
+  but no longer used in MOULa,
+  as all accounts are considered "paid subscribers".
 
 .. cpp:var:: const unsigned kBillingTypePaidSubscriber = 1 << 0
-   
-   Indicates that the account has full access to all game content.
-   Before MOULa,
-   this was only set for paying subscribers,
-   as the name indicates.
-   With MOULa being free to play,
-   all accounts have this flag set
-   despite not actually paying for a subscription.
-   
-   Accounts with this flag unset can only create a single :ref:`visitor <visitor>` avatar.
-   Accounts with this flag set can only create :ref:`explorer <explorer>` avatars,
-   and any existing visitor avatar is automatically upgraded to an explorer
-   (see :ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`).
-   
-   DIRTSAND sets this flag for all accounts and doesn't allow changing it.
-   MOSS has a few bits of code that theoretically handle non-paid accounts,
-   but this seems to be unused in practice.
+  
+  Indicates that the account has full access to all game content.
+  Before MOULa,
+  this was only set for paying subscribers,
+  as the name indicates.
+  With MOULa being free to play,
+  all accounts have this flag set
+  despite not actually paying for a subscription.
+  
+  Accounts with this flag unset can only create a single :ref:`visitor <visitor>` avatar.
+  Accounts with this flag set can only create :ref:`explorer <explorer>` avatars,
+  and any existing visitor avatar is automatically upgraded to an explorer
+  (see :ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`).
+  
+  DIRTSAND sets this flag for all accounts and doesn't allow changing it.
+  MOSS has a few bits of code that theoretically handle non-paid accounts,
+  but this seems to be unused in practice.
 
 .. cpp:var:: const unsigned kBillingTypeGameTap = 1 << 1
-   
-   Exact meaning unknown ---
-   not used in the open-sourced client code.
-   MOSS sets this flag in all successful login replies,
-   presumably mirroring what Cyan's server software did during the GameTap era.
+  
+  Exact meaning unknown ---
+  not used in the open-sourced client code.
+  MOSS sets this flag in all successful login replies,
+  presumably mirroring what Cyan's server software did during the GameTap era.
 
 .. _cli2auth_acct_set_player_request:
 

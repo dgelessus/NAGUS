@@ -13,8 +13,8 @@ that is preconfigured with the appropriate server addresses and encryption keys.
 The way this information is configured differs between OpenUru and H'uru clients.
 
 .. seealso::
-   
-   :ref:`generating_dh_keys` for how to generate connection keys when setting up your own shard.
+  
+  :ref:`generating_dh_keys` for how to generate connection keys when setting up your own shard.
 
 .. _compiled_server_config:
 
@@ -34,60 +34,60 @@ The server addresses are all over the place in the source code.
 Below is a list of the exact files, macros, variables, and functions containing server info.
 
 .. note::
-   
-   Some of these have different values depending on the :ref:`build type <build_type>`.
-   Build type Live corresponds to Cyan's public MOULa servers.
-   Other build types use old Ubisoft/Cyan addresses that are no longer valid.
-   When configuring your own server addresses,
-   you can safely remove all the build type conditionals and set a single fixed value instead.
+  
+  Some of these have different values depending on the :ref:`build type <build_type>`.
+  Build type Live corresponds to Cyan's public MOULa servers.
+  Other build types use old Ubisoft/Cyan addresses that are no longer valid.
+  When configuring your own server addresses,
+  you can safely remove all the build type conditionals and set a single fixed value instead.
 
 .. c:macro:: STATUS_PATH
-   
-   (in files :file:`Plasma/Apps/plClient/winmain.cpp`, :file:`Plasma/Apps/plUruLauncher/Main.cpp`)
-   
-   The host name or IP address of the status server,
-   as a string literal.
-   The macro name is misleading ---
-   this string cannot contain a path!
-   The location of the status page on the server is configured separately in :cpp:func:`BuildTypeServerStatusPath`.
-   
-   The status server port number is hardcoded to 80.
-   To change it,
-   locate the ``WinHttpConnect`` calls in the ``StatusCallback`` functions
-   (in the same source files as :c:macro:`STATUS_PATH`)
-   and replace ``INTERNET_DEFAULT_HTTP_PORT`` with the desired port number.
+  
+  (in files :file:`Plasma/Apps/plClient/winmain.cpp`, :file:`Plasma/Apps/plUruLauncher/Main.cpp`)
+  
+  The host name or IP address of the status server,
+  as a string literal.
+  The macro name is misleading ---
+  this string cannot contain a path!
+  The location of the status page on the server is configured separately in :cpp:func:`BuildTypeServerStatusPath`.
+  
+  The status server port number is hardcoded to 80.
+  To change it,
+  locate the ``WinHttpConnect`` calls in the ``StatusCallback`` functions
+  (in the same source files as :c:macro:`STATUS_PATH`)
+  and replace ``INTERNET_DEFAULT_HTTP_PORT`` with the desired port number.
 
 .. cpp:function:: const wchar *BuildTypeServerStatusPath()
-   
-   (in file :file:`Plasma/NucleusLib/pnProduct/Private/pnPrBuildType.cpp`)
-   
-   Returns the path of the status page on the status server.
-   Can return ``nil``/``NULL``/``0``,
-   in which case the status server is never contacted
-   and the default status message "Welcome to URU" is displayed forever.
+  
+  (in file :file:`Plasma/NucleusLib/pnProduct/Private/pnPrBuildType.cpp`)
+  
+  Returns the path of the status page on the status server.
+  Can return ``nil``/``NULL``/``0``,
+  in which case the status server is never contacted
+  and the default status message "Welcome to URU" is displayed forever.
 
 .. cpp:var::
-   static const wchar *s_gateKeeperAddrs[]
-   static const wchar *s_authAddrs[]
-   static const wchar *s_csrAddrs[]
-   
-   (in file :file:`Plasma/NucleusLib/pnNetBase/Private/pnNbSrvs.cpp`)
-   
-   The address of the gatekeeper, auth, and CSR server,
-   respectively.
-   May include an explicit port number,
-   otherwise the default port ``kNetDefaultClientPort`` (14617) is used.
-   
-   Although these are arrays that could contain multiple server addresses,
-   this is not fully supported in the client code,
-   and all addresses after the first one are ignored.
+  static const wchar *s_gateKeeperAddrs[]
+  static const wchar *s_authAddrs[]
+  static const wchar *s_csrAddrs[]
+  
+  (in file :file:`Plasma/NucleusLib/pnNetBase/Private/pnNbSrvs.cpp`)
+  
+  The address of the gatekeeper, auth, and CSR server,
+  respectively.
+  May include an explicit port number,
+  otherwise the default port ``kNetDefaultClientPort`` (14617) is used.
+  
+  Although these are arrays that could contain multiple server addresses,
+  this is not fully supported in the client code,
+  and all addresses after the first one are ignored.
 
 .. cpp:var:: static const wchar *s_fileAddrs[]
-   
-   (in file :file:`Plasma/NucleusLib/pnNetBase/Private/pnNbSrvs.cpp`)
-   
-   Not actually used.
-   The file server address is obtained from the gatekeeper server instead.
+  
+  (in file :file:`Plasma/NucleusLib/pnNetBase/Private/pnNbSrvs.cpp`)
+  
+  Not actually used.
+  The file server address is obtained from the gatekeeper server instead.
 
 Connection encryption keys are defined in the files :file:`Plasma/NucleusLib/pnNetBase/pnNb{TYPE}Key.hpp`,
 where :file:`{TYPE}` is one of ``Auth``, ``Csr``, ``Game``, or ``GateKeeper``.
@@ -97,20 +97,20 @@ Each of these files defines three variables
 containing the Diffie-Hellman values for the respective server type:
 
 .. cpp:var:: static const unsigned kDhGValue
-   
-   The value of *g*.
-   Usually doesn't need to be changed,
-   because almost all MOULa shards use the same *g* values for each server type.
+  
+  The value of *g*.
+  Usually doesn't need to be changed,
+  because almost all MOULa shards use the same *g* values for each server type.
 
 .. cpp:var::
-   static const byte kDhNData[64]
-   static const byte kDhXData[64]
-   
-   The values of *n* and *x*,
-   stored as a packed integer in *little-endian* byte order
-   (least significant byte first).
-   This is different from H'uru and OpenSSL,
-   which use *big-endian* byte order instead.
+  static const byte kDhNData[64]
+  static const byte kDhXData[64]
+  
+  The values of *n* and *x*,
+  stored as a packed integer in *little-endian* byte order
+  (least significant byte first).
+  This is different from H'uru and OpenSSL,
+  which use *big-endian* byte order instead.
 
 .. _server_address_cli_options:
 
@@ -122,19 +122,19 @@ which are supported by the launcher and the main client,
 in both :ref:`internal and external builds <internal_external_client>`.
 
 .. option::
-   /GateKeeperSrv=GATEKEEPER_ADDRESS
-   /FileSrv=FILE_ADDRESS
-   /AuthSrv=AUTH_ADDRESS
-   
-   Use the given address for the gatekeeper, file, or auth server,
-   respectively,
-   instead of the compiled-in address.
-   
-   Each address (including port number suffix, if any)
-   may be at most 63 characters long,
-   because the client stores them in fixed-size buffers.
-   If for some reason your host name is longer than that,
-   you need to write it as an IP address instead.
+  /GateKeeperSrv=GATEKEEPER_ADDRESS
+  /FileSrv=FILE_ADDRESS
+  /AuthSrv=AUTH_ADDRESS
+  
+  Use the given address for the gatekeeper, file, or auth server,
+  respectively,
+  instead of the compiled-in address.
+  
+  Each address (including port number suffix, if any)
+  may be at most 63 characters long,
+  because the client stores them in fixed-size buffers.
+  If for some reason your host name is longer than that,
+  you need to write it as an IP address instead.
 
 Because there is no way to override the connection encryption keys along with the server addresses,
 these options cannot be used to connect to arbitrary servers.
@@ -143,7 +143,7 @@ e. g. Cyan's MOULa and MOULa Staging,
 or OpenUru's Minkata and Minkata-alpha.
 
 .. index:: server.ini
-   :name: server_ini
+  :name: server_ini
 
 server.ini (H'uru)
 ------------------
@@ -156,8 +156,8 @@ A different configuration file can be specified with a command line option
 (supported by both the launcher and the main client):
 
 .. option:: /ServerIni=INI_FILE
-   
-   Read server configuration from the given file path instead of the default :file:`server.ini`.
+  
+  Read server configuration from the given file path instead of the default :file:`server.ini`.
 
 Without a server.ini,
 a H'uru client will not run at all ---
@@ -183,40 +183,40 @@ it ignores any file server override and always goes through the gatekeeper serve
 This makes overriding the file server only useful in combination with :option:`/LocalData`:
 
 .. option:: /LocalData
-   
-   Skip all update checks
-   and force using the local copies of all data and script files.
-   With this option enabled,
-   the gatekeeper and file servers are never contacted
-   and no "secure files" are downloaded from the auth server.
-   Any files that are normally served as "secure files" (usually Python and SDL) must be manually placed into the game folder.
-   
-   .. warning::
-      
-      When using this option,
-      make sure that your local data files are compatible with what the server expects!
-      Especially SDL files **must** match the server very closely,
-      or bad things will happen.
-      
-      To be safe,
-      you should first let the launcher update all data files normally,
-      then install current versions of the scripts (Python, SDL).
-      Then you can use :option:`/LocalData` safely (until the shard updates anything)
-      and make local modifications (carefully!).
-   
-   This option is only supported by :ref:`internal clients <internal_external_client>`
-   (both OpenUru and H'uru).
-   To use this option,
-   you should launch :program:`plClient` directly ---
-   the launcher ignores it and will update the data files anyway.
+  
+  Skip all update checks
+  and force using the local copies of all data and script files.
+  With this option enabled,
+  the gatekeeper and file servers are never contacted
+  and no "secure files" are downloaded from the auth server.
+  Any files that are normally served as "secure files" (usually Python and SDL) must be manually placed into the game folder.
+  
+  .. warning::
+    
+    When using this option,
+    make sure that your local data files are compatible with what the server expects!
+    Especially SDL files **must** match the server very closely,
+    or bad things will happen.
+    
+    To be safe,
+    you should first let the launcher update all data files normally,
+    then install current versions of the scripts (Python, SDL).
+    Then you can use :option:`/LocalData` safely (until the shard updates anything)
+    and make local modifications (carefully!).
+  
+  This option is only supported by :ref:`internal clients <internal_external_client>`
+  (both OpenUru and H'uru).
+  To use this option,
+  you should launch :program:`plClient` directly ---
+  the launcher ignores it and will update the data files anyway.
 
 .. option:: /SkipPreload
-   
-   Skip downloading "secure files" from the auth server and use local copies instead,
-   but update all other data files from the file server as usual.
-   This is a subset of :option:`/LocalData`,
-   useful when you need to modify just the scripts and not any other data files.
-   
-   This option is only supported by H'uru :ref:`internal clients <internal_external_client>`.
-   With OpenUru clients,
-   you have to use the full :option:`/LocalData` option instead.
+  
+  Skip downloading "secure files" from the auth server and use local copies instead,
+  but update all other data files from the file server as usual.
+  This is a subset of :option:`/LocalData`,
+  useful when you need to modify just the scripts and not any other data files.
+  
+  This option is only supported by H'uru :ref:`internal clients <internal_external_client>`.
+  With OpenUru clients,
+  you have to use the full :option:`/LocalData` option instead.
