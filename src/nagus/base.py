@@ -74,7 +74,7 @@ class SetupMessageType(enum.Enum):
 	srv2cli_error = 2
 
 
-class NetError(enum.IntEnum):
+class NetError(structs.IntEnum):
 	"""Python conversion of the :cpp:enum:`ENetError` enum,
 	which is used for status codes in various messages.
 	"""

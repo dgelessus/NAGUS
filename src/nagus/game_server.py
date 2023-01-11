@@ -61,7 +61,7 @@ COMPRESSION_THRESHOLD = 256
 
 
 class Location(object):
-	class Flags(enum.IntFlag):
+	class Flags(structs.IntFlag):
 		local_only = 1 << 0
 		volatile = 1 << 1
 		reserved = 1 << 2
@@ -96,7 +96,7 @@ class Location(object):
 
 
 class GroupId(object):
-	class Flags(enum.IntFlag):
+	class Flags(structs.IntFlag):
 		constant = 1 << 0
 		local = 1 << 1
 	
@@ -130,7 +130,7 @@ class GroupId(object):
 
 
 class Uoid(object):
-	class Flags(enum.IntFlag):
+	class Flags(structs.IntFlag):
 		has_clone_ids = 1 << 0
 		has_load_mask = 1 << 1
 		
@@ -406,7 +406,7 @@ class ClientInfo(object):
 
 
 class MemberInfo(object):
-	class Flags(enum.IntFlag):
+	class Flags(structs.IntFlag):
 		waiting_for_link_query = 1 << 0
 		indirect_member = 1 << 1
 		request_p2p = 1 << 2
@@ -441,7 +441,7 @@ class MemberInfo(object):
 		self.avatar_uoid.write(stream)
 
 
-class NetMessageFlags(enum.IntFlag):
+class NetMessageFlags(structs.IntFlag):
 	has_time_sent = 1 << 0
 	has_game_message_receivers = 1 << 1
 	echo_back_to_sender = 1 << 2
@@ -694,7 +694,7 @@ class NetMessageRoomsList(NetMessage):
 
 
 class NetMessagePagingRoom(NetMessageRoomsList):
-	class Flags(enum.IntFlag):
+	class Flags(structs.IntFlag):
 		paging_out = 1 << 0
 		reset_list = 1 << 1
 		request_state = 1 << 2

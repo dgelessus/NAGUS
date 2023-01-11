@@ -53,7 +53,7 @@ VAULT_NODE_DATA_HEADER = struct.Struct("<Q")
 VAULT_NODE_REF = struct.Struct("<III?")
 
 
-class VaultNodeType(enum.IntEnum):
+class VaultNodeType(structs.IntEnum):
 	invalid = 0
 	vnodemgr_low = 1
 	player = 2
@@ -79,7 +79,7 @@ class VaultNodeType(enum.IntEnum):
 	marker_game = 35
 
 
-class VaultNodeFieldFlags(enum.IntFlag):
+class VaultNodeFieldFlags(structs.IntFlag):
 	node_id = 1 << 0
 	create_time = 1 << 1
 	modify_time = 1 << 2
@@ -744,7 +744,7 @@ class VaultNodeRef(object):
 		return rep
 
 
-class VaultNodeFolderType(enum.IntEnum):
+class VaultNodeFolderType(structs.IntEnum):
 	user_defined = 0
 	inbox = 1
 	buddy_list = 2

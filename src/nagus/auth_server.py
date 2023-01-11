@@ -89,7 +89,7 @@ LOG_CLIENT_DEBUGGER_CONNECT = struct.Struct("<I")
 SYSTEM_RANDOM = random.SystemRandom()
 
 
-class AccountFlags(enum.IntFlag):
+class AccountFlags(structs.IntFlag):
 	disabled = 0
 	admin = 1 << 0
 	developer = 1 << 1
@@ -99,7 +99,7 @@ class AccountFlags(enum.IntFlag):
 	banned = 1 << 16
 
 
-class AccountBillingType(enum.IntFlag):
+class AccountBillingType(structs.IntFlag):
 	free = 0
 	paid_subscriber = 1 << 0
 	gametap = 1 << 1

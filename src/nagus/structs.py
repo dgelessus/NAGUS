@@ -19,6 +19,7 @@
 
 
 import datetime
+import enum
 import struct
 import typing
 import uuid
@@ -37,6 +38,31 @@ UINT32 = struct.Struct("<I")
 UINT64 = struct.Struct("<Q")
 
 UNIFIED_TIME = struct.Struct("<II")
+
+
+class _TestEnum(enum.IntEnum):
+	thing = 1
+
+
+if str(_TestEnum.thing) == "1":
+	# Starting with Python 3.11,
+	# the __str__ of enum.IntEnum and enum.IntFlag subclasses always uses the plain integer value,
+	# rather than using the enum constant name if possible
+	# (as in Python 3.10 and earlier).
+	# The old behavior was quite useful for debug logging,
+	# so we define replacement IntEnum and IntFlag base classes if necessary to restore that behavior.
+	# We can't just define these unconditionally,
+	# because the IntFlag definition requires the boundary kwarg to the metaclass,
+	# which was only added in Python 3.11.
+	
+	class IntEnum(int, enum.Enum):
+		pass
+	
+	class IntFlag(int, enum.Flag, boundary=enum.FlagBoundary.KEEP):
+		pass
+else:
+	IntEnum = enum.IntEnum
+	IntFlag = enum.IntFlag
 
 
 def read_exact(stream: typing.BinaryIO, byte_count: int) -> bytes:
