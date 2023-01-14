@@ -102,6 +102,9 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 		except IndexError:
 			quip = "missingno"
 		logger.error("%s (uncaught exception while handling request from %s)", quip, client_address, exc_info=exc)
+	except asyncio.CancelledError:
+		logger.info("Connection handler for %s was cancelled - most likely the server is shutting down", client_address)
+		raise
 	except BaseException as exc:
 		logger.error("Uncaught BaseException while handling request from %s - something has gone quite wrong:", client_address, exc_info=exc)
 		raise
