@@ -243,6 +243,79 @@ Common data types
     with the first element containing the least significant bits
     and the last one the most significant bits.
 
+.. cpp:class:: plGenericType
+  
+  * **Type:** 1-byte :cpp:enum:`pnGenericType::Types`.
+    Indicates the type and meaning of the following data field.
+  * **Data:** Varies depending on the type field
+    (see below).
+  
+  .. cpp:enum:: Types
+    
+    .. cpp:enumerator:: kInt = 0
+      
+      4-byte signed int.
+    
+    .. cpp:enumerator:: kFloat = 1
+      
+      4-byte floating-point number.
+      Not used in the open-sourced client code.
+    
+    .. cpp:enumerator:: kBool = 2
+      
+      1-byte boolean.
+    
+    .. cpp:enumerator:: kString = 3
+      
+      :ref:`SafeString <safe_string>`.
+    
+    .. cpp:enumerator:: kChar = 4
+      
+      A single 8-bit character.
+      Not used in the open-sourced client code.
+    
+    .. cpp:enumerator:: kAny = 4
+      
+      An arbitrary untyped value.
+      Stored as a :ref:`SafeString <safe_string>`,
+      but may be implicitly converted to any of the other data types.
+      Not used in the open-sourced client code.
+      
+      Converting to string returns the string as-is.
+      
+      Converting to char returns the first character of the string
+      (or a zero byte if the string is empty).
+      
+      Converting to any of the integer or floating-point types
+      parses the string as a decimal literal of that number type.
+      The open-sourced client code performs the conversion using the standard C functions ``atoi`` and ``atof``,
+      so any leading whitespace and trailing non-number characters are ignored
+      (though it's probably best not to rely on this).
+      H'uru clients use ``strtol``/``strtoul`` for integer parsing,
+      meaning that out-of-range integer values are clamped to the minimum/maximum 32-bit integer value
+      (unlike in OpenUru clients,
+      where such values wrap around in two's complement fashion)
+      and C octal and hexadecimal prefixes are understood
+      (this is probably not intentiona).
+      
+      Converting to bool returns true if the string is ``true`` or a valid non-zero integer (see above),
+      or false in all other cases.
+    
+    .. cpp:enumerator:: kUInt = 5
+      
+      4-byte unsigned int.
+      Not used in the open-sourced client code.
+    
+    .. cpp:enumerator:: kDouble = 6
+      
+      8-byte floating-point number.
+    
+    .. cpp:enumerator:: kNone = 255
+      
+      No value.
+      "Stored" as 0 bytes of data.
+      Not used in the open-sourced client code.
+
 .. cpp:class:: plUnifiedTime
   
   * **Seconds:** 4-byte unsigned int.
@@ -788,6 +861,28 @@ Common data types
   
   * **Header:** :cpp:class:`plNetMsgStreamedObject`.
   * **Lock request:** 1-byte boolean.
+  
+  The stream data has the following format
+  (although in practice,
+  only two specific combinations of values are used ---
+  see :cpp:class:`plNetMsgTestAndSet`):
+  
+  * **State name length:** 2-byte unsigned int.
+    Byte count for the following state name field.
+  * **State name:** Variable-length byte string.
+  * **Variable count:** 4-byte signed int
+    (yes,
+    it's signed for some reason,
+    even though it can never be negative).
+    Element count for the following array of variables.
+  * **Server may delete:** 1-byte boolean.
+    Set to true if the state is being set to its default value,
+    in which case the server doesn't have to store the value anymore,
+    or set to false if the state is being set to a non-default value.
+  * **Variables:** Variable-length array of:
+    
+    * **Variable name:** :ref:`SafeString <safe_string>`.
+    * **Variable value:** :cpp:class:`plGenericType`.
 
 :cpp:class:`plNetMsgTestAndSet`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -797,6 +892,51 @@ Common data types
   *Class index = 0x027d = 637*
   
   Identical structure to its superclass :cpp:class:`plNetMsgSharedState`.
+  
+  Update a server-side shared state variable attached to an object.
+  
+  In practice,
+  this is only used to implement simple mutexes.
+  Almost all fields have fixed or restricted values:
+  
+  * **UOID:** Always has class type 0x004f (``plLogicModBase``).
+  * **Stream data:**
+    
+    * **State name:** Always the string ``TrigState``.
+    * **Variable count:** Always 1.
+    * **Server may delete:** False if triggering,
+      or true if un-triggering.
+    * **Variables:**
+      
+      * **Variable name:** Always the string ``Triggered``.
+      * **Variable value:**
+        
+        * **Type:** Always :cpp:enumerator:`pnGenericType::Types::kBool`.
+        * **Data:** True if triggering,
+          or false if un-triggering.
+  * **Lock request:** True if triggering,
+    or false if un-triggering.
+  
+  MOSS only accepts this exact structure.
+  DIRTSAND implements a full parser for the stream data
+  that accepts any state name and variables,
+  but then ignores the parsed data entirely
+  and only acts based on the lock request field.
+  
+  If the lock request field is true,
+  the server tries to lock the object
+  and then replies with a :cpp:class:`plNetMsgGameMessage` containing a ``plServerReplyMsg``.
+  The reply's type field is set to ``kAffirm`` if the lock request succeeded
+  (i. e. the client now has the lock)
+  or ``kDeny`` if it failed
+  (i. e. another client already has the lock at the moment).
+  
+  If the lock request field is false,
+  the server clears the client's lock on the object.
+  DIRTSAND also sends a ``plServerReplyMsg`` in this case,
+  with its type field set to ``kUnInit``.
+  MOSS doesn't send any reply at all.
+  (TODO What does Cyan's server software do?)
 
 :cpp:class:`plNetMsgSDLState`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

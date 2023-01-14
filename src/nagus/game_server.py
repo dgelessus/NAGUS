@@ -891,6 +891,21 @@ class NetMessageSharedState(NetMessageStreamedObject):
 
 class NetMessageTestAndSet(NetMessageSharedState):
 	CLASS_INDEX = 0x027d
+	
+	TRIGGER_DATA = b"\t\x00TrigState\x01\x00\x00\x00\x00\t\xf0\xab\x8d\x96\x98\x98\x9a\x8d\x9a\x9b\x02\x01"
+	UNTRIGGER_DATA = b"\t\x00TrigState\x01\x00\x00\x00\x01\t\xf0\xab\x8d\x96\x98\x98\x9a\x8d\x9a\x9b\x02\x00"
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		data = self.decompress_data()
+		
+		if self.lock_request:
+			if data != type(self).TRIGGER_DATA:
+				logger.warning("Unexpected stream data for TestAndSet trigger request! Ignoring the stream data and locking as usual.")
+		else:
+			if data != type(self).UNTRIGGER_DATA:
+				logger.warning("Unexpected stream data for TestAndSet un-trigger request! Ignoring the stream data and unlocking as usual.")
+		
+		# TODO Send plServerReplyMsg
 
 
 class NetMessageSDLState(NetMessageStreamedObject):
