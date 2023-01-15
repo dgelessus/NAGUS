@@ -187,337 +187,6 @@ and not supported by MOSS or DIRTSAND
   * :cpp:class:`plNetMsgRelevanceRegions` = 0x03ac = 940 (client -> server)
   * :cpp:class:`plNetMsgPlayerPage` = 0x03b4 = 948 (client -> server)
 
-Common data types
-^^^^^^^^^^^^^^^^^
-
-.. index:: SafeString
-  single: safe string
-  :name: safe_string
-
-.. object:: SafeString
-  
-  * **Count:** 2-byte unsigned int.
-    Number of 8-bit characters in the string.
-    The high 4 bits of this field are masked out when reading and should always be set when writing.
-    As a result,
-    a single SafeString can contain at most 4095 characters.
-  * **Ignored:** 2-byte unsigned int.
-    Only present if the count field has none of its high 4 bits set.
-    The open-sourced client code calls this a "backward compat hack" that should have been removed in July 2003.
-  * **String:** Variable-length string of 8-bit characters.
-    If the first character has its high bit set,
-    then the string is obfuscated by bitwise negating every character,
-    otherwise the string is stored literally.
-    When writing,
-    the open-sourced client code always uses this obfuscation.
-    None of the characters should be 0.
-
-.. index:: SafeWString
-  single: safe string; wide
-  :name: safe_w_string
-
-.. object:: SafeWString
-  
-  * **Count:** 2-byte unsigned int.
-    Number of UTF-16 code units in the string.
-    The high 4 bits of this field are masked out when reading and should always be set when writing.
-    As a result,
-    a single SafeWString can contain at most 4095 UTF-16 code units.
-  * **String:** Variable-length string of UTF-16 code units.
-    The string is obfuscated by bitwise negating every code unit.
-    (Unlike with non-wide SafeStrings,
-    there is no support for un-obfuscated SafeWStrings.)
-    None of the characters should be 0.
-  * **Terminator:** 2-byte unsigned int.
-    Should always be 0.
-    This string terminator is stored in the data,
-    but not counted in the count field.
-
-.. cpp:class:: hsBitVector
-  
-  * **Count:** 4-byte unsigned int.
-    Element count for the following array.
-  * **Bit vector:** Variable-length array of 4-byte unsigned ints.
-    The contents of the bit vector,
-    grouped into 4-byte units,
-    with the first element containing the least significant bits
-    and the last one the most significant bits.
-
-.. cpp:class:: plGenericType
-  
-  * **Type:** 1-byte :cpp:enum:`pnGenericType::Types`.
-    Indicates the type and meaning of the following data field.
-  * **Data:** Varies depending on the type field
-    (see below).
-  
-  .. cpp:enum:: Types
-    
-    .. cpp:enumerator:: kInt = 0
-      
-      4-byte signed int.
-    
-    .. cpp:enumerator:: kFloat = 1
-      
-      4-byte floating-point number.
-      Not used in the open-sourced client code.
-    
-    .. cpp:enumerator:: kBool = 2
-      
-      1-byte boolean.
-    
-    .. cpp:enumerator:: kString = 3
-      
-      :ref:`SafeString <safe_string>`.
-    
-    .. cpp:enumerator:: kChar = 4
-      
-      A single 8-bit character.
-      Not used in the open-sourced client code.
-    
-    .. cpp:enumerator:: kAny = 4
-      
-      An arbitrary untyped value.
-      Stored as a :ref:`SafeString <safe_string>`,
-      but may be implicitly converted to any of the other data types.
-      Not used in the open-sourced client code.
-      
-      Converting to string returns the string as-is.
-      
-      Converting to char returns the first character of the string
-      (or a zero byte if the string is empty).
-      
-      Converting to any of the integer or floating-point types
-      parses the string as a decimal literal of that number type.
-      The open-sourced client code performs the conversion using the standard C functions ``atoi`` and ``atof``,
-      so any leading whitespace and trailing non-number characters are ignored
-      (though it's probably best not to rely on this).
-      H'uru clients use ``strtol``/``strtoul`` for integer parsing,
-      meaning that out-of-range integer values are clamped to the minimum/maximum 32-bit integer value
-      (unlike in OpenUru clients,
-      where such values wrap around in two's complement fashion)
-      and C octal and hexadecimal prefixes are understood
-      (this is probably not intentiona).
-      
-      Converting to bool returns true if the string is ``true`` or a valid non-zero integer (see above),
-      or false in all other cases.
-    
-    .. cpp:enumerator:: kUInt = 5
-      
-      4-byte unsigned int.
-      Not used in the open-sourced client code.
-    
-    .. cpp:enumerator:: kDouble = 6
-      
-      8-byte floating-point number.
-    
-    .. cpp:enumerator:: kNone = 255
-      
-      No value.
-      "Stored" as 0 bytes of data.
-      Not used in the open-sourced client code.
-
-.. cpp:class:: plUnifiedTime
-  
-  * **Seconds:** 4-byte unsigned int.
-    Unix timestamp (seconds since 1970).
-  * **Microseconds:** 4-byte unsigned int.
-    Fractional part of the timestamp for sub-second precision.
-
-.. cpp:class:: plLocation
-  
-  * **Sequence number:** 4-byte unsigned int.
-  * **Flags:** 2-byte unsigned int.
-    See :cpp:enum:`LocFlags` for details.
-  
-  .. cpp:enum:: LocFlags
-    
-    .. cpp:enumerator:: kLocalOnly = 1 << 0
-    .. cpp:enumerator:: kVolatile = 1 << 1
-    .. cpp:enumerator:: kReserved = 1 << 2
-    .. cpp:enumerator:: kBuiltIn = 1 << 3
-    .. cpp:enumerator:: kItinerant = 1 << 4
-
-.. cpp:class:: plNetGroupId
-  
-  * **ID:** 6-byte :cpp:class:`plLocation`.
-  * **Flags:** 1-byte unsigned int.
-    See :cpp:enum:`NetGroupConstants` for details.
-  
-  .. cpp:enum:: NetGroupConstants
-    
-    .. cpp:enumerator:: kNetGroupConstant = 1 << 0
-    .. cpp:enumerator:: kNetGroupLocal = 1 << 1
-
-.. cpp:class:: plLoadMask
-  
-  * **Quality and capability:** 1-byte unsigned int.
-    Decoded as follows
-    (where *qc* is the value of this field)
-    into separate quality and capability fields,
-    each of which is a 1-byte unsigned int after decoding:
-    
-    * **Quality** = (*qc* >> 4 & 0xf) | 0xf0
-    * **Capability** = (*qc* >> 0 & 0xf) | 0xf0
-  
-  .. cpp:var:: static const plLoadMask kAlways
-    
-    Has both quality and capability set to 0xff.
-
-.. cpp:class:: plUoid
-  
-  * **Flags:** 1-byte unsigned int.
-    See :cpp:enum:`ContentsFlags` for details.
-  * **Location:** 6-byte :cpp:class:`plLocation`.
-  * **Load mask:** 1-byte :cpp:class:`plLoadMask`.
-    Only present if the :cpp:enumerator:`~ContentsFlags::kHasLoadMask` flag is set,
-    otherwise defaults to :cpp:var:`plLoadMask::kAlways`.
-  * **Class type:** 2-byte unsigned int.
-  * **Object ID:** 4-byte unsigned int.
-  * **Object name:** :ref:`SafeString <safe_string>`.
-  * **Clone ID:** 2-byte unsigned int.
-    Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
-    otherwise defaults to 0.
-  * **Ignored:** 2-byte unsigned int.
-    Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set.
-  * **Clone player ID:** 4-byte unsigned int.
-    Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
-    otherwise defaults to 0.
-  
-  .. cpp:enum:: ContentsFlags
-    
-    .. cpp:enumerator:: kHasCloneIDs = 1 << 0
-    .. cpp:enumerator:: kHasLoadMask = 1 << 1
-
-.. cpp:class:: plKey
-  
-  .. note::
-    
-    :cpp:class:`plKey` itself can't actually be read or written directly.
-    The structure described here is used by ``hsResMgr::ReadKey``/``hsResMgr::WriteKey``.
-  
-  * **Non-null:** False if this key is actually ``nullptr``,
-    true otherwise.
-  * **UOID:** The UOID of the object identified by this key.
-    Only present if the non-null field is true.
-
-.. cpp:class:: plClientGuid : public plCreatable
-  
-  * **Flags:** 2-byte unsigned int.
-    See :cpp:enum:`Flags` for details.
-  * **Account UUID:** 16-byte UUID.
-    Only present if the :cpp:enumerator:`~Flags::kAccountUUID` flag is set.
-    Always unset in practice and not used by client or servers.
-    Unclear if Cyan's server software does anything with it.
-  * **Player ID:** 4-byte unsigned int.
-    Only present if the :cpp:enumerator:`~Flags::kPlayerID` flag is set.
-    The avatar's KI number.
-  * **Temp player ID:** 4-byte unsigned int.
-    Only present if the :cpp:enumerator:`~Flags::kTempPlayerID` flag is set.
-    Always unset in practice and not used by fan servers.
-    Unclear if Cyan's server software does anything with it.
-    The open-sourced client code treats this identically to the regular player ID field.
-  * **Player name length:** 2-byte unsigned int.
-    Only present if the :cpp:enumerator:`~Flags::kPlayerName` flag is set.
-    Byte count for the following player name.
-  * **Player name:** Variable-length byte string.
-    Only present if the :cpp:enumerator:`~Flags::kPlayerName` flag is set.
-    The avatar's display name.
-  * **CCR level:** 1-byte unsigned int.
-    Only present if the :cpp:enumerator:`~Flags::kCCRLevel` flag is set.
-    The avatar's current CCR level.
-    MOSS hardcodes this field to 0,
-    whereas DIRTSAND doesn't set it at all.
-  * **Protected login:** 1-byte boolean.
-    Only present if the :cpp:enumerator:`~Flags::kProtectedLogin` flag is set.
-    Always unset in practice and not used by client or servers.
-    Unclear if Cyan's server software does anything with it.
-  * **Build type:** 1-byte unsigned int.
-    Only present if the :cpp:enumerator:`~Flags::kBuildType` flag is set.
-    Always unset in practice and not used by client or servers.
-    Unclear if Cyan's server software does anything with it.
-  * **Source IP address:** 4-byte packed IPv4 address.
-    Only present if the :cpp:enumerator:`~Flags::kSrcAddr` flag is set.
-    Always unset in practice and not used by client or servers.
-    Unclear if Cyan's server software does anything with it.
-  * **Source port:** 2-byte unsigned int.
-    Only present if the :cpp:enumerator:`~Flags::kSrcPort` flag is set.
-    Always unset in practice and not used by client or servers.
-    Unclear if Cyan's server software does anything with it.
-  * **Reserved:** 1-byte boolean.
-    Only present if the :cpp:enumerator:`~Flags::kReserved` flag is set.
-    Always unset in practice and not used by client or servers.
-    Unclear if Cyan's server software does anything with it.
-  * **Client key length:** 2-byte unsigned int.
-    Only present if the :cpp:enumerator:`~Flags::kClientKey` flag is set.
-    Byte count for the following client key.
-  * **Client key:** Variable-length byte string.
-    Only present if the :cpp:enumerator:`~Flags::kClientKey` flag is set.
-    Always unset in practice and not used by client or servers.
-    Unclear if Cyan's server software does anything with it.
-  
-  .. cpp:enum:: Flags
-    
-    .. cpp:enumerator:: kAccountUUID = 1 << 0
-    .. cpp:enumerator:: kPlayerID = 1 << 1
-    .. cpp:enumerator:: kTempPlayerID = 1 << 2
-    .. cpp:enumerator:: kCCRLevel = 1 << 3
-    .. cpp:enumerator:: kProtectedLogin = 1 << 4
-    .. cpp:enumerator:: kBuildType = 1 << 5
-    .. cpp:enumerator:: kPlayerName = 1 << 6
-    .. cpp:enumerator:: kSrcAddr = 1 << 7
-    .. cpp:enumerator:: kSrcPort = 1 << 8
-    .. cpp:enumerator:: kReserved = 1 << 9
-    .. cpp:enumerator:: kClientKey = 1 << 10
-
-.. cpp:class:: plNetMsgStreamHelper : public plCreatable
-  
-  * **Uncompressed length:** 4-byte unsigned int.
-    Byte length of the stream data after decompression.
-    If the stream data is not compressed,
-    this field is set to 0.
-  * **Compression type:** 1-byte :cpp:enum:`plNetMessage::CompressionType`.
-  * **Stream length:** 4-byte unsigned int.
-    Byte length of the following stream data field.
-  * **Stream data:** Variable-length byte array.
-    The format of this data depends on the class of the containing message.
-    Additionally,
-    the data may be compressed,
-    depending on the compression type field.
-
-.. cpp:enum:: plNetMember::Flags
-  
-  .. cpp:enumerator:: kWaitingForLinkQuery = 1 << 0
-    
-    "only used server side"
-  
-  .. cpp:enumerator:: kIndirectMember = 1 << 1
-    
-    "this guy is behind a firewall of some sort"
-  
-  .. cpp:enumerator:: kRequestP2P = 1 << 2
-    
-    "wants to play peer to peer"
-  
-  .. cpp:enumerator:: kWaitingForChallengeResponse = 1 << 3
-    
-    "waiting for client response"
-  
-  .. cpp:enumerator:: kIsServer = 1 << 4
-    
-    "used by transport member"
-  
-  .. cpp:enumerator:: kAllowTimeOut = 1 << 5
-    
-    "used by gameserver"
-
-.. cpp:class:: plNetMsgMemberInfoHelper : public plCreatable
-  
-  * **Flags:** 4-byte unsigned int.
-    See :cpp:enum:`plNetMember::Flags` for details.
-    MOSS and DIRTSAND always set this field to 0.
-  * **Client info:** :cpp:class:`plClientGuid`.
-  * **Avatar UOID:** :cpp:class:`plUoid`.
-
 :cpp:class:`plNetMessage`
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1630,3 +1299,336 @@ only of one of their non-abstract subclasses.
       
       Although this flag is related to network propagation,
       it's ignored by the server and only used by clients.
+
+Common data types
+-----------------
+
+Assorted data types used by the message classes above.
+
+.. index:: SafeString
+  single: safe string
+  :name: safe_string
+
+.. object:: SafeString
+  
+  * **Count:** 2-byte unsigned int.
+    Number of 8-bit characters in the string.
+    The high 4 bits of this field are masked out when reading and should always be set when writing.
+    As a result,
+    a single SafeString can contain at most 4095 characters.
+  * **Ignored:** 2-byte unsigned int.
+    Only present if the count field has none of its high 4 bits set.
+    The open-sourced client code calls this a "backward compat hack" that should have been removed in July 2003.
+  * **String:** Variable-length string of 8-bit characters.
+    If the first character has its high bit set,
+    then the string is obfuscated by bitwise negating every character,
+    otherwise the string is stored literally.
+    When writing,
+    the open-sourced client code always uses this obfuscation.
+    None of the characters should be 0.
+
+.. index:: SafeWString
+  single: safe string; wide
+  :name: safe_w_string
+
+.. object:: SafeWString
+  
+  * **Count:** 2-byte unsigned int.
+    Number of UTF-16 code units in the string.
+    The high 4 bits of this field are masked out when reading and should always be set when writing.
+    As a result,
+    a single SafeWString can contain at most 4095 UTF-16 code units.
+  * **String:** Variable-length string of UTF-16 code units.
+    The string is obfuscated by bitwise negating every code unit.
+    (Unlike with non-wide SafeStrings,
+    there is no support for un-obfuscated SafeWStrings.)
+    None of the characters should be 0.
+  * **Terminator:** 2-byte unsigned int.
+    Should always be 0.
+    This string terminator is stored in the data,
+    but not counted in the count field.
+
+.. cpp:class:: hsBitVector
+  
+  * **Count:** 4-byte unsigned int.
+    Element count for the following array.
+  * **Bit vector:** Variable-length array of 4-byte unsigned ints.
+    The contents of the bit vector,
+    grouped into 4-byte units,
+    with the first element containing the least significant bits
+    and the last one the most significant bits.
+
+.. cpp:class:: plGenericType
+  
+  * **Type:** 1-byte :cpp:enum:`pnGenericType::Types`.
+    Indicates the type and meaning of the following data field.
+  * **Data:** Varies depending on the type field
+    (see below).
+  
+  .. cpp:enum:: Types
+    
+    .. cpp:enumerator:: kInt = 0
+      
+      4-byte signed int.
+    
+    .. cpp:enumerator:: kFloat = 1
+      
+      4-byte floating-point number.
+      Not used in the open-sourced client code.
+    
+    .. cpp:enumerator:: kBool = 2
+      
+      1-byte boolean.
+    
+    .. cpp:enumerator:: kString = 3
+      
+      :ref:`SafeString <safe_string>`.
+    
+    .. cpp:enumerator:: kChar = 4
+      
+      A single 8-bit character.
+      Not used in the open-sourced client code.
+    
+    .. cpp:enumerator:: kAny = 4
+      
+      An arbitrary untyped value.
+      Stored as a :ref:`SafeString <safe_string>`,
+      but may be implicitly converted to any of the other data types.
+      Not used in the open-sourced client code.
+      
+      Converting to string returns the string as-is.
+      
+      Converting to char returns the first character of the string
+      (or a zero byte if the string is empty).
+      
+      Converting to any of the integer or floating-point types
+      parses the string as a decimal literal of that number type.
+      The open-sourced client code performs the conversion using the standard C functions ``atoi`` and ``atof``,
+      so any leading whitespace and trailing non-number characters are ignored
+      (though it's probably best not to rely on this).
+      H'uru clients use ``strtol``/``strtoul`` for integer parsing,
+      meaning that out-of-range integer values are clamped to the minimum/maximum 32-bit integer value
+      (unlike in OpenUru clients,
+      where such values wrap around in two's complement fashion)
+      and C octal and hexadecimal prefixes are understood
+      (this is probably not intentiona).
+      
+      Converting to bool returns true if the string is ``true`` or a valid non-zero integer (see above),
+      or false in all other cases.
+    
+    .. cpp:enumerator:: kUInt = 5
+      
+      4-byte unsigned int.
+      Not used in the open-sourced client code.
+    
+    .. cpp:enumerator:: kDouble = 6
+      
+      8-byte floating-point number.
+    
+    .. cpp:enumerator:: kNone = 255
+      
+      No value.
+      "Stored" as 0 bytes of data.
+      Not used in the open-sourced client code.
+
+.. cpp:class:: plUnifiedTime
+  
+  * **Seconds:** 4-byte unsigned int.
+    Unix timestamp (seconds since 1970).
+  * **Microseconds:** 4-byte unsigned int.
+    Fractional part of the timestamp for sub-second precision.
+
+.. cpp:class:: plLocation
+  
+  * **Sequence number:** 4-byte unsigned int.
+  * **Flags:** 2-byte unsigned int.
+    See :cpp:enum:`LocFlags` for details.
+  
+  .. cpp:enum:: LocFlags
+    
+    .. cpp:enumerator:: kLocalOnly = 1 << 0
+    .. cpp:enumerator:: kVolatile = 1 << 1
+    .. cpp:enumerator:: kReserved = 1 << 2
+    .. cpp:enumerator:: kBuiltIn = 1 << 3
+    .. cpp:enumerator:: kItinerant = 1 << 4
+
+.. cpp:class:: plNetGroupId
+  
+  * **ID:** 6-byte :cpp:class:`plLocation`.
+  * **Flags:** 1-byte unsigned int.
+    See :cpp:enum:`NetGroupConstants` for details.
+  
+  .. cpp:enum:: NetGroupConstants
+    
+    .. cpp:enumerator:: kNetGroupConstant = 1 << 0
+    .. cpp:enumerator:: kNetGroupLocal = 1 << 1
+
+.. cpp:class:: plLoadMask
+  
+  * **Quality and capability:** 1-byte unsigned int.
+    Decoded as follows
+    (where *qc* is the value of this field)
+    into separate quality and capability fields,
+    each of which is a 1-byte unsigned int after decoding:
+    
+    * **Quality** = (*qc* >> 4 & 0xf) | 0xf0
+    * **Capability** = (*qc* >> 0 & 0xf) | 0xf0
+  
+  .. cpp:var:: static const plLoadMask kAlways
+    
+    Has both quality and capability set to 0xff.
+
+.. cpp:class:: plUoid
+  
+  * **Flags:** 1-byte unsigned int.
+    See :cpp:enum:`ContentsFlags` for details.
+  * **Location:** 6-byte :cpp:class:`plLocation`.
+  * **Load mask:** 1-byte :cpp:class:`plLoadMask`.
+    Only present if the :cpp:enumerator:`~ContentsFlags::kHasLoadMask` flag is set,
+    otherwise defaults to :cpp:var:`plLoadMask::kAlways`.
+  * **Class type:** 2-byte unsigned int.
+  * **Object ID:** 4-byte unsigned int.
+  * **Object name:** :ref:`SafeString <safe_string>`.
+  * **Clone ID:** 2-byte unsigned int.
+    Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
+    otherwise defaults to 0.
+  * **Ignored:** 2-byte unsigned int.
+    Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set.
+  * **Clone player ID:** 4-byte unsigned int.
+    Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
+    otherwise defaults to 0.
+  
+  .. cpp:enum:: ContentsFlags
+    
+    .. cpp:enumerator:: kHasCloneIDs = 1 << 0
+    .. cpp:enumerator:: kHasLoadMask = 1 << 1
+
+.. cpp:class:: plKey
+  
+  .. note::
+    
+    :cpp:class:`plKey` itself can't actually be read or written directly.
+    The structure described here is used by ``hsResMgr::ReadKey``/``hsResMgr::WriteKey``.
+  
+  * **Non-null:** False if this key is actually ``nullptr``,
+    true otherwise.
+  * **UOID:** The UOID of the object identified by this key.
+    Only present if the non-null field is true.
+
+.. cpp:class:: plClientGuid : public plCreatable
+  
+  * **Flags:** 2-byte unsigned int.
+    See :cpp:enum:`Flags` for details.
+  * **Account UUID:** 16-byte UUID.
+    Only present if the :cpp:enumerator:`~Flags::kAccountUUID` flag is set.
+    Always unset in practice and not used by client or servers.
+    Unclear if Cyan's server software does anything with it.
+  * **Player ID:** 4-byte unsigned int.
+    Only present if the :cpp:enumerator:`~Flags::kPlayerID` flag is set.
+    The avatar's KI number.
+  * **Temp player ID:** 4-byte unsigned int.
+    Only present if the :cpp:enumerator:`~Flags::kTempPlayerID` flag is set.
+    Always unset in practice and not used by fan servers.
+    Unclear if Cyan's server software does anything with it.
+    The open-sourced client code treats this identically to the regular player ID field.
+  * **Player name length:** 2-byte unsigned int.
+    Only present if the :cpp:enumerator:`~Flags::kPlayerName` flag is set.
+    Byte count for the following player name.
+  * **Player name:** Variable-length byte string.
+    Only present if the :cpp:enumerator:`~Flags::kPlayerName` flag is set.
+    The avatar's display name.
+  * **CCR level:** 1-byte unsigned int.
+    Only present if the :cpp:enumerator:`~Flags::kCCRLevel` flag is set.
+    The avatar's current CCR level.
+    MOSS hardcodes this field to 0,
+    whereas DIRTSAND doesn't set it at all.
+  * **Protected login:** 1-byte boolean.
+    Only present if the :cpp:enumerator:`~Flags::kProtectedLogin` flag is set.
+    Always unset in practice and not used by client or servers.
+    Unclear if Cyan's server software does anything with it.
+  * **Build type:** 1-byte unsigned int.
+    Only present if the :cpp:enumerator:`~Flags::kBuildType` flag is set.
+    Always unset in practice and not used by client or servers.
+    Unclear if Cyan's server software does anything with it.
+  * **Source IP address:** 4-byte packed IPv4 address.
+    Only present if the :cpp:enumerator:`~Flags::kSrcAddr` flag is set.
+    Always unset in practice and not used by client or servers.
+    Unclear if Cyan's server software does anything with it.
+  * **Source port:** 2-byte unsigned int.
+    Only present if the :cpp:enumerator:`~Flags::kSrcPort` flag is set.
+    Always unset in practice and not used by client or servers.
+    Unclear if Cyan's server software does anything with it.
+  * **Reserved:** 1-byte boolean.
+    Only present if the :cpp:enumerator:`~Flags::kReserved` flag is set.
+    Always unset in practice and not used by client or servers.
+    Unclear if Cyan's server software does anything with it.
+  * **Client key length:** 2-byte unsigned int.
+    Only present if the :cpp:enumerator:`~Flags::kClientKey` flag is set.
+    Byte count for the following client key.
+  * **Client key:** Variable-length byte string.
+    Only present if the :cpp:enumerator:`~Flags::kClientKey` flag is set.
+    Always unset in practice and not used by client or servers.
+    Unclear if Cyan's server software does anything with it.
+  
+  .. cpp:enum:: Flags
+    
+    .. cpp:enumerator:: kAccountUUID = 1 << 0
+    .. cpp:enumerator:: kPlayerID = 1 << 1
+    .. cpp:enumerator:: kTempPlayerID = 1 << 2
+    .. cpp:enumerator:: kCCRLevel = 1 << 3
+    .. cpp:enumerator:: kProtectedLogin = 1 << 4
+    .. cpp:enumerator:: kBuildType = 1 << 5
+    .. cpp:enumerator:: kPlayerName = 1 << 6
+    .. cpp:enumerator:: kSrcAddr = 1 << 7
+    .. cpp:enumerator:: kSrcPort = 1 << 8
+    .. cpp:enumerator:: kReserved = 1 << 9
+    .. cpp:enumerator:: kClientKey = 1 << 10
+
+.. cpp:class:: plNetMsgStreamHelper : public plCreatable
+  
+  * **Uncompressed length:** 4-byte unsigned int.
+    Byte length of the stream data after decompression.
+    If the stream data is not compressed,
+    this field is set to 0.
+  * **Compression type:** 1-byte :cpp:enum:`plNetMessage::CompressionType`.
+  * **Stream length:** 4-byte unsigned int.
+    Byte length of the following stream data field.
+  * **Stream data:** Variable-length byte array.
+    The format of this data depends on the class of the containing message.
+    Additionally,
+    the data may be compressed,
+    depending on the compression type field.
+
+.. cpp:enum:: plNetMember::Flags
+  
+  .. cpp:enumerator:: kWaitingForLinkQuery = 1 << 0
+    
+    "only used server side"
+  
+  .. cpp:enumerator:: kIndirectMember = 1 << 1
+    
+    "this guy is behind a firewall of some sort"
+  
+  .. cpp:enumerator:: kRequestP2P = 1 << 2
+    
+    "wants to play peer to peer"
+  
+  .. cpp:enumerator:: kWaitingForChallengeResponse = 1 << 3
+    
+    "waiting for client response"
+  
+  .. cpp:enumerator:: kIsServer = 1 << 4
+    
+    "used by transport member"
+  
+  .. cpp:enumerator:: kAllowTimeOut = 1 << 5
+    
+    "used by gameserver"
+
+.. cpp:class:: plNetMsgMemberInfoHelper : public plCreatable
+  
+  * **Flags:** 4-byte unsigned int.
+    See :cpp:enum:`plNetMember::Flags` for details.
+    MOSS and DIRTSAND always set this field to 0.
+  * **Client info:** :cpp:class:`plClientGuid`.
+  * **Avatar UOID:** :cpp:class:`plUoid`.
