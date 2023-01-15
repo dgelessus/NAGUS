@@ -388,6 +388,18 @@ Common data types
     .. cpp:enumerator:: kHasCloneIDs = 1 << 0
     .. cpp:enumerator:: kHasLoadMask = 1 << 1
 
+.. cpp:class:: plKey
+  
+  .. note::
+    
+    :cpp:class:`plKey` itself can't actually be read or written directly.
+    The structure described here is used by ``hsResMgr::ReadKey``/``hsResMgr::WriteKey``.
+  
+  * **Non-null:** False if this key is actually ``nullptr``,
+    true otherwise.
+  * **UOID:** The UOID of the object identified by this key.
+    Only present if the non-null field is true.
+
 .. cpp:class:: plClientGuid : public plCreatable
   
   * **Flags:** 2-byte unsigned int.
@@ -572,7 +584,7 @@ Common data types
     .. cpp:enumerator:: kHasGameMsgRcvrs = 1 << 1
       
       Set for :cpp:class:`plNetMsgGameMessage` (or subclass) messages
-      if the wrapped ``plMessage`` has at least one receiver whose :cpp:class:`plLocation` is not virtual or reserved.
+      if the wrapped :cpp:class:`plMessage` has at least one receiver whose :cpp:class:`plLocation` is not virtual or reserved.
       Should never be set for other message types.
       According to comments in the open-sourced client code,
       this flag is meant to allow some server-side optimization.
@@ -653,7 +665,7 @@ Common data types
       
       Whether the message should be filtered by relevance regions.
       The client sets this flag for :cpp:class:`plNetMsgGameMessage` (or subclass) messages
-      if the wrapped ``plMessage`` has the ``kNetUseRelevanceRegions`` flag set,
+      if the wrapped :cpp:class:`plMessage` has the :cpp:enumerator:`~plMessage::plBCastFlags::kNetUseRelevanceRegions` flag set,
       and for some :cpp:class:`plNetMsgSDLState` (or subclass) messages caused by ``plArmatureMod``.
       Ignored by MOSS and DIRTSAND.
     
@@ -667,10 +679,9 @@ Common data types
       Whether the message should also be sent across age instances,
       not just within the current age instance as usual.
       Set for :cpp:class:`plNetMsgGameMessage` (or subclass) messages
-      if the wrapped ``plMessage`` has the ``kNetAllowInterAge`` flag set
-      (unless :cpp:enumerator:`kRouteToAllPlayers`/``kCCRSendToAllPlayers`` is also set).
-      This should only happen for :cpp:class:`plNetMsgGameMessageDirected` messages
-      where the wrapped ``plMessage`` is a ``pfKIMsg``, ``plCCRCommunicationMsg``, ``plLinkingMgrMsg``, or ``plLinkToAgeMsg``.
+      if the wrapped :cpp:class:`plMessage` has the :cpp:enumerator:`~plMessage::plBCastFlags::kNetAllowInterAge` flag set
+      (unless :cpp:enumerator:`kRouteToAllPlayers`/:cpp:enumerator:`~plMessage::plBCastFlags::kCCRSendToAllPlayers` is also set).
+      This should only happen for :cpp:class:`plNetMsgGameMessageDirected` messages.
       Should never be set for other message types.
       Ignored by MOSS and DIRTSAND.
     
@@ -702,14 +713,10 @@ Common data types
       :cpp:enumerator:`kInterAgeRouting` should be unset.
       The client sets this flag for :cpp:class:`plNetMsgGameMessage` (or subclass) messages
       if the client is :ref:`internal <internal_external_client>`
-      and the wrapped ``plMessage`` has the ``kCCRSendToAllPlayers`` flag set.
+      and the wrapped :cpp:class:`plMessage` has the :cpp:enumerator:`~plMessage::plBCastFlags::kCCRSendToAllPlayers` flag set.
       Should never be set for other message types.
-      The open-sourced client code and OpenUru clients never set this flag ---
-      most likely only Cyan's internal CCR client used it.
-      Internal H'uru clients set this flag when sending CCR broadcast chat messages
-      (using the ``/system`` chat command or the All Players list).
       DIRTSAND implements this flag,
-      but only respects it if the sender is permitted to send unsafe ``plMessage``\s
+      but only respects it if the sender is permitted to send unsafe :cpp:class:`plMessage`\s
       (i. e. if the sender's account has the :cpp:var:`kAccountRoleAdmin` flag set).
       MOSS doesn't implement this flag at all and always ignores it.
   
@@ -1011,29 +1018,30 @@ Common data types
     Only present if the preceding boolean field is true,
     otherwise defaults to all zeroes
     (i. e. the Unix epoch).
-    Set by the client when sending based on the wrapped ``plMessage``'s timestamp field:
+    Set by the client when sending based on the wrapped :cpp:class:`plMessage`'s timestamp field:
     if the timestamp lies in the future,
     it's converted from local game time to an absolute time and stored in this field,
     otherwise the timestamp is set to zero and this field is left unset.
     It seems that all server implementations ignore this field and pass it on unmodified.
     If this field is set when received by the client,
-    it's converted to the client's local game time and stored in the ``plMessage``'s timestamp field.
+    it's converted to the client's local game time and stored in the :cpp:class:`plMessage`'s timestamp field.
   
-  Wraps a ``plMessage`` to be sent between clients.
-  The stream data contains the serialized ``plMessage``
+  Wraps a :cpp:class:`plMessage` to be sent between clients.
+  The stream data contains the serialized :cpp:class:`plMessage`
   in the format produced by ``hsResMgr::WriteCreatable``
   and understood by ``hsResMgr::ReadCreatable``.
+  See :ref:`pl_messages` for details on that format.
   
-  If the contained ``plMessage`` is an instance of ``plLoadCloneMsg``,
+  If the contained :cpp:class:`plMessage` is an instance of ``plLoadCloneMsg``,
   then the wrapper message must have the class :cpp:class:`plNetMsgLoadClone` instead.
   
-  When the client sends (locally) a ``plMessage`` that has the ``kNetPropagate`` flag set,
-  it wraps the ``plMessage`` in a :cpp:class:`plNetMsgGameMessage`
+  When the client sends (locally) a :cpp:class:`plMessage` that has the :cpp:enumerator:`~plMessage::plBCastFlags::kNetPropagate` flag set,
+  it wraps the :cpp:class:`plMessage` in a :cpp:class:`plNetMsgGameMessage`
   (or one of its subclasses)
   and sends it to the game server.
   Afterwards,
-  the ``plMessage`` is also sent locally on the client side
-  if it has the ``kLocalPropagate`` flag set
+  the :cpp:class:`plMessage` is also sent locally on the client side
+  if it has the :cpp:enumerator:`~plMessage::plBCastFlags::kLocalPropagate` flag set
   (which is the case by default).
   
   When the server receives this message,
@@ -1051,7 +1059,7 @@ Common data types
   DIRTSAND only allows it if the sender's account has the :cpp:var:`kAccountRoleAdmin` flag set
   and the message class is exactly :cpp:class:`plNetMsgGameMessage`.
   
-  DIRTSAND by default blocks forwarding of certain ``plMessage``\s
+  DIRTSAND by default blocks forwarding of certain :cpp:class:`plMessage`\s
   that cannot occur during normal gameplay and should only be used by CCRs and developers.
   Such messages are silently dropped and not forwarded to anyone,
   unless the sender's account has the :cpp:var:`kAccountRoleAdmin` flag set,
@@ -1066,7 +1074,7 @@ Common data types
     DIRTSAND leaves it untouched and keeps the time sent that was originally set by the sending client.
     (TODO What does Cyan's server software do?)
     This difference shouldn't be noticeable in practice.
-  * DIRTSAND sets the ``kNetNonLocal`` flag on the wrapped ``plMessage`` before forwarding it
+  * DIRTSAND sets the :cpp:enumerator:`~plMessage::plBCastFlags::kNetNonLocal` flag on the wrapped :cpp:class:`plMessage` before forwarding it
     (unless the wrapper message is a :cpp:class:`plNetMsgLoadClone` ---
     but that might just be a bug).
     MOSS never sets this flag
@@ -1085,14 +1093,14 @@ Common data types
     Element count of the following receiver array.
   * **Receivers:** Variable-length array of 4-byte unsigned ints,
     each a KI number of an avatar that should receive this message.
-    Note that this is independent of the wrapped ``plMessage``'s list of receiver keys ---
+    Note that this is independent of the wrapped :cpp:class:`plMessage`'s list of receiver keys ---
     in fact,
     the latter is usually empty for directed messages.
   
   Behaves like its superclass :cpp:class:`plNetMsgGameMessage`,
   except that the server only forwards it to the specified list of receivers,
   not all avatars in the age instance.
-  The wrapped ``plMessage`` should be an instance of ``pfKIMsg``, ``plCCRCommunicationMsg``, ``plAvatarInputStateMsg``, ``plInputIfaceMgrMsg``, or ``plNotifyMsg``.
+  The wrapped :cpp:class:`plMessage` should be an instance of ``pfKIMsg``, ``plCCRCommunicationMsg``, ``plAvatarInputStateMsg``, ``plInputIfaceMgrMsg``, or ``plNotifyMsg``.
   
   By default,
   the message is only forwarded to receivers that are in the same age instance as the sender.
@@ -1121,7 +1129,7 @@ Common data types
   * **Is initial state:** 1-byte boolean.
   
   Special case of :cpp:class:`plNetMsgGameMessage`
-  used if the wrapped ``plMessage`` is an instance of ``plLoadCloneMsg``
+  used if the wrapped :cpp:class:`plMessage` is an instance of ``plLoadCloneMsg``
   (or its only subclass ``plLoadAvatarMsg``).
   
   These messages are always forwarded to all clients within the same age instance ---
@@ -1333,3 +1341,292 @@ Common data types
   * **Header:** :cpp:class:`plNetMessage`.
   * **Unload:** 1-byte boolean.
   * **UOID:** :cpp:class:`plUoid`.
+
+.. _pl_messages:
+
+:cpp:class:`plMessage`\s
+------------------------
+
+:cpp:class:`plNetMsgGameMessage` and its subclasses contain another kind of message,
+:cpp:class:`plMessage`.
+These messages are mainly used locally by the clients,
+but can also be propagated over the network.
+
+Almost all :cpp:class:`plMessage`\s sent over the network originate from a client,
+with the server only relaying the messages from the sender to any number of receiving clients.
+In some cases,
+the server also sends :cpp:class:`plMessage`\s of its own though,
+e. g. when responding to a :cpp:class:`plNetMsgTestAndSet`.
+
+Like with :cpp:class:`plNetMessage`,
+the different :cpp:class:`plMessage` subclasses are identified by their ``plCreatable`` class index
+and can often be sent both from client to server and from server to client.
+
+Below is an overview of the :cpp:class:`plMessage` class hierarchy in the open-sourced client code,
+along with the corresponding class indices and the intended message direction.
+Classes marked as "abstract" are only used as base classes ---
+a message should never be a direct instance of one of these classes,
+only of one of their non-abstract subclasses.
+
+.. note::
+  
+  This is not a complete list.
+  The open-sourced client code contains around 200 different :cpp:class:`plMessage` subclasses,
+  many of which are either completely unused
+  or only used locally and never propagated over the network.
+  
+  Eventually,
+  this list should contain all :cpp:class:`plMessage` subclasses that can be propagated over the network,
+  but at the moment it only lists a few important messages,
+  such as ones that originate from the server
+  or require special server-side handling.
+
+* :cpp:class:`plMessage` = 0x0202 = 514 (abstract)
+  
+  * ``plServerReplyMsg`` = 0x026f = 623
+
+:cpp:class:`plMessage`
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plMessage : public plCreatable
+  
+  *Class index = 0x0202 = 514*
+  
+  The serialized format has the following common header structure,
+  with any subclass-specific data directly after the header.
+  
+  * **Class index:** 2-byte unsigned int.
+    Identifies the specific :cpp:class:`plMessage` subclass
+    that this message is an instance of.
+    (This field technically doesn't come from :cpp:class:`plMessage` itself,
+    but from the serialization infrastructure in ``hsResMgr::ReadCreatable``/``hsResMgr::WriteCreatable``.)
+  * **Sender:** :cpp:class:`plKey`.
+    Identifies the object that sent this message.
+    Might be ``nullptr``?
+  * **Receiver count:** 4-byte unsigned int
+    (or signed in the original/OpenUru code for some reason).
+    Element count for the following receiver array.
+  * **Receivers:** Variable-length array of :cpp:class:`plKey`\s.
+    Objects that this message should be sent to.
+    May be ignored depending on the broadcast flags.
+    Any of the elements might be ``nullptr``?
+  * **Timestamp:** 8-byte floating-point number.
+    Allows artificially delaying the message
+    so that it's delivered only after a specific point in time has passed.
+    If the time is already in the past,
+    the message is delivered immediately.
+    The value zero indicates that the message shouldn't be delayed artificially.
+    
+    .. note::
+      
+      Although this field is serialized and sent over the network,
+      it's basically ignored in the serialized data.
+      The timestamp is in local game time
+      (as returned by ``hsTimer::GetSysSeconds``),
+      which only makes sense to the client that sent the message.
+      When the message is sent over the network,
+      the timestamp is converted to an absolute :cpp:class:`plUnifiedTime`
+      and stored in the delivery time field of the wrapper :cpp:class:`plNetMsgGameMessage`.
+      When the message is received,
+      that absolute time is used to re-initialize this timestamp field
+      with the corresponding local game time for the receiving client.
+  * **Broadcast flags:** 4-byte unsigned int.
+    Various boolean flags that describe how the message should be (and has already been) propagated locally and over the network.
+    See :cpp:enum:`plBCastFlags` for details.
+  
+  .. cpp:enum:: plBCastFlags
+    
+    .. cpp:enumerator:: kBCastByType = 1 << 0
+      
+      If set,
+      the receiver objects array is ignored
+      and the message is instead broadcast to all objects that have registered themselves as receivers for the message's class
+      or any of its superclasses.
+      
+      This flag is only relevant to local propagation
+      and is ignored by the server.
+    
+    .. cpp:enumerator:: kPropagateToChildren = 1 << 2
+      
+      If a ``plSceneObject`` (or subclass) instance receives a message with this flag set,
+      it automatically propagates the message to all of its children,
+      after any handling by the object itself
+      and forwarding to the object's modifiers,
+      if enabled
+      (see :cpp:enumerator:`kPropagateToModifiers`).
+      
+      This flag is only relevant to local propagation
+      and is ignored by the server.
+    
+    .. cpp:enumerator:: kBCastByExactType = 1 << 3
+      
+      Behaves exactly like :cpp:enumerator:`kBCastByType`.
+      Despite the name,
+      messages with this flag set
+      are also received by objects that have registered for superclasses of the message class.
+      
+      This flag is only relevant to local propagation
+      and is ignored by the server.
+    
+    .. cpp:enumerator:: kPropagateToModifiers = 1 << 4
+      
+      If a ``plSceneObject`` (or subclass) instance receives a message with this flag set,
+      it automatically propagates the message to all of its modifiers,
+      after any handling by the object itself,
+      but before forwarding to the object's children,
+      if enabled
+      (see :cpp:enumerator:`kPropagateToChildren`).
+      
+      This flag is only relevant to local propagation
+      and is ignored by the server.
+    
+    .. cpp:enumerator:: kClearAfterBCast = 1 << 5
+      
+      Should only be set if :cpp:enumerator:`kBCastByType` or :cpp:enumerator:`kBCastByExactType` is also set ---
+      this flag is ignored otherwise.
+      If set,
+      then as soon as the message is sent,
+      all receivers for the message's class are automatically unregistered.
+      The receivers will still receive this message,
+      but not any further type-based broadcast messages of this class.
+      Only used by ``plTransformMsg`` and its only subclass ``plDelayedTransformMsg``.
+      
+      This flag is only relevant to local propagation
+      and is ignored by the server.
+    
+    .. cpp:enumerator:: kNetPropagate = 1 << 6
+      
+      Enables propagation of the message over the network to other clients.
+      This flag should be set for all game messages sent by clients to the server.
+      Game messages originating from the server itself
+      (i. e. not propagated from another client)
+      do *not* have this flag set.
+      
+      Even with this flag set,
+      the message is not *guaranteed* to be sent over the network.
+      See the :cpp:enumerator:`kNetSent`,
+      :cpp:enumerator:`kNetForce`,
+      and :cpp:enumerator:`kCCRSendToAllPlayers` flags for details.
+      
+      Although this flag controls network propagation,
+      it's ignored by the server and only used by clients.
+    
+    .. cpp:enumerator:: kNetSent = 1 << 7
+      
+      Should only be set if :cpp:enumerator:`kNetPropagate` is also set.
+      If set,
+      the client won't propagate the message over the network again.
+      This can be bypassed using the :cpp:enumerator:`kNetForce` and :cpp:enumerator:`kCCRSendToAllPlayers` flags.
+      
+      Set by the client after the message has been sent over the network once.
+      Also set for messages that the client has received over the network
+      if they have the :cpp:enumerator:`kNetPropagate` flag set
+      (i. e. the message originated from another client and not the server itself).
+      This flag is inherited by child messages.
+      
+      Although this flag controls network propagation,
+      it's ignored by the server and only used by clients.
+    
+    .. cpp:enumerator:: kNetUseRelevanceRegions = 1 << 8
+      
+      Should only be set if :cpp:enumerator:`kNetPropagate` is also set.
+      Only used with ``plAvatarInputStateMsg`` and ``plControlEventMsg``.
+      
+      This corresponds to the :cpp:class:`plNetMsgGameMessage` flag :cpp:enumerator:`~plNetMessage::BitVectorFlags::kUseRelevanceRegions`.
+      See that documentation for details.
+    
+    .. cpp:enumerator:: kNetForce = 1 << 9
+      
+      Should only be set if :cpp:enumerator:`kNetPropagate` is also set.
+      If set,
+      the :cpp:enumerator:`kNetSent` flag is ignored
+      and the message is *always* sent over the network when it's sent locally.
+      
+      Although this flag controls network propagation,
+      it's ignored by the server and only used by clients.
+    
+    .. cpp:enumerator:: kNetNonLocal = 1 << 10
+      
+      Set by the client for messages received over the network.
+      This flag is inherited by child messages.
+      
+      DIRTSAND also sets this flag on all game messages that it propagates between clients,
+      even though the receiving clients should also set this flag themselves.
+      MOSS doesn't touch this flag.
+      (TODO What does Cyan's server software do?)
+    
+    .. cpp:enumerator:: kLocalPropagate = 1 << 11
+      
+      Whether the message should be propagated locally.
+      This flag is set for all messages by default,
+      but may be unset to propagate a message only over the network.
+      If this flag isn't set,
+      then :cpp:enumerator:`kNetPropagate` should always be set,
+      otherwise the message won't be propagated anywhere at all!
+      
+      This flag is set by the client for messages received over the network
+      so that they are propagated locally within the receiving client.
+      It's also set on ``plServerReplyMsg``\s sent by MOSS and DIRTSAND,
+      even though the receiving clients should also set this flag themselves.
+      The flag is otherwise ignored by the server.
+    
+    .. cpp:enumerator:: kMsgWatch = 1 << 12
+      
+      Debugging flag.
+      Although it's set in one place in the open-sourced client code,
+      it's ignored by the client and all fan servers.
+      Unclear if Cyan's server software does anything with it.
+    
+    .. cpp:enumerator:: kNetStartCascade = 1 << 13
+      
+      Set by the client for messages received over the network
+      and then unset again once the received message has been fully propagated locally.
+      This flag is *not* inherited by child messages.
+      
+      This flag should never be sent on messages sent over the network.
+    
+    .. cpp:enumerator:: kNetAllowInterAge = 1 << 14
+      
+      Should only be set if :cpp:enumerator:`kNetPropagate` is also set.
+      Only used with ``pfKIMsg``, ``plCCRCommunicationMsg``, ``plLinkingMgrMsg``, and ``plLinkToAgeMsg``.
+      
+      This corresponds to the :cpp:class:`plNetMsgGameMessage` flag :cpp:enumerator:`~plNetMessage::BitVectorFlags::kInterAgeRouting`.
+      See that documentation for details.
+    
+    .. cpp:enumerator:: kNetSendUnreliable = 1 << 15
+      
+      Should only be set if :cpp:enumerator:`kNetPropagate` is also set.
+      If this flag is set,
+      the wrapper :cpp:class:`plNetMsgGameMessage` flag :cpp:enumerator:`~plNetMessage::BitVectorFlags::kNeedsReliableSend` should be *unset*.
+      Nearly unused in the open-sourced client code
+      and ignored by MOSS and DIRTSAND.
+      Unclear if Cyan's server software does anything with it.
+    
+    .. cpp:enumerator:: kCCRSendToAllPlayers = 1 << 16
+      
+      Should only be set if :cpp:enumerator:`kNetPropagate` is also set.
+      
+      Like :cpp:enumerator:`kNetForce`,
+      this flag causes the :cpp:enumerator:`kNetSent` flag to be ignored ignored
+      and the message is *always* sent over the network when it's sent locally.
+      
+      The open-sourced client code and OpenUru clients never set this flag ---
+      most likely only Cyan's internal CCR client used it.
+      Internal H'uru clients set this flag when sending CCR broadcast chat messages
+      (using the ``/system`` chat command or the All Players list).
+      
+      This corresponds to the :cpp:class:`plNetMsgGameMessage` flag :cpp:enumerator:`~plNetMessage::BitVectorFlags::kRouteToAllPlayers`.
+      See that documentation for details.
+    
+    .. cpp:enumerator:: kNetCreatedRemotely = 1 << 17
+      
+      Set by the client for messages received over the network.
+      Unlike :cpp:enumerator:`kNetNonLocal`,
+      this flag is *not* inherited by child messages,
+      and unlike :cpp:enumerator:`kNetStartCascade`,
+      it remains set after the message has been propagated locally.
+      
+      This flag should never be sent on messages sent over the network.
+      
+      Although this flag is related to network propagation,
+      it's ignored by the server and only used by clients.
