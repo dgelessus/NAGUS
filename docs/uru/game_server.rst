@@ -906,7 +906,7 @@ Common data types
   this is only used to implement simple mutexes.
   Almost all fields have fixed or restricted values:
   
-  * **UOID:** Always has class type 0x004f (``plLogicModBase``).
+  * **UOID:** Always has class type 0x002d (``plLogicModifier``).
   * **Stream data:**
     
     * **State name:** Always the string ``TrigState``.
