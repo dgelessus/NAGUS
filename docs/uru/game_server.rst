@@ -601,16 +601,17 @@ and not supported by MOSS or DIRTSAND
   
   If the lock request field is true,
   the server tries to lock the object
-  and then replies with a :cpp:class:`plNetMsgGameMessage` containing a ``plServerReplyMsg``.
-  The reply's type field is set to ``kAffirm`` if the lock request succeeded
+  and then replies with a :cpp:class:`plNetMsgGameMessage` containing a :cpp:class:`plServerReplyMsg`.
+  The message has no sender and its only receiver is the UOID sent by the client in the :cpp:class:`plNetMsgTestAndSet` message.
+  The reply's type field is set to 1 (affirm) if the lock request succeeded
   (i. e. the client now has the lock)
-  or ``kDeny`` if it failed
+  or 0 (deny) if it failed
   (i. e. another client already has the lock at the moment).
   
   If the lock request field is false,
   the server clears the client's lock on the object.
-  DIRTSAND also sends a ``plServerReplyMsg`` in this case,
-  with its type field set to ``kUnInit``.
+  DIRTSAND also sends a :cpp:class:`plServerReplyMsg` in this case,
+  with its type field set to -1 (uninitialized).
   MOSS doesn't send any reply at all.
   (TODO What does Cyan's server software do?)
 
@@ -1052,7 +1053,7 @@ only of one of their non-abstract subclasses.
 
 * :cpp:class:`plMessage` = 0x0202 = 514 (abstract)
   
-  * ``plServerReplyMsg`` = 0x026f = 623
+  * :cpp:class:`plServerReplyMsg` = 0x026f = 623
 
 :cpp:class:`plMessage`
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -1235,7 +1236,7 @@ only of one of their non-abstract subclasses.
       
       This flag is set by the client for messages received over the network
       so that they are propagated locally within the receiving client.
-      It's also set on ``plServerReplyMsg``\s sent by MOSS and DIRTSAND,
+      It's also set on :cpp:class:`plServerReplyMsg`\s sent by MOSS and DIRTSAND,
       even though the receiving clients should also set this flag themselves.
       The flag is otherwise ignored by the server.
     
@@ -1299,6 +1300,23 @@ only of one of their non-abstract subclasses.
       
       Although this flag is related to network propagation,
       it's ignored by the server and only used by clients.
+
+:cpp:class:`plServerReplyMsg`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plServerReplyMsg : public plMessage
+  
+  *Class index = 0x026f = 623*
+  
+  * **Header:** :cpp:class:`plMessage`.
+  * **Type:** 4-byte signed int.
+    One of the following:
+    
+    * Uninitialized = -1 (normally not sent over the network)
+    * Deny = 0
+    * Affirm = 1
+  
+  Reply to a :cpp:class:`plNetMsgTestAndSet`.
 
 Common data types
 -----------------

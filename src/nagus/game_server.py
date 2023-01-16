@@ -592,6 +592,31 @@ PLASMA_MESSAGE_CLASSES_BY_INDEX: typing.Dict[int, typing.Type[PlasmaMessage]] = 
 }
 
 
+class ServerReplyMessage(PlasmaMessage):
+	class Type(structs.IntEnum):
+		uninitialized = -1
+		deny = 0
+		affirm = 1
+	
+	CLASS_INDEX = 0x026f
+	
+	type: "ServerReplyMessage.Type"
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["type"] = repr(self.type)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		(typ,) = structs.stream_unpack(stream, structs.INT32)
+		self.type = ServerReplyMessage.Type(typ)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(structs.INT32.pack(self.type))
+
+
 class NetMessageFlags(structs.IntFlag):
 	has_time_sent = 1 << 0
 	has_game_message_receivers = 1 << 1
@@ -1055,11 +1080,26 @@ class NetMessageTestAndSet(NetMessageSharedState):
 		if self.lock_request:
 			if data != type(self).TRIGGER_DATA:
 				logger.warning("Unexpected stream data for TestAndSet trigger request! Ignoring the stream data and locking as usual.")
+			
+			# TODO Actually check and lock the thing instead of unconditionally affirming the lock
+			
+			server_reply_message = ServerReplyMessage()
+			server_reply_message.receivers.append(self.uoid)
+			server_reply_message.type = ServerReplyMessage.Type.affirm
+			
+			with io.BytesIO() as message_stream:
+				server_reply_message.write(message_stream)
+				message_buffer = message_stream.getvalue()
+			
+			net_game_message = NetMessageGameMessage()
+			net_game_message.delivery_time = structs.ZERO_DATETIME
+			net_game_message.compress_and_set_data(message_buffer)
+			await connection.send_propagate_buffer(net_game_message)
 		else:
 			if data != type(self).UNTRIGGER_DATA:
 				logger.warning("Unexpected stream data for TestAndSet un-trigger request! Ignoring the stream data and unlocking as usual.")
-		
-		# TODO Send plServerReplyMsg
+			
+			# TODO Actually unlock the thing
 
 
 class NetMessageSDLState(NetMessageStreamedObject):
