@@ -50,6 +50,8 @@ JOIN_AGE_REQUEST = struct.Struct("<II16sI")
 JOIN_AGE_REPLY = struct.Struct("<II")
 PROPAGATE_BUFFER_HEADER = struct.Struct("<II")
 
+PLASMA_MESSAGE_HEADER_END = struct.Struct("<dI")
+
 NET_MESSAGE_HEADER = struct.Struct("<HI")
 NET_MESSAGE_VERSION = struct.Struct("<BB")
 NET_MESSAGE_TIME_SENT = struct.Struct("<II")
@@ -190,6 +192,14 @@ class Uoid(object):
 		self.read(stream)
 		return self
 	
+	@classmethod
+	def key_from_stream(cls, stream: typing.BinaryIO) -> "typing.Optional[Uoid]":
+		(non_null,) = structs.read_exact(stream, 1)
+		if non_null:
+			return cls.from_stream(stream)
+		else:
+			return None
+	
 	def write(self, stream: typing.BinaryIO) -> None:
 		flags = Uoid.Flags(0)
 		if self.load_mask != 0xff:
@@ -209,6 +219,14 @@ class Uoid(object):
 		if self.clone_ids is not None:
 			clone_id, clone_player_id = self.clone_ids
 			stream.write(UOID_CLONE_IDS.pack(clone_id, 0, clone_player_id))
+	
+	@classmethod
+	def key_to_stream(cls, key: "typing.Optional[Uoid]", stream: typing.BinaryIO) -> None:
+		if key is None:
+			stream.write(b"\x00")
+		else:
+			stream.write(b"\x01")
+			key.write(stream)
 
 
 class ClientInfo(object):
@@ -439,6 +457,136 @@ class MemberInfo(object):
 		stream.write(structs.UINT32.pack(self.flags))
 		self.client_info.write(stream)
 		self.avatar_uoid.write(stream)
+
+
+class PlasmaMessageFlags(structs.IntFlag):
+	broadcast_by_type = 1 << 0
+	broadcast_by_sender_unused = 1 << 1
+	propagate_to_children = 1 << 2
+	broadcast_by_exact_type = 1 << 3
+	propagate_to_modifiers = 1 << 4
+	clear_after_broadcast = 1 << 5
+	net_propagate = 1 << 6
+	net_sent = 1 << 7
+	net_use_relevance_regions = 1 << 8
+	net_force = 1 << 9
+	net_non_local = 1 << 10
+	local_propagate = 1 << 11
+	message_watch = 1 << 12
+	net_start_cascade = 1 << 13
+	net_allow_inter_age = 1 << 14
+	net_send_unreliable = 1 << 15
+	ccr_send_to_all_players = 1 << 16
+	net_created_remotely = 1 << 17
+	
+	all_expected = (
+		broadcast_by_type
+		| broadcast_by_exact_type
+		| net_propagate
+		| net_sent
+		| net_use_relevance_regions
+		| net_force
+		| local_propagate
+		| net_allow_inter_age
+		| net_send_unreliable
+		| ccr_send_to_all_players
+	)
+
+
+class PlasmaMessage(object):
+	CLASS_INDEX = 0x0202
+	
+	class_index: int
+	sender: typing.Optional[Uoid]
+	receivers: typing.List[typing.Optional[Uoid]]
+	timestamp: float
+	flags: PlasmaMessageFlags
+	
+	@classmethod
+	def __init_subclass__(cls, **kwargs: typing.Any) -> None:
+		super().__init_subclass__(**kwargs)
+		
+		if cls.CLASS_INDEX in PLASMA_MESSAGE_CLASSES_BY_INDEX:
+			raise ValueError(f"Attempted to create PlasmaMessage subclass {cls.__qualname__} with class index 0x{cls.CLASS_INDEX:>04x} which is already used by existing subclass {PLASMA_MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX].__qualname__}")
+		
+		PLASMA_MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX] = cls
+	
+	def __init__(self) -> None:
+		super().__init__()
+		
+		self.class_index = type(self).CLASS_INDEX
+		self.sender = None
+		self.receivers = []
+		self.timestamp = 0.0
+		self.flags = PlasmaMessageFlags.local_propagate
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = collections.OrderedDict()
+		
+		if self.sender is not None:
+			fields["sender"] = repr(self.sender)
+		if self.receivers:
+			fields["receivers"] = repr(self.receivers)
+		if self.timestamp != 0.0:
+			fields["timestamp"] = repr(self.timestamp)
+		
+		fields["flags"] = repr(self.flags)
+		
+		return fields
+	
+	def __repr__(self) -> str:
+		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
+		return f"<{self.class_description}: {joined_fields}>"
+	
+	@property
+	def class_description(self) -> str:
+		return f"{type(self).__qualname__} (0x{self.class_index:>04x})"
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		(self.class_index,) = structs.stream_unpack(stream, structs.UINT16)
+		self.sender = Uoid.key_from_stream(stream)
+		
+		(receiver_count,) = structs.stream_unpack(stream, structs.INT32)
+		self.receivers = []
+		for _ in range(receiver_count):
+			self.receivers.append(Uoid.key_from_stream(stream))
+		
+		self.timestamp, flags = structs.stream_unpack(stream, PLASMA_MESSAGE_HEADER_END)
+		self.flags = PlasmaMessageFlags(flags)
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "PlasmaMessage":
+		# Peek the class index from the beginning of the message
+		pos = stream.tell()
+		try:
+			(class_index,) = structs.stream_unpack(stream, structs.UINT16)
+		finally:
+			stream.seek(pos)
+		
+		try:
+			clazz = PLASMA_MESSAGE_CLASSES_BY_INDEX[class_index]
+		except KeyError:
+			self = cls()
+		else:
+			self = clazz()
+		
+		self.read(stream)
+		return self
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		stream.write(structs.UINT32.pack(self.class_index))
+		Uoid.key_to_stream(self.sender, stream)
+		
+		stream.write(structs.INT32.pack(len(self.receivers)))
+		for receiver in self.receivers:
+			Uoid.key_to_stream(receiver, stream)
+		
+		stream.write(PLASMA_MESSAGE_HEADER_END.pack(self.timestamp, self.flags))
+
+
+PLASMA_MESSAGE_CLASSES_BY_INDEX: typing.Dict[int, typing.Type[PlasmaMessage]] = {
+	PlasmaMessage.CLASS_INDEX: PlasmaMessage,
+}
 
 
 class NetMessageFlags(structs.IntFlag):
@@ -996,6 +1144,52 @@ class NetMessageGameMessage(NetMessageStream):
 			structs.write_unified_time(stream, self.delivery_time)
 	
 	async def handle(self, connection: "GameConnection") -> None:
+		try:
+			message_data = self.decompress_data()
+			with io.BytesIO(message_data) as message_stream:
+				message = PlasmaMessage.from_stream(message_stream)
+				extra_data = message_stream.read()
+		except (EOFError, ValueError) as exc:
+			logger.error("Failed to parse plMessage. Ignoring and forwarding anyway...", exc_info=exc)
+		else:
+			logger.debug("Parsed plMessage: %r", message)
+			
+			# Double-check the containing network game message's has_game_message_receivers flag
+			# and check for nullptr receivers.
+			game_message_receiver: typing.Optional[Uoid] = None
+			for i, receiver in enumerate(message.receivers):
+				if receiver is None:
+					logger.warning("plMessage %s has nullptr receiver at index %d", message.class_description, i)
+				elif game_message_receiver is None and receiver.location.sequence_number != 0 and Location.Flags.reserved not in receiver.location.flags:
+					game_message_receiver = receiver
+			
+			if game_message_receiver is None and NetMessageFlags.has_game_message_receivers in self.flags:
+				logger.warning("plMessage %s has no (non-virtual, non-reserved) receivers, but the containing network game message has the has_game_message_receivers flag set", message.class_description)
+			elif game_message_receiver is not None and NetMessageFlags.has_game_message_receivers not in self.flags:
+				logger.warning("plMessage %s has at least one (non-virtual, non-reserved) receiver (e. g. %r), but the containing network game message doesn't have the has_game_message_receivers flag set", message.class_description, game_message_receiver)
+			
+			# Check for unexpected flags,
+			# possibly depending on the message class
+			# and the containing network message flags.
+			unexpected_flags = message.flags & ~PlasmaMessageFlags.all_expected
+			if unexpected_flags:
+				logger.warning("plMessage %s has flags set that we don't expect for net-propagated messages: %r", message.class_description, unexpected_flags)
+			if PlasmaMessageFlags.net_propagate not in message.flags:
+				logger.warning("plMessage %s was sent over the network, but doesn't have the net_propagate flag set", message.class_description)
+			if PlasmaMessageFlags.net_sent in message.flags and not (PlasmaMessageFlags.net_force in message.flags or PlasmaMessageFlags.ccr_send_to_all_players in message.flags):
+				logger.warning("plMessage %s was sent over the network more than once, but doesn't have any force-sending flags set", message.class_description)
+			if (PlasmaMessageFlags.net_use_relevance_regions in message.flags) != (NetMessageFlags.use_relevance_regions in self.flags):
+				logger.warning("plMessage %s net_use_relevance_regions flag (%r) doesn't match containing network game message's use_relevance_regions flag (%r)", message.class_description, PlasmaMessageFlags.net_use_relevance_regions in message.flags, NetMessageFlags.use_relevance_regions in self.flags)
+			if (PlasmaMessageFlags.net_allow_inter_age in message.flags) != (NetMessageFlags.inter_age_routing in self.flags):
+				logger.warning("plMessage %s net_allow_inter_age flag (%r) doesn't match containing network game message's inter_age_routing flag (%r)", message.class_description, PlasmaMessageFlags.net_allow_inter_age in message.flags, NetMessageFlags.inter_age_routing in self.flags)
+			if (PlasmaMessageFlags.net_send_unreliable in message.flags) == (NetMessageFlags.needs_reliable_send in self.flags):
+				logger.warning("plMessage %s net_send_unreliable flag (%r) doesn't match containing network game message's needs_reliable_send flag (%r)", message.class_description, PlasmaMessageFlags.net_send_unreliable in message.flags, NetMessageFlags.needs_reliable_send in self.flags)
+			if (PlasmaMessageFlags.ccr_send_to_all_players in message.flags) != (NetMessageFlags.route_to_all_players in self.flags):
+				logger.warning("plMessage %s ccr_send_to_all_players flag (%r) doesn't match containing network game message's route_to_all_players flag (%r)", message.class_description, PlasmaMessageFlags.ccr_send_to_all_players in message.flags, NetMessageFlags.route_to_all_players in self.flags)
+			
+			if extra_data:
+				logger.debug("plMessage %s has extra trailing data: %r", message.class_description, extra_data)
+		
 		# TODO Set kNetNonLocal flag on the wrapped plMessage before forwarding?
 		# TODO Forward to other clients
 		
