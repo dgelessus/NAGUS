@@ -577,7 +577,7 @@ class PlasmaMessage(object):
 		return self
 	
 	def write(self, stream: typing.BinaryIO) -> None:
-		stream.write(structs.UINT32.pack(self.class_index))
+		stream.write(structs.UINT16.pack(self.class_index))
 		Uoid.key_to_stream(self.sender, stream)
 		
 		stream.write(structs.INT32.pack(len(self.receivers)))
