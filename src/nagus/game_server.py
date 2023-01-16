@@ -540,7 +540,10 @@ class PlasmaMessage(object):
 	
 	@property
 	def class_description(self) -> str:
-		return f"{type(self).__qualname__} (0x{self.class_index:>04x})"
+		name = type(self).__qualname__
+		if self.class_index != type(self).CLASS_INDEX:
+			name += " subclass"
+		return f"{name} (0x{self.class_index:>04x})"
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		(self.class_index,) = structs.stream_unpack(stream, structs.UINT16)
@@ -702,7 +705,10 @@ class NetMessage(object):
 	
 	@property
 	def class_description(self) -> str:
-		return f"{type(self).__qualname__} (0x{self.class_index:>04x})"
+		name = type(self).__qualname__
+		if self.class_index != type(self).CLASS_INDEX:
+			name += " subclass"
+		return f"{name} (0x{self.class_index:>04x})"
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		self.class_index, flags = structs.stream_unpack(stream, NET_MESSAGE_HEADER)
