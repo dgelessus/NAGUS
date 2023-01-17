@@ -1788,9 +1788,11 @@ Cli2Auth_VaultInitAgeRequest
   AgeInstanceGuid of the new :ref:`vault_node_age` and :ref:`vault_node_age_info` nodes.
   If this field is set to all zeroes,
   the server automatically generates a random AgeInstanceGuid.
-  It seems that in practice,
-  the open-sourced client code doesn't rely on this behavior ---
-  it always generates a random UUID itself if necessary.
+  In practice,
+  the open-sourced client code almost never relies on this behavior though ---
+  it usually generates a random UUID itself if needed
+  and sends that to the server.
+  One case where the client does send an all-zeroes instance ID is when linking to a child age that doesn't exist yet.
 * **Parent instance ID:** 16-byte UUID.
   ParentAgeInstanceGuid of the new :ref:`vault_node_age` and :ref:`vault_node_age_info` nodes.
   If this field is set to all zeroes,

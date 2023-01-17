@@ -595,8 +595,8 @@ class AuthConnection(base.BaseMOULConnection):
 		logger.debug("Vault init age request: transaction ID %d, instance UUID %s, parent instance UUID %s, age %r, instance name %r, user-defined name %r, description %r", trans_id, instance_uuid, parent_instance_uuid, age_file_name, instance_name, user_defined_name, description)
 		
 		if instance_uuid == structs.ZERO_UUID:
-			logger.error("Received init age request with zero UUID, this isn't supposed to happen!")
-			await self.vault_init_age_reply(trans_id, base.NetError.invalid_parameter, 0, 0)
+			instance_uuid = uuid.uuid4()
+			logger.debug("Received init age request with zero UUID - generated random age instance UUID %s", instance_uuid)
 		if parent_instance_uuid == structs.ZERO_UUID:
 			parent_instance_uuid = None
 		if not age_file_name:
