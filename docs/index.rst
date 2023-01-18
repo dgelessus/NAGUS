@@ -46,7 +46,7 @@ Contents
   :maxdepth: 1
   :caption: NAGUS
   
-  nagus
+  nagus/about
 
 Indices and tables
 ------------------
