@@ -21,11 +21,10 @@ but it is specifically for Uru Live's latest iteration,
 "Myst Online: Uru Live again" (MOULa),
 and its derivatives.
 NAGUS aims to fully support both the OpenUru and H'uru forks of the open-source MOULa client.
-As the network protocol has changed very little since MOULa was first released,
-older MOUL(a) clients may work too,
+Older MOUL(a) clients may work too,
 but this is not a primary goal.
 NAGUS does *not* support pre-MOUL clients based on the original Uru Live,
-as the MOUL(a) protocol differs from the original Uru Live in some significant ways.
+as they use a different network protocol than MOUL(a).
 
 A secondary goal is to keep this server self-contained and easy to set up.
 All parts of the server run in a single process,
