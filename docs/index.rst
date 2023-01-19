@@ -1,11 +1,18 @@
 NAGUS --- not a good Uru server
 ===============================
 
-This is NAGUS, an Uru Live server that is not very good.
+.. Note: keep this in sync with README.md!
+
+NAGUS is an experimental work-in-progress Uru Live/Myst Online server written in pure Python.
+It is (currently) not very good.
+See the :ref:`implementation status <implementation_status>` for details on what works and what doesn't yet.
+
+If you're looking for a proper MOULa server implementation that you can actually play on,
+check out OpenUru's `MOSS <https://wiki.openuru.org/index.php/MOSS>`__ and H'uru's `DIRTSAND <https://guildofwriters.org/wiki/DIRTSAND>`__.
 
 I started writing this while trying to understand how MOULa's networking works.
-`The code <https://github.com/dgelessus/NAGUS>`__ does nothing useful at this point,
-but the documentation below contains some assorted information about MOULa's internals,
+`The code <https://github.com/dgelessus/NAGUS>`__ is still incomplete and not all that useful yet.
+The docs below contain some assorted information about MOULa's internals,
 most of which isn't well-documented elsewhere
 (though I'm hoping to change that soon-ish).
 
@@ -17,9 +24,6 @@ tell me on the `issue tracker <https://github.com/dgelessus/NAGUS/issues>`__
 and I'll try to fix the code and/or docs.)
 
 .. seealso::
-  
-  If you're looking for a proper MOULa server implementation that you can actually play on,
-  check out OpenUru's `MOSS <https://wiki.openuru.org/index.php/MOSS>`__ and H'uru's `DIRTSAND <https://guildofwriters.org/wiki/DIRTSAND>`__.
   
   A lot of Uru-related documentation can be found on the `Guild of Writers <https://www.guildofwriters.org/wiki/>`__ and `OpenUru <https://wiki.openuru.org/>`__ wikis.
   Most of the information there focuses on age creation and server administration,

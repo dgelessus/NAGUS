@@ -1,17 +1,7 @@
 About NAGUS
 ===========
 
-NAGUS is an experimental work-in-progress Uru Live/Myst Online server written in pure Python.
-It is currently still *very* incomplete ---
-you can log in,
-link to ages,
-and walk around,
-but not much more.
-A lot of things needed for normal gameplay are still broken.
-See :ref:`implementation_status` for details.
-
-If you're looking for a proper MOULa server implementation that you can actually play on,
-check out OpenUru's `MOSS <https://wiki.openuru.org/index.php/MOSS>`__ and H'uru's `DIRTSAND <https://guildofwriters.org/wiki/DIRTSAND>`__.
+This is NAGUS, an Uru Live server that is not very good.
 
 Scope and goals
 ---------------
@@ -36,6 +26,14 @@ you don't need to install any third-party dependencies.
 
 Implementation status
 ---------------------
+
+NAGUS is currently still *very* incomplete ---
+you can log in,
+link to ages,
+and walk around,
+but not much more.
+A lot of things needed for normal gameplay are still broken.
+See :ref:`implementation_status` for details.
 
 What works so far
 ^^^^^^^^^^^^^^^^^
