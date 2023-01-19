@@ -51,6 +51,7 @@ Contents
   :caption: NAGUS
   
   nagus/about
+  nagus/changelog
 
 Indices and tables
 ------------------
