@@ -44,7 +44,8 @@ class _TestEnum(enum.IntEnum):
 	thing = 1
 
 
-if str(_TestEnum.thing) == "1":
+# mypy gets really confused by our custom IntEnum and IntFlag replacements.
+if not typing.TYPE_CHECKING and str(_TestEnum.thing) == "1":
 	# Starting with Python 3.11,
 	# the __str__ of enum.IntEnum and enum.IntFlag subclasses always uses the plain integer value,
 	# rather than using the enum constant name if possible
