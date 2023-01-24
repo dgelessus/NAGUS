@@ -1419,8 +1419,6 @@ class ServerState(object):
 			await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_info_list, int32_1=VaultNodeFolderType.ages_i_can_visit)),
 		))
 		
-		# TODO Add public city/Ae'gura link
-		
 		await self.add_vault_node_ref(VaultNodeRef(all_players_id, player_info_id))
 		
 		return player_id, player_info_id
