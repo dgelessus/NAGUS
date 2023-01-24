@@ -31,31 +31,29 @@ import threading
 import typing
 
 from . import __version__
+from . import state
 
 
 logger = logging.getLogger(__name__)
 
 
 class StatusServerRequestHandler(http.server.BaseHTTPRequestHandler):
+	server_state: state.ServerState
+	
+	def __init__(self, *args: typing.Any, server_state: state.ServerState) -> None:
+		self.server_state = server_state
+		super().__init__(*args)
+	
 	def log_message(self, format: str, *args: typing.Any) -> None:
 		if logger.isEnabledFor(logging.INFO):
 			logger.info("[%s] %s", self.address_string(), format % args)
 	
-	def format_status_text(self, *, beta: bool = False) -> str:
-		text = "Welcome to URU"
-		if beta:
-			text += " (beta!)"
-		timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
-		text += f"\nNAGUS {__version__} @ {timestamp}"
+	def format_status_text(self) -> str:
+		text = self.server_state.config.server_status_message
+		if self.server_state.config.server_status_add_version_info:
+			timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+			text += f"\nNAGUS {__version__} @ {timestamp}"
 		return text
-	
-	def status_text_for_path(self, path: str) -> typing.Optional[str]:
-		if path in {"/serverstatus/moullive.php", "/welcome"}:
-			return self.format_status_text()
-		elif path == "/serverstatus/moulbeta.php":
-			return self.format_status_text(beta=True)
-		else:
-			return None
 	
 	def respond(self, content_type: str, data: bytes) -> None:
 		self.send_response(http.HTTPStatus.OK)
@@ -67,10 +65,8 @@ class StatusServerRequestHandler(http.server.BaseHTTPRequestHandler):
 			self.wfile.write(data)
 	
 	def doit(self) -> None:
-		if self.path in {"/serverstatus/moullive.php", "/welcome"}:
+		if self.path in {"/serverstatus/moulbeta.php", "/serverstatus/moullive.php", "/welcome"}:
 			self.respond("text/plain", self.format_status_text().encode("ascii"))
-		elif self.path == "/serverstatus/moulbeta.php":
-			self.respond("text/plain", self.format_status_text(beta=True).encode("ascii"))
 		elif self.path == "/status":
 			status_obj = {
 				"online": True,
@@ -95,8 +91,15 @@ class StatusServerRequestHandler(http.server.BaseHTTPRequestHandler):
 			self.send_error(http.HTTPStatus.NOT_IMPLEMENTED)
 
 
-def _run_server(host: str, port: int, loop: asyncio.AbstractEventLoop, future: asyncio.Future[None]) -> None:
-	with http.server.ThreadingHTTPServer((host, port), StatusServerRequestHandler) as server:
+def _run_server(server_state: state.ServerState, future: asyncio.Future[None]) -> None:
+	host = server_state.config.server_status_listen_address
+	port = server_state.config.server_status_port
+	loop = server_state.loop
+	
+	def _request_handler(*args: typing.Any) -> "StatusServerRequestHandler":
+		return StatusServerRequestHandler(*args, server_state=server_state)
+
+	with http.server.ThreadingHTTPServer((host, port), _request_handler) as server:
 		try:
 			@loop.call_soon_threadsafe
 			def _add_callback_callback() -> None:
@@ -128,11 +131,14 @@ def _run_server(host: str, port: int, loop: asyncio.AbstractEventLoop, future: a
 				pass # Event loop is already closed
 
 
-async def run_status_server(host: str, port: int) -> None:
+async def run_status_server(server_state: state.ServerState) -> None:
 	"""Run a status server at the given address and port.
 	
 	The status server continues running until this coroutine is cancelled.
 	"""
+	
+	if not server_state.config.server_status_enable:
+		return
 	
 	# We can't use the usual functions like asyncio.to_thread or asyncio.AbstractEventLoop.run_in_executor,
 	# because the futures they return can't be cancelled properly
@@ -141,7 +147,6 @@ async def run_status_server(host: str, port: int) -> None:
 	# those APIs run the given function on a shared executor,
 	# which is a bad idea for long-running threads.
 	# So instead we create our own thread and set up a custom future that can be cancelled properly.
-	loop = asyncio.get_event_loop()
-	future = loop.create_future()
-	threading.Thread(target=lambda: _run_server(host, port, loop, future), name="NAGUS status server").start()
+	future = server_state.loop.create_future()
+	threading.Thread(target=lambda: _run_server(server_state, future), name="NAGUS status server").start()
 	await future

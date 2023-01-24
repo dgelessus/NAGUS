@@ -6,6 +6,9 @@ Version 0.1.0
 
 (not released yet)
 
+* Added the ability to set various configuration options
+  (e. g. server ports)
+  in a config file or on the command line.
 * Added initial handling of ``plNetMsgGameMessage``.
   Currently only echoes (if requested) and does no propagation,
   because inter-client communication isn't supported yet.

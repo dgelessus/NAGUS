@@ -268,12 +268,15 @@ class AuthConnection(base.BaseMOULConnection):
 		self.client_state.server_challenge = SYSTEM_RANDOM.randrange(0x100000000)
 		await self.client_register_reply(self.client_state.server_challenge)
 		
-		try:
-			ip_addr = self._get_own_ipv4_address()
-		except ValueError:
-			logger.warning("Unable to get own IPv4 address - won't send a ServerAddr message to the client", exc_info=True)
-		else:
-			await self.server_address(ip_addr, self.client_state.token)
+		if self.server_state.config.server_auth_send_server_address:
+			try:
+				ip_addr = self.server_state.config.server_auth_address_for_client
+				if ip_addr is None:
+					ip_addr = self._get_own_ipv4_address()
+			except ValueError:
+				logger.warning("Unable to get own IPv4 address - won't send a ServerAddr message to the client", exc_info=True)
+			else:
+				await self.server_address(ip_addr, self.client_state.token)
 	
 	@base.message_handler(2)
 	async def client_set_ccr_level(self) -> None:
@@ -680,27 +683,31 @@ class AuthConnection(base.BaseMOULConnection):
 			logger.error("Unhandled exception while finding age instance for age request", exc_info=True)
 			await self.age_reply(trans_id, base.NetError.internal_error, 0, structs.ZERO_UUID, 0, ipaddress.IPv4Address(0))
 		else:
-			await self.age_reply(trans_id, base.NetError.success, age_node_id, instance_uuid, age_node_id, self._get_own_ipv4_address())
+			ip_addr = self.server_state.config.server_game_address_for_client
+			if ip_addr is None:
+				ip_addr = self._get_own_ipv4_address()
+			await self.age_reply(trans_id, base.NetError.success, age_node_id, instance_uuid, age_node_id, ip_addr)
+	
+	def get_client_error_quip(self) -> str:
+		if self.server_state.config.logging_enable_crash_lines:
+			try:
+				return random.choice(crash_lines.client_crash_lines)
+			except IndexError:
+				return "missingno"
+		else:
+			return "Received client error"
 	
 	@base.message_handler(43)
 	async def log_python_traceback(self) -> None:
 		traceback_text = await self.read_string_field(1024)
-		try:
-			quip = random.choice(crash_lines.client_crash_lines)
-		except IndexError:
-			quip = "missingno"
-		logger.error("%s (client Python traceback)", quip)
+		logger.error("%s (client Python traceback)", self.get_client_error_quip())
 		for line in traceback_text.splitlines():
 			logger.error("[traceback] %s", line)
 	
 	@base.message_handler(44)
 	async def log_stack_dump(self) -> None:
 		stack_dump_text = await self.read_string_field(1024)
-		try:
-			quip = random.choice(crash_lines.client_crash_lines)
-		except IndexError:
-			quip = "missingno"
-		logger.error("%s (client stack dump)", quip)
+		logger.error("%s (client stack dump)", self.get_client_error_quip())
 		for line in stack_dump_text.splitlines():
 			logger.error("[stack dump] %s", line)
 	

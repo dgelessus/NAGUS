@@ -13,5 +13,6 @@ dist
 # Sphinx
 docs/_build
 
-# Server database
+# Server configuration, database, etc.
 *.sqlite
+nagus_config.ini

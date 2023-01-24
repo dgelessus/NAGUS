@@ -44,6 +44,7 @@ What works so far
 * The vault mostly works and is saved persistently in a local SQLite database.
 * Status message over HTTP.
 * Receiving client error stack traces.
+* Adjustable configuration via a config file and/or command-line arguments.
 
 Still to be implemented
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -87,8 +88,6 @@ Still to be implemented
 * Public age management.
 * The score server.
 * H'uru extended :ref:`auth server <auth_server>` messages.
-* A config file for server settings that commonly need changing:
-  e. g. welcome message, database file location, listen address, and port number.
 * A command line for controlling the server once it's running,
   e. g. listing connections, force-disconnecting someone, and gracefully stopping the server.
 

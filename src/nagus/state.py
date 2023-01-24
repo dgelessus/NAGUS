@@ -30,6 +30,7 @@ import types
 import typing
 import uuid
 
+from . import configuration
 from . import structs
 
 
@@ -925,14 +926,16 @@ class AvatarAlreadyExists(Exception):
 
 
 class ServerState(object):
+	config: configuration.Configuration
 	loop: asyncio.AbstractEventLoop
 	db: Database
 	
 	auth_connections: typing.Dict[uuid.UUID, "auth_server.AuthConnection"]
 	
-	def __init__(self, loop: asyncio.AbstractEventLoop, db: Database) -> None:
+	def __init__(self, config: configuration.Configuration, loop: asyncio.AbstractEventLoop, db: Database) -> None:
 		super().__init__()
 		
+		self.config = config
 		self.loop = loop
 		self.db = db
 		

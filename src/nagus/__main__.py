@@ -23,6 +23,7 @@ the code here just dispatches incoming connections to other modules that do the 
 """
 
 
+import argparse
 import asyncio
 import logging
 import random
@@ -30,8 +31,10 @@ import socket
 import sys
 import typing
 
+from . import __version__
 from . import auth_server
 from . import base
+from . import configuration
 from . import crash_lines
 from . import game_server
 from . import state
@@ -40,6 +43,8 @@ from . import status_server
 
 logger = logging.getLogger(__name__)
 
+
+DEFAULT_CONFIG_FILE_NAME = "nagus_config.ini"
 
 CONNECTION_CLASSES: typing.Sequence[typing.Type[base.BaseMOULConnection]] = [
 	# TODO Add gatekeeper and file servers once implemented
@@ -97,10 +102,13 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 	except base.ProtocolError as exc:
 		logger.error("Error in data sent by %s: %s", client_address, exc)
 	except Exception as exc:
-		try:
-			quip = random.choice(crash_lines.client_crash_lines)
-		except IndexError:
-			quip = "missingno"
+		if server_state.config.logging_enable_crash_lines:
+			try:
+				quip = random.choice(crash_lines.client_crash_lines)
+			except IndexError:
+				quip = "missingno"
+		else:
+			quip = "Server error"
 		logger.error("%s (uncaught exception while handling request from %s)", quip, client_address, exc_info=exc)
 	except asyncio.CancelledError:
 		logger.info("Connection handler for %s was cancelled - most likely the server is shutting down", client_address)
@@ -110,7 +118,10 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 		raise
 
 
-async def moul_server_main(host: str, port: int, server_state: state.ServerState) -> None:
+async def moul_server_main(server_state: state.ServerState) -> None:
+	host = server_state.config.server_listen_address
+	port = server_state.config.server_port
+	
 	async def _client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
 		await client_connected(reader, writer, server_state)
 	
@@ -119,27 +130,89 @@ async def moul_server_main(host: str, port: int, server_state: state.ServerState
 		await server.serve_forever()
 
 
-async def async_main() -> None:
-	db = await state.Database.connect("nagus.sqlite")
+async def async_main(config: configuration.Configuration) -> None:
+	db = await state.Database.connect(config.database_path)
 	try:
-		server_state = state.ServerState(asyncio.get_event_loop(), db)
+		server_state = state.ServerState(config, asyncio.get_event_loop(), db)
 		await server_state.setup_database()
-		moul_task = asyncio.create_task(moul_server_main("", 14617, server_state))
-		status_task = asyncio.create_task(status_server.run_status_server("", 8080))
+		moul_task = asyncio.create_task(moul_server_main(server_state))
+		status_task = asyncio.create_task(status_server.run_status_server(server_state))
 		await asyncio.gather(moul_task, status_task)
 	finally:
 		await db.close()
 
 
 def main() -> typing.NoReturn:
+	ap = argparse.ArgumentParser(
+		formatter_class=argparse.RawDescriptionHelpFormatter,
+		description="""
+NAGUS is an experimental work-in-progress Uru Live/Myst Online server
+written in pure Python. It is currently not very good.
+""",
+		add_help=False,
+		allow_abbrev=False,
+	)
+	
+	ap.add_argument("--help", action="help", help="Display this help message and exit.")
+	ap.add_argument("--version", action="version", version=__version__, help="Display version information and exit.")
+	
+	config_file_group = ap.add_mutually_exclusive_group()
+	config_file_group.add_argument("--config-file", help=f"Read server configuration from the given file instead of the default location ({DEFAULT_CONFIG_FILE_NAME}).")
+	config_file_group.add_argument("--no-config-file", action="store_true", help="Don't read any config file - only use command-line and default configuration.")
+	
+	ap.add_argument("-c", "--config", action="append", help="Set a configuration setting (format: section.name=value), overriding the default and any previous setting from the config file.")
+	
+	ns = ap.parse_args()
+	
+	config = configuration.Configuration()
+	
+	if ns.no_config_file:
+		print("Info: Server config file disabled - using only command-line and default configuration.", file=sys.stderr)
+	else:
+		if ns.config_file is None:
+			config_file = DEFAULT_CONFIG_FILE_NAME
+		else:
+			config_file = ns.config_file
+		
+		try:
+			config.set_options_from_ini_file(config_file)
+		except FileNotFoundError as exc:
+			if ns.config_file is None:
+				print(f"Warning: Server config file not found at default location: {exc}", file=sys.stderr)
+				print("Warning: See nagus_config.defaults.ini for a list of supported config settings.", file=sys.stderr)
+				print("Warning: Or pass --no-config-file to suppress this warning.", file=sys.stderr)
+			else:
+				print(f"Error: Server config file does not exist: {exc}")
+				sys.exit(1)
+		except configuration.ConfigError as exc:
+			print(f"Error: In config file {config_file!r}: {exc}")
+			sys.exit(1)
+	
+	if ns.config is None:
+		ns.config = []
+	
+	for setting in ns.config:
+		option, sep, value = setting.partition("=")
+		if not sep:
+			print(f"Error: In -c/--config option: Invalid argument - expected format section.name=value, but got {setting!r}")
+			sys.exit(2)
+		
+		try:
+			config.set_option(option.split("."), value)
+		except configuration.ConfigError as exc:
+			print(f"Error: In -c/--config option: {exc}")
+			sys.exit(2)
+	
+	config.set_defaults()
+	
 	logging.basicConfig(
 		format="[%(levelname)s] %(name)s: %(message)s",
-		level=logging.DEBUG,
+		level=config.logging_level,
 		stream=sys.stdout,
 	)
 	
 	try:
-		asyncio.run(async_main())
+		asyncio.run(async_main(config))
 	except KeyboardInterrupt:
 		logger.info("KeyboardInterrupt received, stopping server.")
 	
