@@ -37,6 +37,21 @@ from . import state
 logger = logging.getLogger(__name__)
 
 
+# The original client code from Cyan only reserves 256 bytes
+# (including zero terminator)
+# for the status text.
+# This doesn't matter much in practice,
+# because almost all messages longer than that won't fit in the little text box in the client window -
+# but just in case,
+# truncate all status messages to 255 bytes.
+STATUS_TEXT_MAX_BYTES = 255
+# Clients also assume that the status text is encoded in the system "ANSI" code page,
+# which is code page 1252 on most systems.
+# Note: This encoding name is both passed to Python
+# and returned to the client in the Content-Type header.
+STATUS_TEXT_ENCODING = "windows-1252"
+
+
 class StatusServerRequestHandler(http.server.BaseHTTPRequestHandler):
 	server_state: state.ServerState
 	
@@ -66,7 +81,18 @@ class StatusServerRequestHandler(http.server.BaseHTTPRequestHandler):
 	
 	def doit(self) -> None:
 		if self.path in {"/serverstatus/moulbeta.php", "/serverstatus/moullive.php", "/welcome"}:
-			self.respond("text/plain", self.format_status_text().encode("ascii"))
+			status_text = self.format_status_text()
+			encoded = status_text.encode(STATUS_TEXT_ENCODING, "replace")
+			if len(encoded) > STATUS_TEXT_MAX_BYTES:
+				encoded = encoded[:STATUS_TEXT_MAX_BYTES - 3] + b"..."
+			# H'uru clients don't terminate the buffer correctly -
+			# they always put the zero byte at index 255
+			# instead of the actual end of the received data.
+			# This can lead to junk text at the end of the status message,
+			# especially when the client receives an updated status message
+			# that's shorter than the previously received one.
+			encoded += b"\x00"
+			self.respond(f"text/plain; charset={STATUS_TEXT_ENCODING}", encoded)
 		elif self.path == "/status":
 			status_obj = {
 				"online": True,
