@@ -182,10 +182,10 @@ written in pure Python. It is currently not very good.
 				print("Warning: See nagus_config.defaults.ini for a list of supported config settings.", file=sys.stderr)
 				print("Warning: Or pass --no-config-file to suppress this warning.", file=sys.stderr)
 			else:
-				print(f"Error: Server config file does not exist: {exc}")
+				print(f"Error: Server config file does not exist: {exc}", file=sys.stderr)
 				sys.exit(1)
 		except configuration.ConfigError as exc:
-			print(f"Error: In config file {config_file!r}: {exc}")
+			print(f"Error: In config file {config_file!r}: {exc}", file=sys.stderr)
 			sys.exit(1)
 	
 	if ns.config is None:
@@ -194,13 +194,13 @@ written in pure Python. It is currently not very good.
 	for setting in ns.config:
 		option, sep, value = setting.partition("=")
 		if not sep:
-			print(f"Error: In -c/--config option: Invalid argument - expected format section.name=value, but got {setting!r}")
+			print(f"Error: In -c/--config option: Invalid argument - expected format section.name=value, but got {setting!r}", file=sys.stderr)
 			sys.exit(2)
 		
 		try:
 			config.set_option(option.split("."), value)
 		except configuration.ConfigError as exc:
-			print(f"Error: In -c/--config option: {exc}")
+			print(f"Error: In -c/--config option: {exc}", file=sys.stderr)
 			sys.exit(2)
 	
 	config.set_defaults()
