@@ -63,6 +63,8 @@ class Configuration(object):
 	logging_level: str
 	logging_enable_crash_lines: bool
 	
+	console_enable: bool
+	
 	server_listen_address: str
 	server_address_for_client: typing.Optional[ipaddress.IPv4Address]
 	server_port: int
@@ -85,6 +87,8 @@ class Configuration(object):
 			self.logging_level = value
 		elif option == ("logging", "enable_crash_lines"):
 			self.logging_enable_crash_lines = parse_bool(value)
+		elif option == ("console", "enable"):
+			self.console_enable = parse_bool(value)
 		elif option == ("server", "listen_address"):
 			self.server_listen_address = value
 		elif option == ("server", "port"):
@@ -159,6 +163,8 @@ class Configuration(object):
 			self.logging_level = "DEBUG"
 		if not hasattr(self, "logging_enable_crash_lines"):
 			self.logging_enable_crash_lines = True
+		if not hasattr(self, "console_enable"):
+			self.console_enable = True
 		if not hasattr(self, "server_listen_address"):
 			self.server_listen_address = ""
 		if not hasattr(self, "server_port"):

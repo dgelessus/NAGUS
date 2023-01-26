@@ -45,6 +45,7 @@ What works so far
 * Status message over HTTP.
 * Receiving client error stack traces.
 * Adjustable configuration via a config file and/or command-line arguments.
+* Command-line console for controlling the server while running.
 
 Still to be implemented
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -88,6 +89,9 @@ Still to be implemented
 * Public age management.
 * The score server.
 * H'uru extended :ref:`auth server <auth_server>` messages.
-* A command line for controlling the server once it's running,
-  e. g. listing connections, force-disconnecting someone, and gracefully stopping the server.
-
+* More console commands.
+  
+  * Listing connections and associated info (account and avatar name, KI number, current age, etc.).
+  * Force-disconnecting (i. e. kicking) clients.
+  * Interacting with the vault.
+  * Restricting connections and/or logins.

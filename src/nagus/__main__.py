@@ -35,6 +35,7 @@ from . import __version__
 from . import auth_server
 from . import base
 from . import configuration
+from . import console
 from . import crash_lines
 from . import game_server
 from . import state
@@ -135,9 +136,10 @@ async def async_main(config: configuration.Configuration) -> None:
 	try:
 		server_state = state.ServerState(config, asyncio.get_event_loop(), db)
 		await server_state.setup_database()
+		console_task = asyncio.create_task(console.run_console(server_state))
 		moul_task = asyncio.create_task(moul_server_main(server_state))
 		status_task = asyncio.create_task(status_server.run_status_server(server_state))
-		await asyncio.gather(moul_task, status_task)
+		await asyncio.gather(console_task, moul_task, status_task)
 	finally:
 		await db.close()
 
@@ -215,6 +217,8 @@ written in pure Python. It is currently not very good.
 		asyncio.run(async_main(config))
 	except KeyboardInterrupt:
 		logger.info("KeyboardInterrupt received, stopping server.")
+	except console.ServerShutdownRequest:
+		logger.info("Shutdown requested via console, stopping server.")
 	
 	sys.exit(0)
 

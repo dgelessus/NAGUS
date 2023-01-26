@@ -49,7 +49,7 @@ class StatusServerRequestHandler(http.server.BaseHTTPRequestHandler):
 			logger.info("[%s] %s", self.address_string(), format % args)
 	
 	def format_status_text(self) -> str:
-		text = self.server_state.config.server_status_message
+		text = self.server_state.status_message
 		if self.server_state.config.server_status_add_version_info:
 			timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
 			text += f"\nNAGUS {__version__} @ {timestamp}"

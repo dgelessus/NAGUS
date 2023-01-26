@@ -930,6 +930,7 @@ class ServerState(object):
 	loop: asyncio.AbstractEventLoop
 	db: Database
 	
+	status_message: str
 	auth_connections: typing.Dict[uuid.UUID, "auth_server.AuthConnection"]
 	
 	def __init__(self, config: configuration.Configuration, loop: asyncio.AbstractEventLoop, db: Database) -> None:
@@ -939,6 +940,7 @@ class ServerState(object):
 		self.loop = loop
 		self.db = db
 		
+		self.status_message = config.server_status_message
 		self.auth_connections = {}
 	
 	async def setup_database(self) -> None:
