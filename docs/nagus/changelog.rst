@@ -20,8 +20,8 @@ Version 0.1.0
 * Changed vault node refs to be unseen by default,
   matching what the client code assumes.
 * Changed the single placeholder account to use a non-zero UUID.
-* Improved status server to work around various quirks and bugs in current clients,
-  specifically with status messages that contain non-ASCII characters, are very long, or update dynamically.
+* Improved status server to work around the quirks and limitations of current clients,
+  specifically with status messages that are very long and/or contain non-ASCII characters.
 * Fixed vault node creator info not being set in most cases.
 * Fixed ``plNetMsgSDLStateBroadcast`` parsing.
 

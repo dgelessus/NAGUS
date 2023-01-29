@@ -84,16 +84,10 @@ class StatusServerRequestHandler(http.server.BaseHTTPRequestHandler):
 			status_text = self.format_status_text()
 			encoded = status_text.encode(STATUS_TEXT_ENCODING, "replace")
 			
-			if self.headers["User-Agent"] == "UruClient/1.0":
-				if len(encoded) > STATUS_TEXT_MAX_BYTES:
-					encoded = encoded[:STATUS_TEXT_MAX_BYTES - 3] + b"..."
-				# H'uru clients don't terminate the buffer correctly -
-				# they always put the zero byte at index 255
-				# instead of the actual end of the received data.
-				# This can lead to junk text at the end of the status message,
-				# especially when the client receives an updated status message
-				# that's shorter than the previously received one.
-				encoded += b"\x00"
+			if self.headers["User-Agent"] == "UruClient/1.0" and len(encoded) > STATUS_TEXT_MAX_BYTES:
+				# Work around limited fixed buffer size in clients based on Cyan's code
+				# (see STATUS_TEXT_MAX_BYTES definition for details).
+				encoded = encoded[:STATUS_TEXT_MAX_BYTES - 3] + b"..."
 			
 			self.respond(f"text/plain; charset={STATUS_TEXT_ENCODING}", encoded)
 		elif self.path == "/status":
