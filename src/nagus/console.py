@@ -67,7 +67,7 @@ async def run_command(server_state: state.ServerState, command: str, args: typin
 		raise ServerShutdownRequest("Server was shut down via console")
 	elif command in {"help", "?"}:
 		_check_arg_count(0)
-		print()
+		print(HELP_TEXT, end="")
 	elif command == "version":
 		_check_arg_count(0)
 		print(f"This is NAGUS version {__version__}")
