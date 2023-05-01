@@ -6,7 +6,7 @@ The vault
 
 Nearly all persistent game state is stored in a database called the vault.
 Some higher-level persistent state mechanisms,
-such as chronicles and age SDL,
+such as chronicles and some kinds of :doc:`SDL <sdl>`,
 are also based on the vault.
 (Other state mechanisms are separate from the vault though,
 such as the score mechanism and the game manager.)

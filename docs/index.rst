@@ -43,6 +43,7 @@ Contents
   uru/server_config
   uru/protocol
   uru/vault
+  uru/sdl
   uru/auth_server
   uru/game_server
 

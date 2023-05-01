@@ -484,7 +484,7 @@ and not supported by MOSS or DIRTSAND
     because the communication is TCP-based and so there's no possibility of any state messages getting lost.
   * One :cpp:class:`plNetMsgSDLState` for the state of every object currently in the age instance.
     This notably includes the age SDL state (if any),
-    which is sent as the SDL state for the ``AgeSDLHook`` object.
+    which is sent as the SDL state for the :ref:`AgeSDLHook <age_sdl_hook>` object.
   * A single :cpp:class:`plNetMsgInitialAgeStateSent` containing the number of state messages that were sent.
     DIRTSAND doesn't include :cpp:class:`plNetMsgLoadClone` messages in this count.
   
@@ -499,7 +499,7 @@ and not supported by MOSS or DIRTSAND
   
   * :cpp:class:`plNetMsgLoadClone`\s for all non-avatar clones
   * :cpp:class:`plNetMsgLoadClone`\s for all avatars
-  * :cpp:class:`plNetMsgSDLState` for the ``AgeSDLHook`` (if any)
+  * :cpp:class:`plNetMsgSDLState` for the :ref:`AgeSDLHook <age_sdl_hook>` (if any)
   * :cpp:class:`plNetMsgSDLState`\s for all other objects
   * :cpp:class:`plNetMsgInitialAgeStateSent`
   
