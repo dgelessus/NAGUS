@@ -57,7 +57,7 @@ The text format for state descriptors is called :dfn:`SDL`
 (State Descriptor Language).
 An instance of a state descriptor is called a :dfn:`state data record`.
 When sent over the network and/or stored persistently,
-state data records are serialized into a packed binary format,
+state data records are serialized into a :ref:`packed binary format <sdl_blob>`,
 which is sometimes called an :dfn:`SDL blob`.
 
 Every state descriptor is uniquely identified by a name and version number.
@@ -383,13 +383,19 @@ repeated for each element.
 Nested SDL types
 ^^^^^^^^^^^^^^^^
 
-TODO
+Any state descriptor can also be used as an SDL variable type by prefixing its name with ``$``.
 
 .. csv-table::
   :header: #,Name
   :widths: auto
   
   5,:samp:`${DescName}`
+
+The ``DEFAULT`` attribute is not supported for variables with a nested SDL type.
+
+The blob data format of a nested SDL type is an :ref:`SDL blob body <sdl_blob_body>`
+(*without* a stream header)
+using the given state descriptor.
 
 .. _sdl_syntax_mess:
 
@@ -476,3 +482,183 @@ and any token separator can be used between values in place of commas.
 MOSS and DIRTSAND are stricter when parsing default values.
 Additionally,
 MOSS doesn't allow spaces between the parentheses in vector default values.
+
+.. index::
+  double: SDL; blob
+  :name: sdl_blob
+
+SDL blob format
+---------------
+
+.. _sdl_var_length_int:
+
+A few integer fields in SDL blobs use a :dfn:`variable-length integer` format,
+where the size of the integer depends on its maximum possible value in the given context.
+The integer is always unsigned and its size is determined as follows:
+
+* If the maximum possible value fits in 8 bits (0xff or less),
+  the field is 1 byte long.
+* If the maximum possible value fits in 16 bits (0xffff or less),
+  the field is 2 bytes long.
+* Otherwise,
+  the field is 4 bytes long.
+
+.. _sdl_blob_variable:
+
+Single variable values
+^^^^^^^^^^^^^^^^^^^^^^
+
+These structures don't appear on their own,
+only as part of a complete SDL blob
+(described below).
+
+All variable values are prefixed with the following header:
+
+* **Flags:** 1-byte unsigned int.
+  Only one flag is defined:
+  
+  * **Has notification info** = 1 << 1: Whether the notification info field is present in the variable header.
+    The open-sourced client code always sets this flag.
+* **Notification info:** Only present if the "has notification info" flag is set.
+  The open-sourced client code always includes this field.
+  
+  * **Flags:** 1-byte unsigned int.
+    Always set to 0 and ignored on read.
+  * **Hint:** :ref:`SafeString <safe_string>`.
+
+The blob format of :ref:`simple variable <sdl_types>` values is:
+
+* **Variable header:** As described above.
+* **Flags:** 1-byte unsigned int.
+  The following flags are defined:
+  
+  * **Has timestamp** = 1 << 2: Whether the timestamp field is present.
+  * **Same as default** = 1 << 3: Whether the value is identical to the variable's default value and thus *not* stored explicitly.
+  * **Has dirty flag** = 1 << 4: Requests that the variable should be marked as dirty.
+    The client may not respect this flag ---
+    depending on the context where the SDL blob is read,
+    the dirty flag may also be forcibly set or unset.
+  * **Want timestamp** = 1 << 5: Whether the timestamp should be initialized by the receiver to the current time.
+    Should only be set if the "has timestamp" flag is unset.
+* **Timestamp:** 8-byte :cpp:class:`plUnifiedTime`.
+  Only present in the SDL blob if the "has timestamp" flag is set.
+  If that flag is not set,
+  this field is initialized by the receiver:
+  either to the current time if the "want timestamp" flag is set,
+  or otherwise to all zeroes
+  (i. e. the Unix epoch).
+* **Array length:** 4-byte unsigned int.
+  The number of elements in a variable-length array value.
+  The open-sourced client code allows at most 9998 elements,
+  DIRTSAND allows at most 9999,
+  and MOSS has no limit.
+  Only present if the variable has a variable array length
+  and the "same as default" flag is *not* set.
+  For fixed-length array variables,
+  the array length is known from the state descriptor and so not stored in the SDL blob.
+* **Variable values:** Variable-length array of variable values as described in :ref:`sdl_types`.
+  If the array length field is not present,
+  the variable has a fixed array length known from the state descriptor.
+  Only present if the "same as default" flag is *not* set.
+
+The blob format of :ref:`nested SDL variable <sdl_nested_types>` values is:
+
+* **Variable header:** As described above.
+* **Flags:** 1-byte unsigned int.
+  Always set to 0 and ignored on read.
+* **Array length:** 4-byte unsigned int.
+  The number of elements in a variable-length array value.
+  Only present if the variable has a variable array length.
+  For fixed-length array variables,
+  the array length is known from the state descriptor and so not stored in the SDL blob.
+* **Value count:** :ref:`Variable-length integer <sdl_var_length_int>`.
+  The number of array elements whose values are actually stored in the SDL blob.
+  TODO What exactly happens for elements that are not stored,
+  especially the first time a record is read?
+  For fixed-length array variables,
+  the maximum value is the array length.
+  For variable-length array values,
+  this field is always 4 bytes long,
+  regardless of the actual array length.
+* **Variable values:** Variable-length array.
+  Each element is structured as follows:
+  
+  * **Element index:** :ref:`Variable-length integer <sdl_var_length_int>`.
+    The array index to which the following SDL blob belongs.
+    For fixed-length array variables,
+    the maximum value is the array length.
+    For variable-length array values,
+    this field is always 4 bytes long,
+    regardless of the actual array length.
+    Omitted if the value count is equal to the array length
+    (i. e. if this variable value contains values for *all* array elements).
+  * **Element value:** SDL blob *without* stream header
+    (the descriptor name and version are known from the outer state descriptor).
+
+Stream header
+^^^^^^^^^^^^^
+
+SDL blobs are almost always prefixed with the following :dfn:`stream header`,
+e. g. when sent over the network or stored in the vault.
+The stream header is only omitted for nested SDL variables.
+The structure of this header is identical for all SDL blobs,
+as it identifies the state descriptor according to which the remaining blob is formatted.
+
+* **Flags:** 2-byte unsigned int.
+  The following flags are defined:
+  
+  * **Has UOID** = 1 << 0: Whether the UOID field is present in the stream header.
+    Always unset in practice and not supported by MOSS.
+  * **Variable-length IO** = 1 << 15: Always set.
+    Used as a version marker.
+* **Descriptor name:** :ref:`SafeString <safe_string>`.
+* **Descriptor version:** 2-byte unsigned int.
+* **UOID:** :cpp:class:`plUoid`.
+  Only present if the "has UOID" flag is set.
+  Not used in practice and not supported by MOSS.
+
+.. _sdl_blob_body:
+
+Blob body
+^^^^^^^^^
+
+The body of the SDL blob is structured as follows.
+Beyond the first two fields,
+this structure varies depending on the state descriptor.
+
+* **Flags:** 2-byte unsigned int.
+  Only one flag is defined:
+  
+  * **Volatile** = 1 << 0: Unclear.
+    The open-sourced client code sometimes sets this flag,
+    but never reads it.
+    MOSS and DIRTSAND ignore it.
+    Unclear if Cyan's server software does anything with it.
+* **IO version:** 1-byte unsigned int.
+  Always 6.
+* **Simple variable count:** :ref:`Variable-length integer <sdl_var_length_int>`.
+  The number of simple variable values in the following array.
+  The maximum value is the total number of variables (simple *and* nested SDL) in the state descriptor.
+* **Simple variables:** Variable-length array.
+  Each element is structured as follows:
+  
+  * **Variable index:** :ref:`Variable-length integer <sdl_var_length_int>`.
+    The index of the variable to which the following value belongs,
+    in the list of simple variables in the state descriptor.
+    The maximum value is the total number of variables (simple *and* nested SDL) in the state descriptor.
+    Omitted if the simple variable count is equal to the number of simple variables in the state descriptor
+    (i. e. if this SDL blob contains values for *all* simple variables in the descriptor).
+  * **Variable value:** As described in :ref:`sdl_blob_variable`.
+* **Nested SDL variable count:** :ref:`Variable-length integer <sdl_var_length_int>`.
+  The number of nested SDL variable values in the following array.
+  The maximum value is the total number of variables (simple *and* nested SDL) in the state descriptor.
+* **Nested SDL variables:** Variable-length array.
+  Each element is structured as follows:
+  
+  * **Variable index:** :ref:`Variable-length integer <sdl_var_length_int>`.
+    The index of the variable to which the following value belongs,
+    in the list of nested SDL variables in the state descriptor.
+    The maximum value is the total number of variables (simple *and* nested SDL) in the state descriptor.
+    Omitted if the nested SDL variable count is equal to the number of nested SDL variables in the state descriptor
+    (i. e. if this SDL blob contains values for *all* nested SDL variables in the descriptor).
+  * **Variable value:** As described in :ref:`sdl_blob_variable`.

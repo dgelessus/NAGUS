@@ -634,6 +634,9 @@ and not supported by MOSS or DIRTSAND
     Set to true by the client for SDL states related/attached to an avatar.
     If true,
     the persist on server flag should be false.
+  
+  The stream data is an :ref:`SDL blob <sdl_blob>`,
+  including its stream header.
 
 :cpp:class:`plNetMsgSDLStateBCast`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

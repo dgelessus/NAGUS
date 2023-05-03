@@ -583,14 +583,15 @@ and an avatar's clothing.
 * ``String64_1`` = **SDLName:**
   Name of the state descriptor (.sdl file) to use for this node.
   This field is only relevant when the SDLData field is unset or empty.
-  Otherwise the SDLData itself indicates which state descriptor to use
+  Otherwise the SDL blob stream header in the SDLData indicates which state descriptor to use
   and this field is ignored.
   When initializing the SDL node in an :ref:`vault_node_age_info` node,
   the server sets this field to the age file name.
   The open-sourced client code never sets this field
   and only uses it in one case (see below).
 * ``Blob_1`` = **SDLData:**
-  The serialized state data record ("SDL blob").
+  The serialized :ref:`SDL blob <sdl_blob>`,
+  including its stream header.
   When initializing the SDL node in an :ref:`vault_node_age_info` node,
   the server leaves this field unset.
   When the client finds this field unset or empty,
