@@ -186,7 +186,7 @@ class Location(object):
 	sequence_number: int
 	flags: "Location.Flags"
 	
-	def __init__(self, sequence_number: int, flags: "Location.Flags") -> None:
+	def __init__(self, sequence_number: int, flags: "Location.Flags" = Flags(0)) -> None:
 		super().__init__()
 		
 		self.sequence_number = sequence_number
@@ -199,7 +199,11 @@ class Location(object):
 		return self.sequence_number == other.sequence_number and self.flags == other.flags
 	
 	def __repr__(self) -> str:
-		return f"{type(self).__qualname__}({self.sequence_number:#x}, {self.flags!s})"
+		parts = [hex(self.sequence_number)]
+		if self.flags:
+			parts.append(str(self.flags))
+		joined_parts = ", ".join(parts)
+		return f"{type(self).__qualname__}({joined_parts})"
 	
 	@classmethod
 	def from_stream(cls, stream: typing.BinaryIO) -> "Location":
