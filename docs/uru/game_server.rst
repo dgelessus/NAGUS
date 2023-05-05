@@ -1326,58 +1326,9 @@ Common data types
 
 Assorted data types used by the message classes above.
 
-.. index:: SafeString
-  single: safe string
-  :name: safe_string
-
-.. object:: SafeString
+.. seealso::
   
-  * **Count:** 2-byte unsigned int.
-    Number of 8-bit characters in the string.
-    The high 4 bits of this field are masked out when reading and should always be set when writing.
-    As a result,
-    a single SafeString can contain at most 4095 characters.
-  * **Ignored:** 2-byte unsigned int.
-    Only present if the count field has none of its high 4 bits set.
-    The open-sourced client code calls this a "backward compat hack" that should have been removed in July 2003.
-  * **String:** Variable-length string of 8-bit characters.
-    If the first character has its high bit set,
-    then the string is obfuscated by bitwise negating every character,
-    otherwise the string is stored literally.
-    When writing,
-    the open-sourced client code always uses this obfuscation.
-    None of the characters should be 0.
-
-.. index:: SafeWString
-  single: safe string; wide
-  :name: safe_w_string
-
-.. object:: SafeWString
-  
-  * **Count:** 2-byte unsigned int.
-    Number of UTF-16 code units in the string.
-    The high 4 bits of this field are masked out when reading and should always be set when writing.
-    As a result,
-    a single SafeWString can contain at most 4095 UTF-16 code units.
-  * **String:** Variable-length string of UTF-16 code units.
-    The string is obfuscated by bitwise negating every code unit.
-    (Unlike with non-wide SafeStrings,
-    there is no support for un-obfuscated SafeWStrings.)
-    None of the characters should be 0.
-  * **Terminator:** 2-byte unsigned int.
-    Should always be 0.
-    This string terminator is stored in the data,
-    but not counted in the count field.
-
-.. cpp:class:: hsBitVector
-  
-  * **Count:** 4-byte unsigned int.
-    Element count for the following array.
-  * **Bit vector:** Variable-length array of 4-byte unsigned ints.
-    The contents of the bit vector,
-    grouped into 4-byte units,
-    with the first element containing the least significant bits
-    and the last one the most significant bits.
+  :ref:`common_data_types` under :doc:`protocol`.
 
 .. cpp:class:: plGenericType
   
@@ -1452,27 +1403,6 @@ Assorted data types used by the message classes above.
       "Stored" as 0 bytes of data.
       Not used in the open-sourced client code.
 
-.. cpp:class:: plUnifiedTime
-  
-  * **Seconds:** 4-byte unsigned int.
-    Unix timestamp (seconds since 1970).
-  * **Microseconds:** 4-byte unsigned int.
-    Fractional part of the timestamp for sub-second precision.
-
-.. cpp:class:: plLocation
-  
-  * **Sequence number:** 4-byte unsigned int.
-  * **Flags:** 2-byte unsigned int.
-    See :cpp:enum:`LocFlags` for details.
-  
-  .. cpp:enum:: LocFlags
-    
-    .. cpp:enumerator:: kLocalOnly = 1 << 0
-    .. cpp:enumerator:: kVolatile = 1 << 1
-    .. cpp:enumerator:: kReserved = 1 << 2
-    .. cpp:enumerator:: kBuiltIn = 1 << 3
-    .. cpp:enumerator:: kItinerant = 1 << 4
-
 .. cpp:class:: plNetGroupId
   
   * **ID:** 6-byte :cpp:class:`plLocation`.
@@ -1483,58 +1413,6 @@ Assorted data types used by the message classes above.
     
     .. cpp:enumerator:: kNetGroupConstant = 1 << 0
     .. cpp:enumerator:: kNetGroupLocal = 1 << 1
-
-.. cpp:class:: plLoadMask
-  
-  * **Quality and capability:** 1-byte unsigned int.
-    Decoded as follows
-    (where *qc* is the value of this field)
-    into separate quality and capability fields,
-    each of which is a 1-byte unsigned int after decoding:
-    
-    * **Quality** = (*qc* >> 4 & 0xf) | 0xf0
-    * **Capability** = (*qc* >> 0 & 0xf) | 0xf0
-  
-  .. cpp:var:: static const plLoadMask kAlways
-    
-    Has both quality and capability set to 0xff.
-
-.. cpp:class:: plUoid
-  
-  * **Flags:** 1-byte unsigned int.
-    See :cpp:enum:`ContentsFlags` for details.
-  * **Location:** 6-byte :cpp:class:`plLocation`.
-  * **Load mask:** 1-byte :cpp:class:`plLoadMask`.
-    Only present if the :cpp:enumerator:`~ContentsFlags::kHasLoadMask` flag is set,
-    otherwise defaults to :cpp:var:`plLoadMask::kAlways`.
-  * **Class type:** 2-byte unsigned int.
-  * **Object ID:** 4-byte unsigned int.
-  * **Object name:** :ref:`SafeString <safe_string>`.
-  * **Clone ID:** 2-byte unsigned int.
-    Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
-    otherwise defaults to 0.
-  * **Ignored:** 2-byte unsigned int.
-    Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set.
-  * **Clone player ID:** 4-byte unsigned int.
-    Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
-    otherwise defaults to 0.
-  
-  .. cpp:enum:: ContentsFlags
-    
-    .. cpp:enumerator:: kHasCloneIDs = 1 << 0
-    .. cpp:enumerator:: kHasLoadMask = 1 << 1
-
-.. cpp:class:: plKey
-  
-  .. note::
-    
-    :cpp:class:`plKey` itself can't actually be read or written directly.
-    The structure described here is used by ``hsResMgr::ReadKey``/``hsResMgr::WriteKey``.
-  
-  * **Non-null:** False if this key is actually ``nullptr``,
-    true otherwise.
-  * **UOID:** The UOID of the object identified by this key.
-    Only present if the non-null field is true.
 
 .. cpp:class:: plClientGuid : public plCreatable
   

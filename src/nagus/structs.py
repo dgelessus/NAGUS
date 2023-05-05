@@ -18,6 +18,7 @@
 """Common data types and utilities for binary data (de)serialization."""
 
 
+import collections
 import datetime
 import enum
 import struct
@@ -38,6 +39,10 @@ UINT32 = struct.Struct("<I")
 UINT64 = struct.Struct("<Q")
 
 UNIFIED_TIME = struct.Struct("<II")
+
+LOCATION = struct.Struct("<IH")
+UOID_MID_PART = struct.Struct("<HI")
+UOID_CLONE_IDS = struct.Struct("<HHI")
 
 
 class _TestEnum(enum.IntEnum):
@@ -168,3 +173,136 @@ def pack_unified_time(dt: datetime.datetime) -> bytes:
 
 def write_unified_time(stream: typing.BinaryIO, dt: datetime.datetime) -> None:
 	stream.write(pack_unified_time(dt))
+
+
+class Location(object):
+	class Flags(IntFlag):
+		local_only = 1 << 0
+		volatile = 1 << 1
+		reserved = 1 << 2
+		built_in = 1 << 3
+		itinerant = 1 << 4
+	
+	sequence_number: int
+	flags: "Location.Flags"
+	
+	def __init__(self, sequence_number: int, flags: "Location.Flags") -> None:
+		super().__init__()
+		
+		self.sequence_number = sequence_number
+		self.flags = flags
+	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, Location):
+			return NotImplemented
+		
+		return self.sequence_number == other.sequence_number and self.flags == other.flags
+	
+	def __repr__(self) -> str:
+		return f"{type(self).__qualname__}({self.sequence_number:#x}, {self.flags!s})"
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "Location":
+		sequence_number, flags = stream_unpack(stream, LOCATION)
+		return cls(sequence_number, Location.Flags(flags))
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		stream.write(LOCATION.pack(self.sequence_number, self.flags))
+
+
+class Uoid(object):
+	class Flags(IntFlag):
+		has_clone_ids = 1 << 0
+		has_load_mask = 1 << 1
+		
+		supported = (
+			has_clone_ids
+			| has_load_mask
+		)
+	
+	location: Location
+	load_mask: int
+	class_type: int
+	object_id: int
+	object_name: bytes
+	clone_ids: typing.Optional[typing.Tuple[int, int]]
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = collections.OrderedDict()
+		fields["location"] = repr(self.location)
+		if self.load_mask != 0xff:
+			fields["load_mask"] = hex(self.load_mask)
+		fields["class_type"] = f"0x{self.class_type:>04x}"
+		fields["object_id"] = repr(self.object_id)
+		fields["object_name"] = repr(self.object_name)
+		if self.clone_ids is not None:
+			fields["clone_ids"] = repr(self.clone_ids)
+		return fields
+	
+	def __repr__(self) -> str:
+		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
+		return f"{type(self).__qualname__}({joined_fields})"
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		(flags,) = read_exact(stream, 1)
+		flags = Uoid.Flags(flags)
+		if flags & ~Uoid.Flags.supported:
+			raise ValueError(f"Uoid has unsupported flags set: {flags!r}")
+		
+		self.location = Location.from_stream(stream)
+		
+		if Uoid.Flags.has_load_mask in flags:
+			(self.load_mask,) = read_exact(stream, 1)
+		else:
+			self.load_mask = 0xff
+		
+		self.class_type, self.object_id = stream_unpack(stream, UOID_MID_PART)
+		self.object_name = read_safe_string(stream)
+		
+		if Uoid.Flags.has_clone_ids in flags:
+			clone_id, ignored, clone_player_id = stream_unpack(stream, UOID_CLONE_IDS)
+			self.clone_ids = clone_id, clone_player_id
+		else:
+			self.clone_ids = None
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "Uoid":
+		self = cls()
+		self.read(stream)
+		return self
+	
+	@classmethod
+	def key_from_stream(cls, stream: typing.BinaryIO) -> "typing.Optional[Uoid]":
+		(non_null,) = read_exact(stream, 1)
+		if non_null:
+			return cls.from_stream(stream)
+		else:
+			return None
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		flags = Uoid.Flags(0)
+		if self.load_mask != 0xff:
+			flags |= Uoid.Flags.has_load_mask
+		if self.clone_ids is not None:
+			flags |= Uoid.Flags.has_clone_ids
+		stream.write(bytes([flags]))
+		
+		self.location.write(stream)
+		
+		if self.load_mask != 0xff:
+			stream.write(bytes([self.load_mask]))
+		
+		stream.write(UOID_MID_PART.pack(self.class_type, self.object_id))
+		write_safe_string(stream, self.object_name)
+		
+		if self.clone_ids is not None:
+			clone_id, clone_player_id = self.clone_ids
+			stream.write(UOID_CLONE_IDS.pack(clone_id, 0, clone_player_id))
+	
+	@classmethod
+	def key_to_stream(cls, key: "typing.Optional[Uoid]", stream: typing.BinaryIO) -> None:
+		if key is None:
+			stream.write(b"\x00")
+		else:
+			stream.write(b"\x01")
+			key.write(stream)

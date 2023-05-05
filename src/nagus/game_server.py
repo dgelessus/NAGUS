@@ -38,10 +38,6 @@ from . import structs
 logger = logging.getLogger(__name__)
 
 
-LOCATION = struct.Struct("<IH")
-UOID_MID_PART = struct.Struct("<HI")
-UOID_CLONE_IDS = struct.Struct("<HHI")
-
 CONNECT_DATA = struct.Struct("<I16s16s")
 
 PING_REQUEST = struct.Struct("<I")
@@ -62,50 +58,15 @@ NET_MESSAGE_LOAD_CLONE_BOOLS = struct.Struct("<???")
 COMPRESSION_THRESHOLD = 256
 
 
-class Location(object):
-	class Flags(structs.IntFlag):
-		local_only = 1 << 0
-		volatile = 1 << 1
-		reserved = 1 << 2
-		built_in = 1 << 3
-		itinerant = 1 << 4
-	
-	sequence_number: int
-	flags: "Location.Flags"
-	
-	def __init__(self, sequence_number: int, flags: "Location.Flags") -> None:
-		super().__init__()
-		
-		self.sequence_number = sequence_number
-		self.flags = flags
-	
-	def __eq__(self, other: object) -> bool:
-		if not isinstance(other, Location):
-			return NotImplemented
-		
-		return self.sequence_number == other.sequence_number and self.flags == other.flags
-	
-	def __repr__(self) -> str:
-		return f"{type(self).__qualname__}({self.sequence_number:#x}, {self.flags!s})"
-	
-	@classmethod
-	def from_stream(cls, stream: typing.BinaryIO) -> "Location":
-		sequence_number, flags = structs.stream_unpack(stream, LOCATION)
-		return cls(sequence_number, Location.Flags(flags))
-	
-	def write(self, stream: typing.BinaryIO) -> None:
-		stream.write(LOCATION.pack(self.sequence_number, self.flags))
-
-
 class GroupId(object):
 	class Flags(structs.IntFlag):
 		constant = 1 << 0
 		local = 1 << 1
 	
-	location: Location
+	location: structs.Location
 	flags: "GroupId.Flags"
 	
-	def __init__(self, id: Location, flags: "GroupId.Flags") -> None:
+	def __init__(self, id: structs.Location, flags: "GroupId.Flags") -> None:
 		super().__init__()
 		
 		self.location = id
@@ -122,111 +83,13 @@ class GroupId(object):
 	
 	@classmethod
 	def from_stream(cls, stream: typing.BinaryIO) -> "GroupId":
-		location = Location.from_stream(stream)
+		location = structs.Location.from_stream(stream)
 		(flags,) = structs.read_exact(stream, 1)
 		return cls(location, GroupId.Flags(flags))
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		self.location.write(stream)
 		stream.write(bytes([self.flags]))
-
-
-class Uoid(object):
-	class Flags(structs.IntFlag):
-		has_clone_ids = 1 << 0
-		has_load_mask = 1 << 1
-		
-		supported = (
-			has_clone_ids
-			| has_load_mask
-		)
-	
-	location: Location
-	load_mask: int
-	class_type: int
-	object_id: int
-	object_name: bytes
-	clone_ids: typing.Optional[typing.Tuple[int, int]]
-	
-	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = collections.OrderedDict()
-		fields["location"] = repr(self.location)
-		if self.load_mask != 0xff:
-			fields["load_mask"] = hex(self.load_mask)
-		fields["class_type"] = f"0x{self.class_type:>04x}"
-		fields["object_id"] = repr(self.object_id)
-		fields["object_name"] = repr(self.object_name)
-		if self.clone_ids is not None:
-			fields["clone_ids"] = repr(self.clone_ids)
-		return fields
-	
-	def __repr__(self) -> str:
-		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
-		return f"{type(self).__qualname__}({joined_fields})"
-	
-	def read(self, stream: typing.BinaryIO) -> None:
-		(flags,) = structs.read_exact(stream, 1)
-		flags = Uoid.Flags(flags)
-		if flags & ~Uoid.Flags.supported:
-			raise ValueError(f"Uoid has unsupported flags set: {flags!r}")
-		
-		self.location = Location.from_stream(stream)
-		
-		if Uoid.Flags.has_load_mask in flags:
-			(self.load_mask,) = structs.read_exact(stream, 1)
-		else:
-			self.load_mask = 0xff
-		
-		self.class_type, self.object_id = structs.stream_unpack(stream, UOID_MID_PART)
-		self.object_name = structs.read_safe_string(stream)
-		
-		if Uoid.Flags.has_clone_ids in flags:
-			clone_id, ignored, clone_player_id = structs.stream_unpack(stream, UOID_CLONE_IDS)
-			self.clone_ids = clone_id, clone_player_id
-		else:
-			self.clone_ids = None
-	
-	@classmethod
-	def from_stream(cls, stream: typing.BinaryIO) -> "Uoid":
-		self = cls()
-		self.read(stream)
-		return self
-	
-	@classmethod
-	def key_from_stream(cls, stream: typing.BinaryIO) -> "typing.Optional[Uoid]":
-		(non_null,) = structs.read_exact(stream, 1)
-		if non_null:
-			return cls.from_stream(stream)
-		else:
-			return None
-	
-	def write(self, stream: typing.BinaryIO) -> None:
-		flags = Uoid.Flags(0)
-		if self.load_mask != 0xff:
-			flags |= Uoid.Flags.has_load_mask
-		if self.clone_ids is not None:
-			flags |= Uoid.Flags.has_clone_ids
-		stream.write(bytes([flags]))
-		
-		self.location.write(stream)
-		
-		if self.load_mask != 0xff:
-			stream.write(bytes([self.load_mask]))
-		
-		stream.write(UOID_MID_PART.pack(self.class_type, self.object_id))
-		structs.write_safe_string(stream, self.object_name)
-		
-		if self.clone_ids is not None:
-			clone_id, clone_player_id = self.clone_ids
-			stream.write(UOID_CLONE_IDS.pack(clone_id, 0, clone_player_id))
-	
-	@classmethod
-	def key_to_stream(cls, key: "typing.Optional[Uoid]", stream: typing.BinaryIO) -> None:
-		if key is None:
-			stream.write(b"\x00")
-		else:
-			stream.write(b"\x01")
-			key.write(stream)
 
 
 class ClientInfo(object):
@@ -434,9 +297,9 @@ class MemberInfo(object):
 	
 	flags: "MemberInfo.Flags"
 	client_info: ClientInfo
-	avatar_uoid: Uoid
+	avatar_uoid: structs.Uoid
 	
-	def __init__(self, flags: "MemberInfo.Flags", client_info: ClientInfo, avatar_uoid: Uoid) -> None:
+	def __init__(self, flags: "MemberInfo.Flags", client_info: ClientInfo, avatar_uoid: structs.Uoid) -> None:
 		super().__init__()
 		
 		self.flags = flags
@@ -450,7 +313,7 @@ class MemberInfo(object):
 	def from_stream(cls, stream: typing.BinaryIO) -> "MemberInfo":
 		(flags,) = structs.stream_unpack(stream, structs.UINT32)
 		client_info = ClientInfo.from_stream(stream)
-		avatar_uoid = Uoid.from_stream(stream)
+		avatar_uoid = structs.Uoid.from_stream(stream)
 		return cls(MemberInfo.Flags(flags), client_info, avatar_uoid)
 	
 	def write(self, stream: typing.BinaryIO) -> None:
@@ -497,8 +360,8 @@ class PlasmaMessage(object):
 	CLASS_INDEX = 0x0202
 	
 	class_index: int
-	sender: typing.Optional[Uoid]
-	receivers: typing.List[typing.Optional[Uoid]]
+	sender: typing.Optional[structs.Uoid]
+	receivers: typing.List[typing.Optional[structs.Uoid]]
 	timestamp: float
 	flags: PlasmaMessageFlags
 	
@@ -547,12 +410,12 @@ class PlasmaMessage(object):
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		(self.class_index,) = structs.stream_unpack(stream, structs.UINT16)
-		self.sender = Uoid.key_from_stream(stream)
+		self.sender = structs.Uoid.key_from_stream(stream)
 		
 		(receiver_count,) = structs.stream_unpack(stream, structs.INT32)
 		self.receivers = []
 		for _ in range(receiver_count):
-			self.receivers.append(Uoid.key_from_stream(stream))
+			self.receivers.append(structs.Uoid.key_from_stream(stream))
 		
 		self.timestamp, flags = structs.stream_unpack(stream, PLASMA_MESSAGE_HEADER_END)
 		self.flags = PlasmaMessageFlags(flags)
@@ -578,11 +441,11 @@ class PlasmaMessage(object):
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		stream.write(structs.UINT16.pack(self.class_index))
-		Uoid.key_to_stream(self.sender, stream)
+		structs.Uoid.key_to_stream(self.sender, stream)
 		
 		stream.write(structs.INT32.pack(len(self.receivers)))
 		for receiver in self.receivers:
-			Uoid.key_to_stream(receiver, stream)
+			structs.Uoid.key_to_stream(receiver, stream)
 		
 		stream.write(PLASMA_MESSAGE_HEADER_END.pack(self.timestamp, self.flags))
 
@@ -840,7 +703,7 @@ NET_MESSAGE_CLASSES_BY_INDEX: typing.Dict[int, typing.Type[NetMessage]] = {
 class NetMessageRoomsList(NetMessage):
 	CLASS_INDEX = 0x0263
 	
-	rooms: typing.List[typing.Tuple[Location, bytes]]
+	rooms: typing.List[typing.Tuple[structs.Location, bytes]]
 	
 	def __init__(self) -> None:
 		super().__init__()
@@ -857,7 +720,7 @@ class NetMessageRoomsList(NetMessage):
 		(room_count,) = structs.stream_unpack(stream, structs.UINT32)
 		self.rooms = []
 		for _ in range(room_count):
-			location = Location.from_stream(stream)
+			location = structs.Location.from_stream(stream)
 			(name_length,) = structs.stream_unpack(stream, structs.UINT16)
 			name = structs.read_exact(stream, name_length)
 			self.rooms.append((location, name))
@@ -933,8 +796,8 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 				else:
 					count += 1
 					
-					age_sdl_hook_uoid = Uoid()
-					age_sdl_hook_uoid.location = Location((age_sequence_prefix << 16) + 33 - 2, Location.Flags.built_in)
+					age_sdl_hook_uoid = structs.Uoid()
+					age_sdl_hook_uoid.location = structs.Location((age_sequence_prefix << 16) + 33 - 2, structs.Location.Flags.built_in)
 					age_sdl_hook_uoid.load_mask = 0xff
 					age_sdl_hook_uoid.class_type = 0x0001 # Scene Object
 					age_sdl_hook_uoid.object_id = 1
@@ -960,7 +823,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 class NetMessageObject(NetMessage):
 	CLASS_INDEX = 0x0268
 	
-	uoid: Uoid
+	uoid: structs.Uoid
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
@@ -970,7 +833,7 @@ class NetMessageObject(NetMessage):
 	def read(self, stream: typing.BinaryIO) -> None:
 		super().read(stream)
 		
-		self.uoid = Uoid.from_stream(stream)
+		self.uoid = structs.Uoid.from_stream(stream)
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
@@ -1202,11 +1065,11 @@ class NetMessageGameMessage(NetMessageStream):
 			
 			# Double-check the containing network game message's has_game_message_receivers flag
 			# and check for nullptr receivers.
-			game_message_receiver: typing.Optional[Uoid] = None
+			game_message_receiver: typing.Optional[structs.Uoid] = None
 			for i, receiver in enumerate(message.receivers):
 				if receiver is None:
 					logger.warning("plMessage %s has nullptr receiver at index %d", message.class_description, i)
-				elif game_message_receiver is None and receiver.location.sequence_number != 0 and Location.Flags.reserved not in receiver.location.flags:
+				elif game_message_receiver is None and receiver.location.sequence_number != 0 and structs.Location.Flags.reserved not in receiver.location.flags:
 					game_message_receiver = receiver
 			
 			if game_message_receiver is None and NetMessageFlags.has_game_message_receivers in self.flags:
@@ -1278,7 +1141,7 @@ class NetMessageGameMessageDirected(NetMessageGameMessage):
 class NetMessageLoadClone(NetMessageGameMessage):
 	CLASS_INDEX = 0x03b3
 	
-	uoid: Uoid
+	uoid: structs.Uoid
 	is_player: bool
 	is_loading: bool
 	is_initial_state: bool
@@ -1296,7 +1159,7 @@ class NetMessageLoadClone(NetMessageGameMessage):
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		super().read(stream)
-		self.uoid = Uoid.from_stream(stream)
+		self.uoid = structs.Uoid.from_stream(stream)
 		self.is_player, self.is_loading, self.is_initial_state = structs.stream_unpack(stream, NET_MESSAGE_LOAD_CLONE_BOOLS)
 	
 	def write(self, stream: typing.BinaryIO) -> None:
@@ -1444,7 +1307,7 @@ class NetMessagePlayerPage(NetMessage):
 	CLASS_INDEX = 0x03b4
 	
 	unload: bool
-	uoid: Uoid
+	uoid: structs.Uoid
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
@@ -1457,7 +1320,7 @@ class NetMessagePlayerPage(NetMessage):
 		super().read(stream)
 		(unload,) = structs.read_exact(stream, 1)
 		self.unload = bool(unload)
-		self.uoid = Uoid.from_stream(stream)
+		self.uoid = structs.Uoid.from_stream(stream)
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
@@ -1656,7 +1519,7 @@ class GameConnection(base.BaseMOULConnection):
 		if not hasattr(self.client_state, "age_sequence_prefix") and isinstance(message, NetMessageObject):
 			loc = message.uoid.location
 			if loc.sequence_number < 0x80000000:
-				assert Location.Flags.reserved not in loc.flags
+				assert structs.Location.Flags.reserved not in loc.flags
 				self.client_state.age_sequence_prefix = (loc.sequence_number - 33) >> 16
 				logger.debug("Received message with non-global location %r - assuming that this age's sequence prefix is %d", loc, self.client_state.age_sequence_prefix)
 		
