@@ -387,6 +387,36 @@ class SDLRecordBase(object):
 		stream.write(bytes([SDLRecordBase.IO_VERSION]))
 
 
+def _looks_like_start_of_variable(data: bytes) -> bool:
+	"""Check whether the given data looks like the start of an SDL variable."""
+	
+	return (
+		len(data) >= 4
+		# 1 byte: flags with only has_notification_info set (always the case)
+		# 1 byte: notification info flags set to 0 (always the case)
+		and data.startswith(b"\x02\x00")
+		# 2 bytes: SafeString header with a relatively short length (almost always the case)
+		and data[2] < 0x80
+		and data[3:4] == b"\xf0"
+	)
+
+
+def _find_start_of_variable(data: bytes) -> int:
+	"""Find the first index in the given data that looks like the start of an SDL variable.
+	
+	:raises ValueError: If no matching index could be found in the data.
+	"""
+	
+	next_pos = 0
+	# If no start of variable was found,
+	# the loop is terminated by the ValueError thrown by bytes.index.
+	while True:
+		pos = data.index(b"\x02\x00", next_pos)
+		if _looks_like_start_of_variable(data[pos:pos+4]):
+			return pos
+		next_pos = pos + 2
+
+
 class GuessedSDLRecord(SDLRecordBase):
 	"""An SDL record parsed by guessing the structure of an SDL blob rather than knowing it from a state descriptor.
 	
@@ -395,16 +425,13 @@ class GuessedSDLRecord(SDLRecordBase):
 	In practice,
 	it's usually possible to guess the basic structure from the SDL blob alone.
 	
-	This implementation works for many simple cases,
-	but still breaks on some things encountered in practice.
+	This implementation works for most blobs produced by Cyan's code,
+	but usually not for ones written by DIRTSAND,
+	because the latter often omits the notification info fields,
+	which this code uses to guess variable boundaries.
+	
 	Nested SDL variables are currently ignored completely.
 	"""
-	
-	# This is a variable header with the following contents:
-	# 1 byte: flags with only has_notification_info set (always the case)
-	# 1 byte: notification info flags set to 0 (always the case)
-	# 2 bytes: empty SafeString (it's empty most of the time, but not always)
-	VARIABLE_SIGNATURE = b"\x02\x00\x00\xf0"
 	
 	simple_values: typing.Dict[int, GuessedSimpleVariableValue]
 	nested_sdl_values: typing.Dict[int, NestedSDLVariableValue]
@@ -432,9 +459,9 @@ class GuessedSDLRecord(SDLRecordBase):
 			lookahead = stream.read(5)
 			stream.seek(pos)
 			
-			if lookahead.startswith(GuessedSDLRecord.VARIABLE_SIGNATURE):
+			if _looks_like_start_of_variable(lookahead):
 				simple_variables_have_indices = False
-			elif lookahead[1:5] == GuessedSDLRecord.VARIABLE_SIGNATURE:
+			elif _looks_like_start_of_variable(lookahead[1:]):
 				simple_variables_have_indices = True
 			else:
 				raise ValueError(f"Unable to guess whether or not this SDL blob has indices before its simple variables. Simple variable count is {simple_variable_count}, lookahead afterwards is {lookahead!r}")
@@ -459,7 +486,7 @@ class GuessedSDLRecord(SDLRecordBase):
 				
 				# Find end of data for this variable by looking for the start of the next variable.
 				try:
-					data_len = lookahead.index(GuessedSDLRecord.VARIABLE_SIGNATURE)
+					data_len = _find_start_of_variable(lookahead)
 				except ValueError:
 					# If there are no nested SDL variables,
 					# the SDL blob will end shortly after the last simple variable
@@ -486,3 +513,17 @@ class GuessedSDLRecord(SDLRecordBase):
 		(nested_sdl_variable_count,) = structs.read_exact(stream, 1)
 		self.nested_sdl_values = {}
 		# TODO Read nested SDL variable values
+
+
+def guess_parse_sdl_blob(stream: typing.BinaryIO) -> typing.Tuple[typing.Optional[SDLStreamHeader], GuessedSDLRecord]:
+	pos = stream.tell()
+	try:
+		header = SDLStreamHeader.from_stream(stream)
+	except ValueError:
+		stream.seek(pos)
+		header = None
+	
+	record = GuessedSDLRecord()
+	record.read(stream)
+	
+	return header, record
