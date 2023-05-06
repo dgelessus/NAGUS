@@ -578,7 +578,7 @@ The blob format of :ref:`nested SDL variable <sdl_nested_types>` values is:
   For fixed-length array variables,
   the maximum value is the array length.
   For variable-length array values,
-  this field is always 4 bytes long,
+  this field is always 1 byte long,
   regardless of the actual array length.
 * **Variable values:** Variable-length array.
   Each element is structured as follows:
@@ -588,12 +588,19 @@ The blob format of :ref:`nested SDL variable <sdl_nested_types>` values is:
     For fixed-length array variables,
     the maximum value is the array length.
     For variable-length array values,
-    this field is always 4 bytes long,
+    this field is always 1 byte long,
     regardless of the actual array length.
     Omitted if the value count is equal to the array length
     (i. e. if this variable value contains values for *all* array elements).
   * **Element value:** SDL blob *without* stream header
     (the descriptor name and version are known from the outer state descriptor).
+
+.. note::
+  
+  A nested SDL variable value with a variable array length can only contain at most 255 element values.
+  This is because of a bug in Cyan's SDL code,
+  which sets the variable-size count/element fields to the *smallest* possible size (1 byte) instead of the *largest* one (4 bytes).
+  This doesn't seem to cause any problems in practice.
 
 Stream header
 ^^^^^^^^^^^^^
