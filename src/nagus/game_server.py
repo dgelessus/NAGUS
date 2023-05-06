@@ -1063,14 +1063,19 @@ class NetMessageGameMessage(NetMessageStream):
 		else:
 			logger.debug("Parsed plMessage: %r", message)
 			
+			if message.sender is not None:
+				connection.client_state.try_find_age_sequence_prefix(message.sender.location)
+			
 			# Double-check the containing network game message's has_game_message_receivers flag
 			# and check for nullptr receivers.
 			game_message_receiver: typing.Optional[structs.Uoid] = None
 			for i, receiver in enumerate(message.receivers):
 				if receiver is None:
 					logger.warning("plMessage %s has nullptr receiver at index %d", message.class_description, i)
-				elif game_message_receiver is None and receiver.location.sequence_number != 0 and structs.Location.Flags.reserved not in receiver.location.flags:
-					game_message_receiver = receiver
+				else:
+					connection.client_state.try_find_age_sequence_prefix(receiver.location)
+					if game_message_receiver is None and receiver.location.sequence_number != 0 and structs.Location.Flags.reserved not in receiver.location.flags:
+						game_message_receiver = receiver
 			
 			if game_message_receiver is None and NetMessageFlags.has_game_message_receivers in self.flags:
 				logger.warning("plMessage %s has no (non-virtual, non-reserved) receivers, but the containing network game message has the has_game_message_receivers flag set", message.class_description)
@@ -1337,6 +1342,36 @@ class GameClientState(object):
 	age_sequence_prefix: int
 	account_uuid: uuid.UUID
 	ki_number: int
+	
+	def try_find_age_sequence_prefix(self, location: structs.Location) -> None:
+		"""Try to derive (if necessary) the client's age sequence prefix from the given location.
+		
+		The client never directly sends the age sequence prefix,
+		but the server needs to know it so it can send the AgeSDLHook in reply to the GameStateRequest.
+		Normally the server would look up the sequence prefix in the corresponding .age file,
+		but I don't want to implement that yet
+		(and also would like to avoid depending on age-specific data files as much as possible).
+		So as a workaround,
+		wait for a message from the client that contains a non-global location
+		and extract the sequence prefix from there.
+		
+		This is pretty janky -
+		it requires that before the client sends the GameStateRequest,
+		it sends at least one message with a non-global location,
+		and that message is for the current age.
+		This seems to work in practice,
+		thanks to plNetMsgTestAndSet and plNotifyMsg messages,
+		which get sent early during link-in before the GameStateRequest
+		(except for some simple ages like AvatarCustomization,
+		but that one doesn't have age SDL either,
+		so it doesn't matter there).
+		"""
+		
+		if not hasattr(self, "age_sequence_prefix"):
+			if location.sequence_number < 0x80000000:
+				assert structs.Location.Flags.reserved not in location.flags
+				self.age_sequence_prefix = (location.sequence_number - 33) >> 16
+				logger.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, self.age_sequence_prefix)
 
 
 class GameConnection(base.BaseMOULConnection):
@@ -1498,29 +1533,7 @@ class GameConnection(base.BaseMOULConnection):
 		if extra_data:
 			logger.warning("PropagateBuffer message %s has extra trailing data: %r", message.class_description, extra_data)
 		
-		# The client never directly sends the age sequence prefix,
-		# but the server needs to know it so it can send the AgeSDLHook in reply to the GameStateRequest.
-		# Normally the server would look up the sequence prefix in the corresponding .age file,
-		# but I don't want to implement that yet
-		# (and also would like to avoid depending on age-specific data files as much as possible).
-		# So as a workaround,
-		# wait for a message from the client that contains a non-global location
-		# and extract the sequence prefix from there.
-		# This is pretty janky -
-		# it requires that before the client sends the GameStateRequest,
-		# it sends at least one message with a non-global location,
-		# and that message is for the current age.
-		# This seems to work in practice,
-		# thanks to TestAndSet messages,
-		# which get sent early during link-in before the GameStateRequest
-		# (except for some simple ages like AvatarCustomization,
-		# but that one doesn't have age SDL either,
-		# so it doesn't matter there).
-		if not hasattr(self.client_state, "age_sequence_prefix") and isinstance(message, NetMessageObject):
-			loc = message.uoid.location
-			if loc.sequence_number < 0x80000000:
-				assert structs.Location.Flags.reserved not in loc.flags
-				self.client_state.age_sequence_prefix = (loc.sequence_number - 33) >> 16
-				logger.debug("Received message with non-global location %r - assuming that this age's sequence prefix is %d", loc, self.client_state.age_sequence_prefix)
+		if isinstance(message, NetMessageObject):
+			self.client_state.try_find_age_sequence_prefix(message.uoid.location)
 		
 		await message.handle(self)
