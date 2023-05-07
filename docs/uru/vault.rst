@@ -919,7 +919,7 @@ they are never added to the vault by the client or any known server implementati
   17,*AgeGlobalSDLNode*,*unused*
   18,CanVisitFolder,:ref:`vault_node_player_info_list`
   19,AgeOwnersFolder,:ref:`vault_node_player_info_list`
-  20,*AllAgeGlobalSDLNodesFolder*,*unused*
+  20,AllAgeGlobalSDLNodesFolder,:ref:`vault_node_folder`
   21,*PlayerInfoNode*,*unused*
   22,*PublicAgesFolder*,*unused*
   23,AgesIOwnFolder,:ref:`vault_node_age_info_list`
