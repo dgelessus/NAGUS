@@ -175,6 +175,101 @@ def write_unified_time(stream: typing.BinaryIO, dt: datetime.datetime) -> None:
 	stream.write(pack_unified_time(dt))
 
 
+# TODO Document this nonsense properly
+# The original open-sourced client code had a debug assertion that only allowed age prefix numbers from -0xfe to 0xfe (inclusive).
+# H'uru extended the range to -0xff to 0xfeff (inclusive).
+# OpenUru later separately extended the range to -0x7ffe to 0x7ffe (inclusive).
+# libHSPlasma parses sequence numbers incorrectly if the age prefix is 0x8000 or higher
+# (and also the last few pages of age prefix 0x7fff).
+# Going by the enum constants in plLocation in the open-sourced client code,
+# age prefix numbers from -0xff to 0xfeff (inclusive) are possible,
+# although age prefixes -0xff and 0xfeff have a few pages that conflict with reserved/special sequence numbers after encoding.
+# The implementations below try to check for all of these weird corner cases
+# without disallowing any legitimate and safe combinations.
+
+
+def split_sequence_number(sequence_number: int) -> typing.Tuple[int, int]:
+	"""Split a sequence number (from a location) into its prefix (age) and suffix (page) parts.
+	
+	:raises ValueError: If the sequence number is out of range, ambiguous, or has a known special meaning.
+	"""
+	
+	if sequence_number not in range(0x100000000):
+		raise ValueError(f"Sequence number out of range: {sequence_number:#x}")
+	elif sequence_number in range(0x21) or sequence_number in range(0xff000000, 0xff010001) or sequence_number == 0xffffffff:
+		# Sequence numbers up to and including 32 (0x20) are local-only or otherwise special.
+		# Sequence number 0xff000000 is reserved for the server.
+		# Sequence numbers 0xff000001 through 0xff010000 (inclusive) are in the reserved/global range,
+		# but cannot be parsed meaningfully
+		# (the age prefix number comes out as 0,
+		# which is non-global and so should be encoded differently).
+		# Sequence number 0xffffffff is invalid.
+		raise ValueError(f"Sequence number has special meaning and shouldn't be split: {sequence_number:#x}")
+	
+	if sequence_number in range(0xff010001, 0xffffffff):
+		sequence_number -= 0xff000001
+		age = -(sequence_number >> 16)
+	else:
+		if not (
+			sequence_number in range(0x80000000)
+			# Special case for VeeTsah (prefix number 40004, in the problematic range that libHSPlasma parses incorrectly).
+			or sequence_number in range(0x9c440021, 0x9c450021)
+		):
+			raise ValueError(f"Potentially problematic sequence number: {sequence_number:#x}")
+		
+		sequence_number -= 33
+		age = sequence_number >> 16
+	
+	page = sequence_number & 0xffff
+	if page >= 0x8000:
+		page = page - 0x10000
+	
+	return age, page
+
+
+def make_sequence_number(age: int, page: int) -> int:
+	"""Combine a prefix (age) number and suffix (page) number into a single sequence number.
+	
+	:raises ValueError: If the inputs are out of range or the result would be ambiguous or conflict with known special seqeuence numbers.
+	"""
+	
+	# Any age prefix numbers outside this range are definitely invalid.
+	if age not in range(-0xff, 0xff00):
+		raise ValueError(f"Age prefix number out of range: {age}")
+	
+	# Disallow age prefix numbers that might cause issues for OpenUru clients and libHSPlasma,
+	# with an exception for VeeTsah,
+	# because that's already widely deployed.
+	# I might remove this check in the future.
+	if not (
+		age in range(-0xff, 0x7fff)
+		# Special case for VeeTsah (in the problematic range that libHSPlasma parses incorrectly).
+		or age == 40004
+	):
+		raise ValueError(f"Potentially problematic age prefix number: {age}")
+	
+	# Any page suffix numbers outside this range are definitely invalid.
+	if page not in range(-0x8000, 0x8000):
+		raise ValueError(f"Page number out of range: {page}")
+	page = page & 0xffff
+	
+	# Prevent any combinations that would conflict with special/reserved locations after encoding.
+	if (
+		age == 0xfeff and page in range(0xffdf, 0x10000)
+		or age == -0xff and page == 0xffff
+	):
+		raise ValueError(f"Page number out of range: {page}")
+	
+	if age < 0:
+		sequence_number = (-age << 16) + page + 0xff000001
+		assert sequence_number in range(0xff010001, 0xffffffff)
+		return sequence_number
+	else:
+		sequence_number = (age << 16) + page + 33
+		assert sequence_number in range(0x21, 0xff000000)
+		return sequence_number
+
+
 class Location(object):
 	class Flags(IntFlag):
 		local_only = 1 << 0

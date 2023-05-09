@@ -797,7 +797,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 					count += 1
 					
 					age_sdl_hook_uoid = structs.Uoid()
-					age_sdl_hook_uoid.location = structs.Location((age_sequence_prefix << 16) + 33 - 2, structs.Location.Flags.built_in)
+					age_sdl_hook_uoid.location = structs.Location(structs.make_sequence_number(age_sequence_prefix, -2), structs.Location.Flags.built_in)
 					age_sdl_hook_uoid.load_mask = 0xff
 					age_sdl_hook_uoid.class_type = 0x0001 # Scene Object
 					age_sdl_hook_uoid.object_id = 1
@@ -1368,9 +1368,9 @@ class GameClientState(object):
 		"""
 		
 		if not hasattr(self, "age_sequence_prefix"):
-			if location.sequence_number < 0x80000000:
+			if location.sequence_number in range(0x21, 0x80000000):
 				assert structs.Location.Flags.reserved not in location.flags
-				self.age_sequence_prefix = (location.sequence_number - 33) >> 16
+				(self.age_sequence_prefix, _) = structs.split_sequence_number(location.sequence_number)
 				logger.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, self.age_sequence_prefix)
 
 
