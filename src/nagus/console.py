@@ -73,7 +73,7 @@ async def run_command(server_state: state.ServerState, command: str, args: typin
 		print(f"This is NAGUS version {__version__}")
 	elif command == "loglevel":
 		if not args:
-			current_level = logging.root.getEffectiveLevel()
+			current_level = logging.getLogger(None).getEffectiveLevel()
 			print("Current log level: " + logging.getLevelName(current_level))
 		elif len(args) == 1:
 			log_level: typing.Union[str, int]
@@ -85,7 +85,7 @@ async def run_command(server_state: state.ServerState, command: str, args: typin
 				pass
 			
 			try:
-				logging.root.setLevel(log_level)
+				logging.getLogger(None).setLevel(log_level)
 			except ValueError as exc:
 				raise UserError(str(exc))
 			
