@@ -1068,10 +1068,10 @@ class ServerState(object):
 				yield node_id
 	
 	async def find_unique_vault_node(self, template: VaultNodeData, *, parent_id: typing.Optional[int] = None) -> int:
-		found_node_id = None
+		found_node_id: typing.Optional[int] = None
 		async for node_id in self.find_vault_nodes(template, parent_id=parent_id):
 			if found_node_id is not None:
-				logger_vault.warning( # type: ignore # mypy thinks this is unreachable for some reason
+				logger_vault.warning(
 					"Found multiple vault nodes matching the template %r with parent %r: %d and %d (and possibly more)! Ignoring all except the first one.",
 					template, parent_id, found_node_id, node_id,
 				)
