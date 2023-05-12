@@ -171,8 +171,16 @@ class Configuration(object):
 			self.logging_config = {
 				"version": 1,
 				"incremental": True,
-				"root": {
-					"level": "DEBUG",
+				"root": {"level": "DEBUG"},
+				"loggers": {
+					"nagus.auth_server.connect": {"level": "INFO"},
+					"nagus.auth_server.login": {"level": "INFO"},
+					"nagus.auth_server.ping": {"level": "INFO"},
+					"nagus.auth_server.vault.read": {"level": "INFO"},
+					"nagus.base": {"level": "INFO"},
+					"nagus.console": {"level": "INFO"},
+					"nagus.game_server.join": {"level": "INFO"},
+					"nagus.game_server.ping": {"level": "INFO"},
 				},
 			}
 		if not hasattr(self, "logging_enable_crash_lines"):

@@ -93,11 +93,9 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 	try:
 		try:
 			client_address = writer.get_extra_info("peername")
-			logger_client.info("Connection from %s", client_address)
 			await client_connected_inner(reader, writer, server_state)
 		finally:
 			writer.close()
-			logger_client.info("Closing connection with %s", client_address)
 			# No need to await writer.wait_closed(),
 			# because we don't do anything else with the writer anymore.
 	except (ConnectionResetError, asyncio.IncompleteReadError) as exc:
@@ -119,6 +117,8 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 	except BaseException as exc:
 		logger_client.error("Uncaught BaseException while handling request from %s - something has gone quite wrong:", client_address, exc_info=exc)
 		raise
+	else:
+		logger_client.info("Cleanly disconnected from client %s", client_address)
 
 
 async def moul_server_main(server_state: state.ServerState) -> None:

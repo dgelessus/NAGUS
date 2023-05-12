@@ -1477,6 +1477,7 @@ class GameConnection(base.BaseMOULConnection):
 		self.client_state.age_file_name = age_file_name
 		self.client_state.account_uuid = account_uuid
 		self.client_state.ki_number = ki_number
+		logger_join.info("Account %s, avatar %d joined age instance %d: %r, %r (%d) %r, %s", account_uuid, ki_number, mcp_id, age_file_name, age_info_node_data.string64_4, age_info_node_data.int32_1, age_info_node_data.string64_3, age_instance_uuid)
 		
 		await self.join_age_reply(trans_id, base.NetError.success)
 	

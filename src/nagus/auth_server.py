@@ -344,6 +344,7 @@ class AuthConnection(base.BaseMOULConnection):
 		
 		# TODO Implement actual authentication
 		self.client_state.account_uuid = PLACEHOLDER_ACCOUNT_UUID
+		logger_login.info("Account %r logged in (UUID %s)", account_name, self.client_state.account_uuid)
 		
 		async for avatar in self.server_state.find_avatars(self.client_state.account_uuid):
 			await self.account_player_info(trans_id, avatar.player_node_id, avatar.name, avatar.shape, avatar.explorer)
@@ -360,6 +361,7 @@ class AuthConnection(base.BaseMOULConnection):
 		logger_login.debug("Set player request: transaction ID %d, KI number %d", trans_id, ki_number)
 		# TODO Check that the KI number actually belongs to the player's account
 		self.client_state.ki_number = ki_number
+		logger_login.info("Account %s now playing as avatar %r", self.client_state.account_uuid, ki_number)
 		await self.account_set_player_reply(trans_id, base.NetError.success)
 	
 	async def player_delete_reply(self, trans_id: int, result: base.NetError) -> None:
