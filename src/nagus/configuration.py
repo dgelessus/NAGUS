@@ -23,6 +23,7 @@ but this way is easier for now.
 """
 
 
+import ast
 import configparser
 import ipaddress
 import os
@@ -61,6 +62,7 @@ class Configuration(object):
 	database_path: str
 	
 	logging_level: str
+	logging_config: dict
 	logging_enable_crash_lines: bool
 	
 	console_enable: bool
@@ -85,6 +87,15 @@ class Configuration(object):
 			self.database_path = value
 		elif option == ("logging", "level"):
 			self.logging_level = value
+		elif option == ("logging", "config"):
+			try:
+				obj = ast.literal_eval(value)
+			except SyntaxError as e:
+				raise ConfigError(e)
+			
+			if not isinstance(obj, dict):
+				raise ConfigError(f"Expected a Python dictionary, not {type(obj).__name__}")
+			self.logging_config = obj
 		elif option == ("logging", "enable_crash_lines"):
 			self.logging_enable_crash_lines = parse_bool(value)
 		elif option == ("console", "enable"):
@@ -161,6 +172,11 @@ class Configuration(object):
 			self.database_path = "nagus.sqlite"
 		if not hasattr(self, "logging_level"):
 			self.logging_level = "DEBUG"
+		if not hasattr(self, "logging_config"):
+			self.logging_config = {
+				"version": 1,
+				"incremental": True,
+			}
 		if not hasattr(self, "logging_enable_crash_lines"):
 			self.logging_enable_crash_lines = True
 		if not hasattr(self, "console_enable"):

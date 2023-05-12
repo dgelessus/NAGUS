@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 HELP_TEXT = """Available commands:
 	exit, shutdown, stop, q, quit - Shut down the server
 	help, ? - Display this help text
-	loglevel [LEVEL_NAME] - Display or change the server log level (option logging.level)
+	loglevel CATEGORY [LEVEL_NAME] - Display or change the log level for a category of log messages (or category "root" for all)
 	status [STATUS_MESSAGE] [MORE_LINES ...] - Display or change the status message (option server.status.message)
 """
 
@@ -72,29 +72,31 @@ async def run_command(server_state: state.ServerState, command: str, args: typin
 		_check_arg_count(0)
 		print(f"This is NAGUS version {__version__}")
 	elif command == "loglevel":
-		if not args:
-			current_level = logging.getLogger(None).getEffectiveLevel()
-			print("Current log level: " + logging.getLevelName(current_level))
-		elif len(args) == 1:
-			log_level: typing.Union[str, int]
-			(log_level,) = args
-			
+		if len(args) not in {1, 2}:
+			raise UserError(f"Expected 1 or 2 arguments, not {len(args)}")
+		
+		logger_name = args[0]
+		logg = logging.getLogger(None if logger_name == "root" else logger_name)
+		
+		if len(args) == 1:
+			level_name = logging.getLevelName(logg.getEffectiveLevel())
+			print(f"Current log level for {logger_name!r} is {level_name}")
+		else:
+			log_level: typing.Union[str, int] = args[1]
 			try:
 				log_level = int(log_level)
 			except ValueError:
 				pass
 			
 			try:
-				logging.getLogger(None).setLevel(log_level)
+				logg.setLevel(log_level)
 			except ValueError as exc:
 				raise UserError(str(exc))
 			
 			if isinstance(log_level, int):
 				log_level = logging.getLevelName(log_level)
 			
-			print(f"Log level now set to {log_level}")
-		else:
-			raise UserError(f"Expected at most 1 argument, not {len(args)}")
+			print(f"Log level for {logger_name!r} now set to {log_level}")
 	elif command == "status":
 		if not args:
 			print("Current status message:")

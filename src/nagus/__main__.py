@@ -26,6 +26,7 @@ the code here just dispatches incoming connections to other modules that do the 
 import argparse
 import asyncio
 import logging
+import logging.config
 import random
 import socket
 import sys
@@ -212,6 +213,7 @@ written in pure Python. It is currently not very good.
 		level=config.logging_level,
 		stream=sys.stdout,
 	)
+	logging.config.dictConfig(config.logging_config)
 	
 	try:
 		asyncio.run(async_main(config))
