@@ -61,7 +61,6 @@ def parse_ipv4_address(s: str) -> ipaddress.IPv4Address:
 class Configuration(object):
 	database_path: str
 	
-	logging_level: str
 	logging_config: dict
 	logging_enable_crash_lines: bool
 	
@@ -85,8 +84,6 @@ class Configuration(object):
 	def _set_option_internal(self, option: typing.Tuple[str, ...], value: str) -> None:
 		if option == ("database", "path"):
 			self.database_path = value
-		elif option == ("logging", "level"):
-			self.logging_level = value
 		elif option == ("logging", "config"):
 			try:
 				obj = ast.literal_eval(value)
@@ -170,12 +167,13 @@ class Configuration(object):
 		
 		if not hasattr(self, "database_path"):
 			self.database_path = "nagus.sqlite"
-		if not hasattr(self, "logging_level"):
-			self.logging_level = "DEBUG"
 		if not hasattr(self, "logging_config"):
 			self.logging_config = {
 				"version": 1,
 				"incremental": True,
+				"root": {
+					"level": "DEBUG",
+				},
 			}
 		if not hasattr(self, "logging_enable_crash_lines"):
 			self.logging_enable_crash_lines = True

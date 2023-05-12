@@ -210,7 +210,6 @@ written in pure Python. It is currently not very good.
 	
 	logging.basicConfig(
 		format="[%(levelname)s] %(name)s: %(message)s",
-		level=config.logging_level,
 		stream=sys.stdout,
 	)
 	logging.config.dictConfig(config.logging_config)
