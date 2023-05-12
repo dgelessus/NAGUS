@@ -31,6 +31,9 @@ from . import structs
 
 
 logger = logging.getLogger(__name__)
+logger_connect = logger.getChild("connect")
+logger_crypt = logger.getChild("crypt")
+logger_message = logger.getChild("message")
 
 
 CONNECT_HEADER_TAIL = struct.Struct("<III16s")
@@ -356,7 +359,7 @@ class BaseMOULConnection(object):
 		self.build_type = BuildType(build_type)
 		self.branch_id = branch_id
 		self.product_id = uuid.UUID(bytes_le=product_id)
-		logger.debug("Received rest of connect packet header: build ID %d, build type %s, branch ID %d, product ID %s", self.build_id, self.build_type, self.branch_id, self.product_id)
+		logger_connect.debug("Received rest of connect packet header: build ID %d, build type %s, branch ID %d, product ID %s", self.build_id, self.build_type, self.branch_id, self.product_id)
 	
 	@abc.abstractmethod
 	async def read_connect_packet_data(self) -> None:
@@ -374,10 +377,10 @@ class BaseMOULConnection(object):
 		
 		message_type, length = await self.read_unpack(SETUP_MESSAGE_HEADER)
 		message_type = SetupMessageType(message_type)
-		logger.debug("Received setup message: type %s, %d bytes", message_type, length)
+		logger_crypt.debug("Received setup message: type %s, %d bytes", message_type, length)
 		
 		data = await self.read(length - SETUP_MESSAGE_HEADER.size)
-		logger.debug("Setup message data: %s", data)
+		logger_crypt.debug("Setup message data: %s", data)
 		
 		if data:
 			# Received a server seed from client.
@@ -387,16 +390,16 @@ class BaseMOULConnection(object):
 			# In this case,
 			# we have to send back a seed of the correct length,
 			# but the client will not use it and the connection will be unencrypted.
-			logger.debug("Received a server seed, but encryption not supported yet! Assuming NO_ENCRYPTION and replying with a dummy client seed.")
+			logger_crypt.debug("Received a server seed, but encryption not supported yet! Assuming NO_ENCRYPTION and replying with a dummy client seed.")
 			await self.write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
 		else:
 			# H'uru internal client sent an empty server seed to explicitly request no encryption.
 			# We have to reply with an empty client seed,
 			# or else the client will abort the connection.
-			logger.debug("Received empty server seed - setting up unencrypted connection.")
+			logger_crypt.debug("Received empty server seed - setting up unencrypted connection.")
 			await self.write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
 		
-		logger.debug("Done setting up encryption")
+		logger_crypt.debug("Done setting up encryption")
 	
 	async def handle_unknown_message(self, message_type: int) -> None:
 		"""Read and handle an unknown message of the given type.
@@ -421,10 +424,10 @@ class BaseMOULConnection(object):
 		try:
 			handler = type(self).MESSAGE_HANDLERS[message_type]
 		except KeyError:
-			logger.debug("Received message of unsupported type %d", message_type)
+			logger_message.debug("Received message of unsupported type %d", message_type)
 			await self.handle_unknown_message(message_type)
 		else:
-			logger.debug("Received message of type %d (%s)", message_type, getattr(handler, "__name__", "name missing"))
+			logger_message.debug("Received message of type %d (%s)", message_type, getattr(handler, "__name__", "name missing"))
 			await handler(self)
 	
 	async def handle_disconnect(self) -> None:

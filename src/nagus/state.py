@@ -40,6 +40,8 @@ if typing.TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+logger_db = logger.getChild("db")
+logger_vault = logger.getChild("vault")
 
 _T = typing.TypeVar("_T")
 
@@ -873,7 +875,7 @@ class Database(typing.AsyncContextManager[None]):
 	async def connect(cls, database: typing.Union[str, bytes], *, uri: bool = False) -> "Database":
 		executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 		conn = await asyncio.get_event_loop().run_in_executor(executor, lambda: sqlite3.connect(database, uri=uri))
-		logger.info("Loaded NAGUS database at %s %r", "URI" if uri else "path", database)
+		logger_db.info("Loaded NAGUS database at %s %r", "URI" if uri else "path", database)
 		return cls(conn, executor)
 	
 	def _run(self, func: typing.Callable[..., _T], *args: typing.Any) -> asyncio.Future[_T]:
@@ -1001,20 +1003,20 @@ class ServerState(object):
 		try:
 			system = await self.find_system_vault_node()
 		except VaultNodeNotFound:
-			logger.info("No system node found in vault! Assuming this is a fresh database, so creating a new one.")
+			logger_vault.info("No system node found in vault! Assuming this is a fresh database, so creating a new one.")
 			system = await self.create_vault_node(VaultNodeData(creator_account_uuid=structs.ZERO_UUID, creator_id=0, node_type=VaultNodeType.system))
 			global_inbox_folder = await self.create_vault_node(VaultNodeData(creator_account_uuid=structs.ZERO_UUID, creator_id=0, node_type=VaultNodeType.folder, int32_1=VaultNodeFolderType.global_inbox))
 			await self.add_vault_node_ref(VaultNodeRef(system, global_inbox_folder))
 		
-		logger.debug("System node: %d", system)
+		logger_vault.debug("System node: %d", system)
 		
 		try:
 			all_players_id = await self.find_all_players_vault_node()
 		except VaultNodeNotFound:
-			logger.info("No All Players list node found in vault! Creating a new one.")
+			logger_vault.info("No All Players list node found in vault! Creating a new one.")
 			all_players_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=structs.ZERO_UUID, creator_id=0, node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.all_players))
 		
-		logger.debug("All Players list node: %d", all_players_id)
+		logger_vault.debug("All Players list node: %d", all_players_id)
 		
 		aegura_id, aegura_info_id = await self.create_age_instance(
 			age_file_name="city",
@@ -1022,9 +1024,9 @@ class ServerState(object):
 			instance_name="Ae'gura",
 			allow_existing=True,
 		)
-		logger.debug("Public Ae'gura instance: Age %d, Age Info %d", aegura_id, aegura_info_id)
+		logger_vault.debug("Public Ae'gura instance: Age %d, Age Info %d", aegura_id, aegura_info_id)
 		
-		logger.debug("Finished setting up the NAGUS database")
+		logger_db.debug("Finished setting up the NAGUS database")
 	
 	async def fetch_vault_node(self, node_id: int) -> VaultNodeData:
 		async with await self.db.cursor() as cursor:
@@ -1069,7 +1071,7 @@ class ServerState(object):
 		found_node_id = None
 		async for node_id in self.find_vault_nodes(template, parent_id=parent_id):
 			if found_node_id is not None:
-				logger.warning( # type: ignore # mypy thinks this is unreachable for some reason
+				logger_vault.warning( # type: ignore # mypy thinks this is unreachable for some reason
 					"Found multiple vault nodes matching the template %r with parent %r: %d and %d (and possibly more)! Ignoring all except the first one.",
 					template, parent_id, found_node_id, node_id,
 				)
@@ -1091,7 +1093,7 @@ class ServerState(object):
 	async def create_vault_node(self, data: VaultNodeData) -> int:
 		data.create_time = data.modify_time = int(datetime.datetime.now().timestamp())
 		
-		logger.debug("Creating vault node: %r", data)
+		logger_vault.debug("Creating vault node: %r", data)
 		
 		fields = data.to_db_named_values()
 		names = ", ".join(fields.keys())
@@ -1108,7 +1110,7 @@ class ServerState(object):
 	async def update_vault_node(self, node_id: int, data: VaultNodeData) -> None:
 		data.modify_time = int(datetime.datetime.now().timestamp())
 		
-		logger.debug("Updating vault node %d: %s", node_id, data)
+		logger_vault.debug("Updating vault node %d: %s", node_id, data)
 		
 		fields = data.to_db_named_values()
 		assignment_parts = []
@@ -1128,7 +1130,7 @@ class ServerState(object):
 		# TODO Notify all relevant clients
 	
 	async def delete_vault_node(self, node_id: int) -> None:
-		logger.debug("Deleting vault node %d", node_id)
+		logger_vault.debug("Deleting vault node %d", node_id)
 		
 		async with self.db, await self.db.cursor() as cursor:
 			await cursor.execute("delete from VaultNodes where NodeId = ?", (node_id,))
@@ -1175,7 +1177,7 @@ class ServerState(object):
 				yield VaultNodeRef(parent_id, child_id, owner_id, seen)
 	
 	async def add_vault_node_ref(self, ref: VaultNodeRef) -> None:
-		logger.debug("Adding vault node ref: %r", ref)
+		logger_vault.debug("Adding vault node ref: %r", ref)
 		
 		async with self.db, await self.db.cursor() as cursor:
 			try:
@@ -1195,7 +1197,7 @@ class ServerState(object):
 		# TODO Notify all relevant clients
 	
 	async def remove_vault_node_ref(self, parent_id: int, child_id: int) -> None:
-		logger.debug("Removing vault node ref: %d -> %d", parent_id, child_id)
+		logger_vault.debug("Removing vault node ref: %d -> %d", parent_id, child_id)
 		
 		async with self.db, await self.db.cursor() as cursor:
 			await cursor.execute(

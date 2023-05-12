@@ -44,6 +44,7 @@ from . import status_server
 
 
 logger = logging.getLogger(__name__)
+logger_client = logger.getChild("client")
 
 
 DEFAULT_CONFIG_FILE_NAME = "nagus_config.ini"
@@ -74,7 +75,7 @@ async def client_connected_inner(reader: asyncio.StreamReader, writer: asyncio.S
 	except ValueError:
 		raise base.ProtocolError(f"Unknown connection type {conn_type_num}")
 	
-	logger.info("Client %s requests connection type %s", client_address, conn_type)
+	logger_client.info("Client %s requests connection type %s", client_address, conn_type)
 	
 	try:
 		conn_class = CONNECTION_CLASSES_BY_TYPE[conn_type]
@@ -92,17 +93,17 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 	try:
 		try:
 			client_address = writer.get_extra_info("peername")
-			logger.info("Connection from %s", client_address)
+			logger_client.info("Connection from %s", client_address)
 			await client_connected_inner(reader, writer, server_state)
 		finally:
 			writer.close()
-			logger.info("Closing connection with %s", client_address)
+			logger_client.info("Closing connection with %s", client_address)
 			# No need to await writer.wait_closed(),
 			# because we don't do anything else with the writer anymore.
 	except (ConnectionResetError, asyncio.IncompleteReadError) as exc:
-		logger.error("Client %s disconnected: %s.%s: %s", client_address, type(exc).__module__, type(exc).__qualname__, exc)
+		logger_client.error("Client %s disconnected: %s.%s: %s", client_address, type(exc).__module__, type(exc).__qualname__, exc)
 	except base.ProtocolError as exc:
-		logger.error("Error in data sent by %s: %s", client_address, exc)
+		logger_client.error("Error in data sent by %s: %s", client_address, exc)
 	except Exception as exc:
 		if server_state.config.logging_enable_crash_lines:
 			try:
@@ -111,12 +112,12 @@ async def client_connected(reader: asyncio.StreamReader, writer: asyncio.StreamW
 				quip = "missingno"
 		else:
 			quip = "Server error"
-		logger.error("%s (uncaught exception while handling request from %s)", quip, client_address, exc_info=exc)
+		logger_client.error("%s (uncaught exception while handling request from %s)", quip, client_address, exc_info=exc)
 	except asyncio.CancelledError:
-		logger.info("Connection handler for %s was cancelled - most likely the server is shutting down", client_address)
+		logger_client.info("Connection handler for %s was cancelled - most likely the server is shutting down", client_address)
 		raise
 	except BaseException as exc:
-		logger.error("Uncaught BaseException while handling request from %s - something has gone quite wrong:", client_address, exc_info=exc)
+		logger_client.error("Uncaught BaseException while handling request from %s - something has gone quite wrong:", client_address, exc_info=exc)
 		raise
 
 

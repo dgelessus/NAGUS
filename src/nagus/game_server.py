@@ -36,6 +36,10 @@ from . import structs
 
 
 logger = logging.getLogger(__name__)
+logger_join = logger.getChild("join")
+logger_net_message = logger.getChild("net_message")
+logger_ping = logger.getChild("ping")
+logger_pl_message = logger.getChild("pl_message")
 
 
 CONNECT_DATA = struct.Struct("<I16s16s")
@@ -692,7 +696,7 @@ class NetMessage(object):
 			assert self.account_uuid is None
 	
 	async def handle(self, connection: "GameConnection") -> None:
-		logger.error("Don't know how to handle plNetMessage of class %s - ignoring", self.class_description)
+		logger_net_message.error("Don't know how to handle plNetMessage of class %s - ignoring", self.class_description)
 
 
 NET_MESSAGE_CLASSES_BY_INDEX: typing.Dict[int, typing.Type[NetMessage]] = {
@@ -766,7 +770,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 	
 	async def handle(self, connection: "GameConnection") -> None:
 		if self.rooms:
-			logger.warning("Ignoring non-empty rooms list in game state request: %r", self.rooms)
+			logger_net_message.warning("Ignoring non-empty rooms list in game state request: %r", self.rooms)
 		
 		count = 0
 		
@@ -792,7 +796,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 				try:
 					age_sequence_prefix = connection.client_state.age_sequence_prefix
 				except AttributeError:
-					logger.warning("Client requested game state, but hasn't yet sent any messages that would allow guessing the age sequence prefix! Not sending AgeSDLHook state - this will probably break age state and scripts!")
+					logger_net_message.warning("Client requested game state, but hasn't yet sent any messages that would allow guessing the age sequence prefix! Not sending AgeSDLHook state - this will probably break age state and scripts!")
 				else:
 					count += 1
 					
@@ -942,7 +946,7 @@ class NetMessageTestAndSet(NetMessageSharedState):
 		
 		if self.lock_request:
 			if data != type(self).TRIGGER_DATA:
-				logger.warning("Unexpected stream data for TestAndSet trigger request! Ignoring the stream data and locking as usual.")
+				logger_net_message.warning("Unexpected stream data for TestAndSet trigger request! Ignoring the stream data and locking as usual.")
 			
 			# TODO Actually check and lock the thing instead of unconditionally affirming the lock
 			
@@ -960,7 +964,7 @@ class NetMessageTestAndSet(NetMessageSharedState):
 			await connection.send_propagate_buffer(net_game_message)
 		else:
 			if data != type(self).UNTRIGGER_DATA:
-				logger.warning("Unexpected stream data for TestAndSet un-trigger request! Ignoring the stream data and unlocking as usual.")
+				logger_net_message.warning("Unexpected stream data for TestAndSet un-trigger request! Ignoring the stream data and unlocking as usual.")
 			
 			# TODO Actually unlock the thing
 
@@ -1059,9 +1063,9 @@ class NetMessageGameMessage(NetMessageStream):
 				message = PlasmaMessage.from_stream(message_stream)
 				extra_data = message_stream.read()
 		except (EOFError, ValueError) as exc:
-			logger.error("Failed to parse plMessage. Ignoring and forwarding anyway...", exc_info=exc)
+			logger_pl_message.error("Failed to parse plMessage. Ignoring and forwarding anyway...", exc_info=exc)
 		else:
-			logger.debug("Parsed plMessage: %r", message)
+			logger_pl_message.debug("Parsed plMessage: %r", message)
 			
 			if message.sender is not None:
 				connection.client_state.try_find_age_sequence_prefix(message.sender.location)
@@ -1071,38 +1075,38 @@ class NetMessageGameMessage(NetMessageStream):
 			game_message_receiver: typing.Optional[structs.Uoid] = None
 			for i, receiver in enumerate(message.receivers):
 				if receiver is None:
-					logger.warning("plMessage %s has nullptr receiver at index %d", message.class_description, i)
+					logger_pl_message.warning("plMessage %s has nullptr receiver at index %d", message.class_description, i)
 				else:
 					connection.client_state.try_find_age_sequence_prefix(receiver.location)
 					if game_message_receiver is None and receiver.location.sequence_number != 0 and structs.Location.Flags.reserved not in receiver.location.flags:
 						game_message_receiver = receiver
 			
 			if game_message_receiver is None and NetMessageFlags.has_game_message_receivers in self.flags:
-				logger.warning("plMessage %s has no (non-virtual, non-reserved) receivers, but the containing network game message has the has_game_message_receivers flag set", message.class_description)
+				logger_pl_message.warning("plMessage %s has no (non-virtual, non-reserved) receivers, but the containing network game message has the has_game_message_receivers flag set", message.class_description)
 			elif game_message_receiver is not None and NetMessageFlags.has_game_message_receivers not in self.flags:
-				logger.warning("plMessage %s has at least one (non-virtual, non-reserved) receiver (e. g. %r), but the containing network game message doesn't have the has_game_message_receivers flag set", message.class_description, game_message_receiver)
+				logger_pl_message.warning("plMessage %s has at least one (non-virtual, non-reserved) receiver (e. g. %r), but the containing network game message doesn't have the has_game_message_receivers flag set", message.class_description, game_message_receiver)
 			
 			# Check for unexpected flags,
 			# possibly depending on the message class
 			# and the containing network message flags.
 			unexpected_flags = message.flags & ~PlasmaMessageFlags.all_expected
 			if unexpected_flags:
-				logger.warning("plMessage %s has flags set that we don't expect for net-propagated messages: %r", message.class_description, unexpected_flags)
+				logger_pl_message.warning("plMessage %s has flags set that we don't expect for net-propagated messages: %r", message.class_description, unexpected_flags)
 			if PlasmaMessageFlags.net_propagate not in message.flags:
-				logger.warning("plMessage %s was sent over the network, but doesn't have the net_propagate flag set", message.class_description)
+				logger_pl_message.warning("plMessage %s was sent over the network, but doesn't have the net_propagate flag set", message.class_description)
 			if PlasmaMessageFlags.net_sent in message.flags and not (PlasmaMessageFlags.net_force in message.flags or PlasmaMessageFlags.ccr_send_to_all_players in message.flags):
-				logger.warning("plMessage %s was sent over the network more than once, but doesn't have any force-sending flags set", message.class_description)
+				logger_pl_message.warning("plMessage %s was sent over the network more than once, but doesn't have any force-sending flags set", message.class_description)
 			if (PlasmaMessageFlags.net_use_relevance_regions in message.flags) != (NetMessageFlags.use_relevance_regions in self.flags):
-				logger.warning("plMessage %s net_use_relevance_regions flag (%r) doesn't match containing network game message's use_relevance_regions flag (%r)", message.class_description, PlasmaMessageFlags.net_use_relevance_regions in message.flags, NetMessageFlags.use_relevance_regions in self.flags)
+				logger_pl_message.warning("plMessage %s net_use_relevance_regions flag (%r) doesn't match containing network game message's use_relevance_regions flag (%r)", message.class_description, PlasmaMessageFlags.net_use_relevance_regions in message.flags, NetMessageFlags.use_relevance_regions in self.flags)
 			if (PlasmaMessageFlags.net_allow_inter_age in message.flags) != (NetMessageFlags.inter_age_routing in self.flags):
-				logger.warning("plMessage %s net_allow_inter_age flag (%r) doesn't match containing network game message's inter_age_routing flag (%r)", message.class_description, PlasmaMessageFlags.net_allow_inter_age in message.flags, NetMessageFlags.inter_age_routing in self.flags)
+				logger_pl_message.warning("plMessage %s net_allow_inter_age flag (%r) doesn't match containing network game message's inter_age_routing flag (%r)", message.class_description, PlasmaMessageFlags.net_allow_inter_age in message.flags, NetMessageFlags.inter_age_routing in self.flags)
 			if (PlasmaMessageFlags.net_send_unreliable in message.flags) == (NetMessageFlags.needs_reliable_send in self.flags):
-				logger.warning("plMessage %s net_send_unreliable flag (%r) doesn't match containing network game message's needs_reliable_send flag (%r)", message.class_description, PlasmaMessageFlags.net_send_unreliable in message.flags, NetMessageFlags.needs_reliable_send in self.flags)
+				logger_pl_message.warning("plMessage %s net_send_unreliable flag (%r) doesn't match containing network game message's needs_reliable_send flag (%r)", message.class_description, PlasmaMessageFlags.net_send_unreliable in message.flags, NetMessageFlags.needs_reliable_send in self.flags)
 			if (PlasmaMessageFlags.ccr_send_to_all_players in message.flags) != (NetMessageFlags.route_to_all_players in self.flags):
-				logger.warning("plMessage %s ccr_send_to_all_players flag (%r) doesn't match containing network game message's route_to_all_players flag (%r)", message.class_description, PlasmaMessageFlags.ccr_send_to_all_players in message.flags, NetMessageFlags.route_to_all_players in self.flags)
+				logger_pl_message.warning("plMessage %s ccr_send_to_all_players flag (%r) doesn't match containing network game message's route_to_all_players flag (%r)", message.class_description, PlasmaMessageFlags.ccr_send_to_all_players in message.flags, NetMessageFlags.route_to_all_players in self.flags)
 			
 			if extra_data:
-				logger.debug("plMessage %s has extra trailing data: %r", message.class_description, extra_data)
+				logger_pl_message.debug("plMessage %s has extra trailing data: %r", message.class_description, extra_data)
 		
 		# TODO Set kNetNonLocal flag on the wrapped plMessage before forwarding?
 		# TODO Forward to other clients
@@ -1111,7 +1115,7 @@ class NetMessageGameMessage(NetMessageStream):
 			await connection.send_propagate_buffer(self)
 		
 		if NetMessageFlags.route_to_all_players in self.flags:
-			logger.warning("Ignoring route_to_all_players flag - CCR broadcast messages not supported yet")
+			logger_net_message.warning("Ignoring route_to_all_players flag - CCR broadcast messages not supported yet")
 
 
 class NetMessageGameMessageDirected(NetMessageGameMessage):
@@ -1139,7 +1143,7 @@ class NetMessageGameMessageDirected(NetMessageGameMessage):
 			stream.write(structs.UINT32.pack(receiver))
 	
 	async def handle(self, connection: "GameConnection") -> None:
-		logger.warning("Directed game messages not supported yet - treating it like a broadcast message for now")
+		logger_net_message.warning("Directed game messages not supported yet - treating it like a broadcast message for now")
 		await super().handle(connection)
 
 
@@ -1371,7 +1375,7 @@ class GameClientState(object):
 			if location.sequence_number in range(0x21, 0x80000000):
 				assert structs.Location.Flags.reserved not in location.flags
 				(self.age_sequence_prefix, _) = structs.split_sequence_number(location.sequence_number)
-				logger.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, self.age_sequence_prefix)
+				logger_net_message.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, self.age_sequence_prefix)
 
 
 class GameConnection(base.BaseMOULConnection):
@@ -1392,23 +1396,23 @@ class GameConnection(base.BaseMOULConnection):
 		account_uuid = uuid.UUID(bytes_le=account_uuid)
 		age_instance_uuid = uuid.UUID(bytes_le=age_instance_uuid)
 		if account_uuid != structs.ZERO_UUID or age_instance_uuid != structs.ZERO_UUID:
-			logger.warning("Client connected to game server with non-zero UUIDs: account UUID %s, age instance UUID %s", account_uuid, age_instance_uuid)
+			logger_join.warning("Client connected to game server with non-zero UUIDs: account UUID %s, age instance UUID %s", account_uuid, age_instance_uuid)
 	
 	@base.message_handler(0)
 	async def ping_request(self) -> None:
 		(ping_time,) = await self.read_unpack(PING_REQUEST)
-		logger.debug("Ping request: time %d", ping_time)
+		logger_ping.debug("Ping request: time %d", ping_time)
 		await self.write_message(0, PING_REPLY.pack(ping_time))
 	
 	async def join_age_reply(self, trans_id: int, result: base.NetError) -> None:
-		logger.debug("Sending join age reply: transaction ID %d, result %r", trans_id, result)
+		logger_join.debug("Sending join age reply: transaction ID %d, result %r", trans_id, result)
 		await self.write_message(1, JOIN_AGE_REPLY.pack(trans_id, result))
 	
 	@base.message_handler(1)
 	async def join_age_request(self) -> None:
 		trans_id, mcp_id, account_uuid, ki_number = await self.read_unpack(JOIN_AGE_REQUEST)
 		account_uuid = uuid.UUID(bytes_le=account_uuid)
-		logger.debug("Join age request: transaction ID %d, MCP ID %d, account UUID %s, KI number %d", trans_id, mcp_id, account_uuid, ki_number)
+		logger_join.debug("Join age request: transaction ID %d, MCP ID %d, account UUID %s, KI number %d", trans_id, mcp_id, account_uuid, ki_number)
 		
 		try:
 			self.client_state.mcp_id
@@ -1429,7 +1433,7 @@ class GameConnection(base.BaseMOULConnection):
 			await self.join_age_reply(trans_id, base.NetError.age_not_found)
 			raise base.ProtocolError(f"Client attempted to join age instance with nonexistant ID {age_node_id}")
 		
-		logger.debug("Age node: %s", age_node_data)
+		logger_join.debug("Age node: %s", age_node_data)
 		
 		if age_node_data.node_type != state.VaultNodeType.age:
 			await self.join_age_reply(trans_id, base.NetError.age_not_found)
@@ -1452,7 +1456,7 @@ class GameConnection(base.BaseMOULConnection):
 			raise base.ProtocolError(f"Age instance with ID {age_node_id} has no Age Info child node")
 		
 		age_info_node_data = await self.server_state.fetch_vault_node(age_info_node_id)
-		logger.debug("Age Info node: %s", age_info_node_data)
+		logger_join.debug("Age Info node: %s", age_info_node_data)
 		
 		if age_info_node_data.uint32_1 != age_node_id:
 			await self.join_age_reply(trans_id, base.NetError.internal_error)
@@ -1481,7 +1485,7 @@ class GameConnection(base.BaseMOULConnection):
 			message.flags |= NetMessageFlags.has_time_sent
 			message.time_sent = datetime.datetime.now(tz=datetime.timezone.utc)
 		
-		logger.debug("Sending propagate buffer: %r", message)
+		logger_net_message.debug("Sending propagate buffer: %r", message)
 		
 		with io.BytesIO() as stream:
 			message.write(stream)
@@ -1500,38 +1504,38 @@ class GameConnection(base.BaseMOULConnection):
 		if buffer_type != message.class_index:
 			raise base.ProtocolError(f"PropagateBuffer type 0x{buffer_type:>04x} doesn't match class index in serialized message: 0x{message.class_index:>04x}")
 		
-		logger.debug("Received propagate buffer: %r", message)
+		logger_net_message.debug("Received propagate buffer: %r", message)
 		
 		# Check for unsupported and unexpected flags,
 		# possibly depending on the message class.
 		unsupported_flags = message.flags & ~NetMessageFlags.all_handled
 		if unsupported_flags:
-			logger.warning("PropagateBuffer message %s has flags set that we can't handle yet: %r", message.class_description, unsupported_flags)
+			logger_net_message.warning("PropagateBuffer message %s has flags set that we can't handle yet: %r", message.class_description, unsupported_flags)
 		if NetMessageFlags.has_game_message_receivers in message.flags and not isinstance(message, NetMessageGameMessage):
-			logger.warning("PropagateBuffer message %s has has_game_message_receivers flag set even though it's not a game message", message.class_description)
+			logger_net_message.warning("PropagateBuffer message %s has has_game_message_receivers flag set even though it's not a game message", message.class_description)
 		if NetMessageFlags.echo_back_to_sender in message.flags and not isinstance(message, NetMessageGameMessage):
-			logger.warning("PropagateBuffer message %s has echo_back_to_sender flag set even though it's not a game message", message.class_description)
+			logger_net_message.warning("PropagateBuffer message %s has echo_back_to_sender flag set even though it's not a game message", message.class_description)
 		if NetMessageFlags.new_sdl_state in message.flags and not isinstance(message, NetMessageSDLState):
-			logger.warning("PropagateBuffer message %s has new_sdl_state flag set even though it's not an SDL state message", message.class_description)
+			logger_net_message.warning("PropagateBuffer message %s has new_sdl_state flag set even though it's not an SDL state message", message.class_description)
 		if NetMessageFlags.initial_age_state_request in message.flags and not isinstance(message, NetMessageGameStateRequest):
-			logger.warning("PropagateBuffer message %s has initial_age_state_request flag set even though it's not a game state request message", message.class_description)
+			logger_net_message.warning("PropagateBuffer message %s has initial_age_state_request flag set even though it's not a game state request message", message.class_description)
 		if NetMessageFlags.use_relevance_regions in message.flags and not isinstance(message, (NetMessageSDLState, NetMessageGameMessage)):
-			logger.warning("PropagateBuffer message %s has use_relevance_regions flag set even though it's not an SDL state or game message", message.class_description)
+			logger_net_message.warning("PropagateBuffer message %s has use_relevance_regions flag set even though it's not an SDL state or game message", message.class_description)
 		if NetMessageFlags.inter_age_routing in message.flags and not isinstance(message, NetMessageGameMessageDirected):
-			logger.warning("PropagateBuffer message %s has inter_age_routing flag set even though it's not a directed game message", message.class_description)
+			logger_net_message.warning("PropagateBuffer message %s has inter_age_routing flag set even though it's not a directed game message", message.class_description)
 		if NetMessageFlags.route_to_all_players in message.flags and type(message) != NetMessageGameMessage:
-			logger.warning("PropagateBuffer message %s has route_to_all_players flag set even though its class is not plNetMsgGameMessage", message.class_description)
+			logger_net_message.warning("PropagateBuffer message %s has route_to_all_players flag set even though its class is not plNetMsgGameMessage", message.class_description)
 		
 		if message.protocol_version is not None:
-			logger.warning("PropagateBuffer message %s contains protocol version: %r", message.class_description, message.protocol_version)
+			logger_net_message.warning("PropagateBuffer message %s contains protocol version: %r", message.class_description, message.protocol_version)
 		if message.context is not None:
-			logger.warning("PropagateBuffer message %s contains context: %d", message.class_description, message.context)
+			logger_net_message.warning("PropagateBuffer message %s contains context: %d", message.class_description, message.context)
 		if message.trans_id is not None:
-			logger.warning("PropagateBuffer message %s contains transaction ID: %d", message.class_description, message.trans_id)
+			logger_net_message.warning("PropagateBuffer message %s contains transaction ID: %d", message.class_description, message.trans_id)
 		if message.account_uuid is not None:
-			logger.warning("PropagateBuffer message %s contains account UUID: %s", message.class_description, message.account_uuid)
+			logger_net_message.warning("PropagateBuffer message %s contains account UUID: %s", message.class_description, message.account_uuid)
 		if extra_data:
-			logger.warning("PropagateBuffer message %s has extra trailing data: %r", message.class_description, extra_data)
+			logger_net_message.warning("PropagateBuffer message %s has extra trailing data: %r", message.class_description, extra_data)
 		
 		if isinstance(message, NetMessageObject):
 			self.client_state.try_find_age_sequence_prefix(message.uoid.location)
