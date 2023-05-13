@@ -180,6 +180,7 @@ class Configuration(object):
 					"nagus.base": {"level": "INFO"},
 					"nagus.console": {"level": "INFO"},
 					"nagus.game_server.join": {"level": "INFO"},
+					"nagus.game_server.net_message": {"level": "INFO"},
 					"nagus.game_server.ping": {"level": "INFO"},
 				},
 			}

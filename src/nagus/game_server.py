@@ -38,8 +38,11 @@ from . import structs
 logger = logging.getLogger(__name__)
 logger_join = logger.getChild("join")
 logger_net_message = logger.getChild("net_message")
+logger_net_message_unhandled = logger_net_message.getChild("unhandled")
 logger_ping = logger.getChild("ping")
 logger_pl_message = logger.getChild("pl_message")
+logger_sdl = logger.getChild("sdl")
+logger_test_and_set = logger.getChild("test_and_set")
 
 
 CONNECT_DATA = struct.Struct("<I16s16s")
@@ -718,7 +721,8 @@ class NetMessage(object):
 			assert self.account_uuid is None
 	
 	async def handle(self, connection: "GameConnection") -> None:
-		logger_net_message.error("Don't know how to handle plNetMessage of class %s - ignoring", self.class_description)
+		logger_net_message_unhandled.error("Don't know how to handle plNetMessage of class %s - ignoring", self.class_description)
+		logger_net_message_unhandled.debug("Unhandled plNetMessage: %r", self)
 
 
 NET_MESSAGE_CLASSES_BY_INDEX: typing.Dict[int, typing.Type[NetMessage]] = {
@@ -791,8 +795,10 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 	CLASS_INDEX = 0x0265
 	
 	async def handle(self, connection: "GameConnection") -> None:
+		logger_sdl.debug("Avatar %d requesting initial game state", self.ki_number)
+		
 		if self.rooms:
-			logger_net_message.warning("Ignoring non-empty rooms list in game state request: %r", self.rooms)
+			logger_sdl.warning("Ignoring non-empty rooms list in game state request: %r", self.rooms)
 		
 		count = 0
 		
@@ -818,7 +824,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 				try:
 					age_sequence_prefix = connection.client_state.age_sequence_prefix
 				except AttributeError:
-					logger_net_message.warning("Client requested game state, but hasn't yet sent any messages that would allow guessing the age sequence prefix! Not sending AgeSDLHook state - this will probably break age state and scripts!")
+					logger_sdl.warning("Client requested game state, but hasn't yet sent any messages that would allow guessing the age sequence prefix! Not sending AgeSDLHook state - this will probably break age state and scripts!")
 				else:
 					count += 1
 					
@@ -964,11 +970,13 @@ class NetMessageTestAndSet(NetMessageSharedState):
 	UNTRIGGER_DATA = b"\t\x00TrigState\x01\x00\x00\x00\x01\t\xf0\xab\x8d\x96\x98\x98\x9a\x8d\x9a\x9b\x02\x00"
 	
 	async def handle(self, connection: "GameConnection") -> None:
+		logger_test_and_set.debug("Avatar %d requesting %s of %s", self.ki_number, "lock" if self.lock_request else "unlock", self.uoid)
+		
 		data = self.decompress_data()
 		
 		if self.lock_request:
 			if data != type(self).TRIGGER_DATA:
-				logger_net_message.warning("Unexpected stream data for TestAndSet trigger request! Ignoring the stream data and locking as usual.")
+				logger_test_and_set.warning("Unexpected stream data for TestAndSet trigger request! Ignoring the stream data and locking as usual.")
 			
 			# TODO Actually check and lock the thing instead of unconditionally affirming the lock
 			
@@ -986,7 +994,7 @@ class NetMessageTestAndSet(NetMessageSharedState):
 			await connection.send_propagate_buffer(net_game_message)
 		else:
 			if data != type(self).UNTRIGGER_DATA:
-				logger_net_message.warning("Unexpected stream data for TestAndSet un-trigger request! Ignoring the stream data and unlocking as usual.")
+				logger_test_and_set.warning("Unexpected stream data for TestAndSet un-trigger request! Ignoring the stream data and unlocking as usual.")
 			
 			# TODO Actually unlock the thing
 
@@ -1137,7 +1145,7 @@ class NetMessageGameMessage(NetMessageStream):
 			await connection.send_propagate_buffer(self)
 		
 		if NetMessageFlags.route_to_all_players in self.flags:
-			logger_net_message.warning("Ignoring route_to_all_players flag - CCR broadcast messages not supported yet")
+			logger_pl_message.warning("Ignoring route_to_all_players flag - CCR broadcast messages not supported yet")
 
 
 class NetMessageGameMessageDirected(NetMessageGameMessage):
@@ -1165,7 +1173,7 @@ class NetMessageGameMessageDirected(NetMessageGameMessage):
 			stream.write(structs.UINT32.pack(receiver))
 	
 	async def handle(self, connection: "GameConnection") -> None:
-		logger_net_message.warning("Directed game messages not supported yet - treating it like a broadcast message for now")
+		logger_pl_message.warning("Directed game messages not supported yet - treating it like a broadcast message for now")
 		await super().handle(connection)
 
 
@@ -1397,7 +1405,7 @@ class GameClientState(object):
 			if location.sequence_number in range(0x21, 0x80000000):
 				assert structs.Location.Flags.reserved not in location.flags
 				(self.age_sequence_prefix, _) = structs.split_sequence_number(location.sequence_number)
-				logger_net_message.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, self.age_sequence_prefix)
+				logger_sdl.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, self.age_sequence_prefix)
 
 
 class GameConnection(base.BaseMOULConnection):
