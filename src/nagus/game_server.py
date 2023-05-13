@@ -391,11 +391,33 @@ class PlasmaMessage(object):
 		fields = collections.OrderedDict()
 		
 		if self.sender is not None:
-			fields["sender"] = repr(self.sender)
+			fields["sender"] = str(self.sender)
+		
 		if self.receivers:
-			fields["receivers"] = repr(self.receivers)
+			receivers_rep = str(self.receivers[0])
+			# For some reason,
+			# the receivers list often contains multiple identical UOIDs,
+			# so collapse those for readability.
+			last_receiver = self.receivers[0]
+			count = 1
+			for receiver in self.receivers[1:]:
+				if receiver == last_receiver:
+					count += 1
+				else:
+					if count > 1:
+						receivers_rep += f"*{count}"
+					
+					receivers_rep += f", {receiver}"
+					last_receiver = receiver
+					count = 1
+			
+			if count > 1:
+				receivers_rep += f"*{count}"
+			
+			fields["receivers"] = f"[{receivers_rep}]"
+		
 		if self.timestamp != 0.0:
-			fields["timestamp"] = repr(self.timestamp)
+			fields["timestamp"] = str(self.timestamp)
 		
 		fields["flags"] = repr(self.flags)
 		
@@ -831,7 +853,7 @@ class NetMessageObject(NetMessage):
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
-		fields["uoid"] = repr(self.uoid)
+		fields["uoid"] = str(self.uoid)
 		return fields
 	
 	def read(self, stream: typing.BinaryIO) -> None:
@@ -1157,7 +1179,7 @@ class NetMessageLoadClone(NetMessageGameMessage):
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
-		fields["uoid"] = repr(self.uoid)
+		fields["uoid"] = str(self.uoid)
 		if not self.is_player:
 			fields["is_player"] = repr(self.is_player)
 		if not self.is_loading:
@@ -1322,7 +1344,7 @@ class NetMessagePlayerPage(NetMessage):
 		fields = super().repr_fields()
 		if self.unload:
 			fields["unload"] = repr(self.unload)
-		fields["uoid"] = repr(self.uoid)
+		fields["uoid"] = str(self.uoid)
 		return fields
 	
 	def read(self, stream: typing.BinaryIO) -> None:

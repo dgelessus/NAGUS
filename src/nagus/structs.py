@@ -188,6 +188,19 @@ def write_unified_time(stream: typing.BinaryIO, dt: datetime.datetime) -> None:
 # without disallowing any legitimate and safe combinations.
 
 
+def can_split_sequence_number(sequence_number: int) -> bool:
+	"""Check whether the given sequence number can be safely split using :func:`split_sequence_number`."""
+	
+	# Sequence numbers up to and including 32 (0x20) are local-only or otherwise special.
+	# Sequence number 0xff000000 is reserved for the server.
+	# Sequence numbers 0xff000001 through 0xff010000 (inclusive) are in the reserved/global range,
+	# but cannot be parsed meaningfully
+	# (the age prefix number comes out as 0,
+	# which is non-global and so should be encoded differently).
+	# Sequence number 0xffffffff is invalid.
+	return sequence_number in range(0x21, 0xffffffff) and not sequence_number in range(0xff000000, 0xff010001)
+
+
 def split_sequence_number(sequence_number: int) -> typing.Tuple[int, int]:
 	"""Split a sequence number (from a location) into its prefix (age) and suffix (page) parts.
 	
@@ -196,14 +209,7 @@ def split_sequence_number(sequence_number: int) -> typing.Tuple[int, int]:
 	
 	if sequence_number not in range(0x100000000):
 		raise ValueError(f"Sequence number out of range: {sequence_number:#x}")
-	elif sequence_number in range(0x21) or sequence_number in range(0xff000000, 0xff010001) or sequence_number == 0xffffffff:
-		# Sequence numbers up to and including 32 (0x20) are local-only or otherwise special.
-		# Sequence number 0xff000000 is reserved for the server.
-		# Sequence numbers 0xff000001 through 0xff010000 (inclusive) are in the reserved/global range,
-		# but cannot be parsed meaningfully
-		# (the age prefix number comes out as 0,
-		# which is non-global and so should be encoded differently).
-		# Sequence number 0xffffffff is invalid.
+	elif not can_split_sequence_number(sequence_number):
 		raise ValueError(f"Sequence number has special meaning and shouldn't be split: {sequence_number:#x}")
 	
 	if sequence_number in range(0xff010001, 0xffffffff):
@@ -300,6 +306,19 @@ class Location(object):
 		joined_parts = ", ".join(parts)
 		return f"{type(self).__qualname__}({joined_parts})"
 	
+	def __str__(self) -> str:
+		try:
+			age, page = split_sequence_number(self.sequence_number)
+		except ValueError:
+			seqnum_str = f"0x{self.sequence_number:>08x}"
+		else:
+			seqnum_str = f"{age}, {page}"
+		
+		if self.flags:
+			return f"<loc: {seqnum_str}, {self.flags!s}>"
+		else:
+			return f"<loc: {seqnum_str}>"
+	
 	@classmethod
 	def from_stream(cls, stream: typing.BinaryIO) -> "Location":
 		sequence_number, flags = stream_unpack(stream, LOCATION)
@@ -338,9 +357,33 @@ class Uoid(object):
 			fields["clone_ids"] = repr(self.clone_ids)
 		return fields
 	
+	def __eq__(self, other) -> bool:
+		if not isinstance(other, Uoid):
+			return NotImplemented
+		
+		return (
+			self.location == other.location
+			and self.load_mask == other.load_mask
+			and self.class_type == other.class_type
+			and self.object_id == other.object_id
+			and self.object_name == other.object_name
+			and self.clone_ids == other.clone_ids
+		)
+	
 	def __repr__(self) -> str:
 		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
 		return f"{type(self).__qualname__}({joined_fields})"
+	
+	def __str__(self) -> str:
+		ret = str(self.location)
+		if self.load_mask != 0xff:
+			ret += f", mask=0x{self.load_mask:>02x}"
+		ret += f", type=0x{self.class_type:>04x}"
+		ret += f", id={self.object_id}"
+		ret += f", name={self.object_name!r}"
+		if self.clone_ids is not None:
+			ret += f", clone={self.clone_ids!r}"
+		return f"<{type(self).__qualname__}: {ret}>"
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		(flags,) = read_exact(stream, 1)
