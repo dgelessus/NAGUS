@@ -107,41 +107,6 @@ class SDLStreamHeader(object):
 			self.uoid.write(stream)
 
 
-class NotificationInfo(object):
-	flags: int
-	hint: bytes
-	
-	def __init__(self, flags: int = 0, hint: bytes = b"") -> None:
-		super().__init__()
-		
-		self.flags = flags
-		self.hint = hint
-	
-	def __repr__(self) -> str:
-		parts = []
-		
-		if self.flags != 0:
-			parts.append(f"flags=0x{self.flags:>#04x}")
-		if self.hint:
-			parts.append(f"hint={self.hint!r}")
-		
-		joined_parts = ", ".join(parts)
-		return f"{type(self).__qualname__}({joined_parts})"
-	
-	@classmethod
-	def from_stream(cls, stream: typing.BinaryIO) -> "NotificationInfo":
-		(flags,) = structs.read_exact(stream, 1)
-		if flags != 0:
-			raise ValueError(f"SDL variable notification info has unsupported flags set: 0x{flags:>02x}")
-		
-		hint = structs.read_safe_string(stream)
-		return cls(flags, hint)
-	
-	def write(self, stream: typing.BinaryIO) -> None:
-		stream.write(bytes([self.flags]))
-		structs.write_safe_string(stream, self.hint)
-
-
 class VariableValueBase(object):
 	"""Base class for all SDL variable values (simple and nested SDL).
 	
@@ -154,12 +119,12 @@ class VariableValueBase(object):
 		
 		supported = has_notification_info
 	
-	notification_info: typing.Optional[NotificationInfo]
+	hint: typing.Optional[bytes]
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = collections.OrderedDict()
-		if self.notification_info is None or self.notification_info.flags != 0 or self.notification_info.hint:
-			fields["notification_info"] = repr(self.notification_info)
+		if self.hint is not None:
+			fields["hint"] = repr(self.hint)
 		return fields
 	
 	def __repr__(self) -> str:
@@ -175,20 +140,25 @@ class VariableValueBase(object):
 			raise ValueError(f"SDL variable value header has unsupported flags set: {flags!r}")
 		
 		if flags & VariableValueBase.Flags.has_notification_info:
-			self.notification_info = NotificationInfo.from_stream(stream)
+			(notification_info_flags,) = structs.read_exact(stream, 1)
+			if notification_info_flags != 0:
+				raise ValueError(f"SDL variable notification info has unsupported flags set: 0x{notification_info_flags:>02x}")
+			
+			self.hint = structs.read_safe_string(stream)
 		else:
-			self.notification_info = None
+			self.hint = None
 	
 	def base_write(self, stream: typing.BinaryIO) -> None:
 		"""Write the part of the variable value structure that does *not* vary depending on the state descriptor."""
 		
 		flags = VariableValueBase.Flags(0)
-		if self.notification_info is not None:
+		if self.hint is not None:
 			flags |= VariableValueBase.Flags.has_notification_info
 		stream.write(bytes([flags]))
 		
-		if self.notification_info is not None:
-			self.notification_info.write(stream)
+		if self.hint is not None:
+			stream.write(b"\x00")
+			structs.write_safe_string(stream, self.hint)
 
 
 class SimpleVariableValueBase(VariableValueBase):
