@@ -630,10 +630,14 @@ and not supported by MOSS or DIRTSAND
     Normally always set to true.
     The client sets it to false for SDL states that should only be propagated to other clients,
     but not saved permanently on the server.
+    Should only be set for :cpp:class:`plNetMsgSDLStateBCast` messages.
+    (Plain :cpp:class:`plNetMsgSDLState` messages are handled by the server *only* and not forwarded to any other clients,
+    so a :cpp:class:`plNetMsgSDLState` with this flag set would have no effect at all.)
   * **Is avatar state:** 1-byte boolean.
     Set to true by the client for SDL states related/attached to an avatar.
     If true,
     the persist on server flag should be false.
+    Should only be set for :cpp:class:`plNetMsgSDLStateBCast` messages.
   
   The stream data is an :ref:`SDL blob <sdl_blob>`,
   including its stream header.

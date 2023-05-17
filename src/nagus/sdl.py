@@ -457,7 +457,9 @@ class GuessedSDLRecord(SDLRecordBase):
 		
 		self.simple_values = {}
 		# Skip this entire thing if there are no simple variables in this blob.
-		if simple_variable_count:
+		if simple_variable_count == 0:
+			self.simple_values_indices = True
+		else:
 			pos = stream.tell()
 			lookahead = stream.read(5)
 			stream.seek(pos)

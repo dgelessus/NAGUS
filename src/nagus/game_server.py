@@ -31,6 +31,7 @@ import uuid
 import zlib
 
 from . import base
+from . import sdl
 from . import state
 from . import structs
 
@@ -1023,10 +1024,65 @@ class NetMessageSDLState(NetMessageStreamedObject):
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
 		stream.write(NET_MESSAGE_SDL_STATE.pack(self.is_initial_state, self.persist_on_server, self.is_avatar_state))
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		if logger_sdl.isEnabledFor(logging.DEBUG):
+			if isinstance(self, NetMessageSDLStateBroadcast):
+				desc = "server and clients" if self.persist_on_server else "clients only"
+			else:
+				desc = "server only" if self.persist_on_server else "for nobody??"
+			
+			if NetMessageFlags.new_sdl_state in self.flags:
+				desc += ", new"
+			
+			if self.is_avatar_state:
+				desc += ", avatar"
+			
+			logger_sdl.debug("Received SDL update (%s) for %s", desc, self.uoid)
+		
+		if self.is_initial_state:
+			logger_sdl.warning("SDL state message from client has initial state flag set")
+		
+		if NetMessageFlags.echo_back_to_sender in self.flags:
+			await connection.send_propagate_buffer(self)
+		
+		with io.BytesIO(self.decompress_data()) as stream:
+			try:
+				header = sdl.SDLStreamHeader.from_stream(stream)
+			except ValueError:
+				logger_sdl.warning("Failed to parse SDL blob header", exc_info=True)
+				header = None
+				record = None
+			else:
+				assert header is not None # mypy's type inference isn't very smart...
+				if header.uoid is not None:
+					logger_sdl.info("SDL blob header contains UOID: %s", header.uoid)
+				
+				record = sdl.GuessedSDLRecord()
+				try:
+					record.read(stream)
+				except ValueError:
+					logger_sdl.warning("Failed to parse SDL blob body for %r v%d", header.descriptor_name, header.descriptor_version, exc_info=True)
+					record = None
+				else:
+					logger_sdl.debug("Parsed SDL blob for %r v%d: %r", header.descriptor_name, header.descriptor_version, record)
+		
+		if self.persist_on_server:
+			if header is None or record is None:
+				logger_sdl.error("Cannot persist SDL state because parsing failed")
+			else:
+				pass # TODO Actually save the state
+		elif not isinstance(self, NetMessageSDLStateBroadcast):
+			logger_sdl.warning("SDL state message is neither broadcast nor persisted on server - ignoring")
 
 
 class NetMessageSDLStateBroadcast(NetMessageSDLState):
 	CLASS_INDEX = 0x0329
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		await super().handle(connection)
+		
+		# TODO Forward to other clients
 
 
 class NetMessageGetSharedState(NetMessageObject):
@@ -1544,8 +1600,8 @@ class GameConnection(base.BaseMOULConnection):
 			logger_net_message.warning("PropagateBuffer message %s has flags set that we can't handle yet: %r", message.class_description, unsupported_flags)
 		if NetMessageFlags.has_game_message_receivers in message.flags and not isinstance(message, NetMessageGameMessage):
 			logger_net_message.warning("PropagateBuffer message %s has has_game_message_receivers flag set even though it's not a game message", message.class_description)
-		if NetMessageFlags.echo_back_to_sender in message.flags and not isinstance(message, NetMessageGameMessage):
-			logger_net_message.warning("PropagateBuffer message %s has echo_back_to_sender flag set even though it's not a game message", message.class_description)
+		if NetMessageFlags.echo_back_to_sender in message.flags and not isinstance(message, (NetMessageGameMessage, NetMessageSDLState)):
+			logger_net_message.warning("PropagateBuffer message %s has echo_back_to_sender flag set even though it's not a game message or SDL state", message.class_description)
 		if NetMessageFlags.new_sdl_state in message.flags and not isinstance(message, NetMessageSDLState):
 			logger_net_message.warning("PropagateBuffer message %s has new_sdl_state flag set even though it's not an SDL state message", message.class_description)
 		if NetMessageFlags.initial_age_state_request in message.flags and not isinstance(message, NetMessageGameStateRequest):
