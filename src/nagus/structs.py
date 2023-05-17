@@ -357,7 +357,7 @@ class Uoid(object):
 			fields["clone_ids"] = repr(self.clone_ids)
 		return fields
 	
-	def __eq__(self, other) -> bool:
+	def __eq__(self, other: object) -> bool:
 		if not isinstance(other, Uoid):
 			return NotImplemented
 		
