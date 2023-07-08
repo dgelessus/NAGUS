@@ -290,18 +290,76 @@ class SimpleVariableValue(SimpleVariableValueBase):
 
 class NestedSDLVariableValueBase(VariableValueBase):
 	"""Base class for the normal and guessing implementations of nested SDL variable values."""
+	
+	def base_read(self, stream: typing.BinaryIO) -> None:
+		super().base_read(stream)
+		
+		(flags,) = structs.read_exact(stream, 1)
+		if flags:
+			raise ValueError(f"Nested SDL variable value has unsupported flags set: {flags!r}")
+	
+	def base_write(self, stream: typing.BinaryIO) -> None:
+		super().base_write(stream)
+		
+		stream.write(b"\x00")
+
+
+def _looks_like_start_of_blob_body(data: bytes) -> bool:
+	"""Check whether the given data looks like the start of an SDL blob body."""
+	
+	return data[:3] in {b"\x00\x00\x06", b"\x01\x00\x06"}
 
 
 class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 	variable_array_length: typing.Optional[int]
+	values_indices: bool
 	values: "typing.Dict[int, GuessedSDLRecord]"
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
 		if self.variable_array_length is not None:
 			fields["variable_array_length"] = repr(self.variable_array_length)
+		if self.values_indices:
+			fields["self.values_indices"] = repr(self.values_indices)
 		fields["values"] = repr(self.values)
 		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		self.base_read(stream)
+		
+		# Assume that a single nested SDL variable doesn't have more than 255 elements.
+		
+		pos = stream.tell()
+		lookahead = stream.read(9)
+		stream.seek(pos)
+		
+		if _looks_like_start_of_blob_body(lookahead[1:]):
+			self.variable_array_length = None
+			self.values_indices = False
+		elif _looks_like_start_of_blob_body(lookahead[2:]):
+			self.variable_array_length = None
+			self.values_indices = True
+		elif _looks_like_start_of_blob_body(lookahead[5:]):
+			(self.variable_array_length,) = structs.stream_unpack(stream, structs.UINT32)
+			self.values_indices = False
+		elif _looks_like_start_of_blob_body(lookahead[6:]):
+			(self.variable_array_length,) = structs.stream_unpack(stream, structs.UINT32)
+			self.values_indices = True
+		else:
+			raise ValueError(f"Unable to guess whether or not this nested SDL variable has indices before its element values. Lookahead is {lookahead!r}")
+		
+		# Assume (again) that there are no more than 255 elements.
+		(value_count,) = structs.read_exact(stream, 1)
+		self.values = {}
+		for i in range(value_count):
+			if self.values_indices:
+				# Assume (again) that there are no more than 255 elements.
+				(index,) = structs.read_exact(stream, 1)
+			else:
+				index = i
+			
+			value = self.values[index] = GuessedSDLRecord()
+			value.read(stream)
 	
 	# TODO write
 
@@ -405,7 +463,8 @@ class GuessedSDLRecord(SDLRecordBase):
 	
 	simple_values_indices: bool
 	simple_values: typing.Dict[int, GuessedSimpleVariableValue]
-	nested_sdl_values: typing.Dict[int, NestedSDLVariableValue]
+	nested_sdl_values_indices: bool
+	nested_sdl_values: typing.Dict[int, GuessedNestedSDLVariableValue]
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
@@ -413,6 +472,8 @@ class GuessedSDLRecord(SDLRecordBase):
 			fields["simple_values_indices"] = repr(self.simple_values_indices)
 		if self.simple_values:
 			fields["simple_values"] = repr(self.simple_values)
+		if self.nested_sdl_values_indices:
+			fields["nested_sdl_values_indices"] = repr(self.nested_sdl_values_indices)
 		if self.nested_sdl_values:
 			fields["nested_sdl_values"] = repr(self.nested_sdl_values)
 		return fields
@@ -426,9 +487,21 @@ class GuessedSDLRecord(SDLRecordBase):
 		(simple_variable_count,) = structs.read_exact(stream, 1)
 		
 		self.simple_values = {}
-		# Skip this entire thing if there are no simple variables in this blob.
+		# If there are no simple variables in this blob,
+		# start right away with the nested SDL variables.
 		if simple_variable_count == 0:
 			self.simple_values_indices = True
+			
+			pos = stream.tell()
+			lookahead = stream.read(6)
+			stream.seek(pos)
+			
+			if _looks_like_start_of_variable(lookahead[1:]):
+				self.nested_sdl_values_indices = False
+			elif _looks_like_start_of_variable(lookahead[2:]):
+				self.nested_sdl_values_indices = True
+			else:
+				raise ValueError(f"Unable to guess whether or not this SDL blob has indices before its nested SDL variables. Lookahead (including count) is {lookahead!r}")
 		else:
 			pos = stream.tell()
 			lookahead = stream.read(5)
@@ -472,10 +545,17 @@ class GuessedSDLRecord(SDLRecordBase):
 					# All data before that byte will be part of the last simple variable's data.
 					if i == rang[-1] and len(lookahead) < 128 and lookahead.endswith(b"\x00"):
 						data_len = len(lookahead) - 1
+						self.nested_sdl_values_indices = True
 					else:
 						raise ValueError(f"Unable to find end of data for variable {index} (index {i} in the blob). Lookahead is {lookahead!r}")
 				else:
-					if self.simple_values_indices:
+					if i == rang[-1]:
+						assert data_len > 0
+						# FIXME This assumes that nested SDL values never have indices!
+						# (If there are indices, this has to go back 2 bytes, not just 1.)
+						data_len -= 1
+						self.nested_sdl_values_indices = False
+					elif self.simple_values_indices:
 						# Exclude the next variable's index from this variable's data.
 						assert data_len > 0
 						data_len -= 1
@@ -487,7 +567,15 @@ class GuessedSDLRecord(SDLRecordBase):
 		# because nested SDL variables aren't used very often.
 		(nested_sdl_variable_count,) = structs.read_exact(stream, 1)
 		self.nested_sdl_values = {}
-		# TODO Read nested SDL variable values
+		for i in range(nested_sdl_variable_count):
+			if self.nested_sdl_values_indices:
+				# Assume (again) that there are no more than 255 nested SDL variables.
+				(index,) = structs.read_exact(stream, 1)
+			else:
+				index = i
+			
+			sdl_value = self.nested_sdl_values[index] = GuessedNestedSDLVariableValue()
+			sdl_value.read(stream)
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		self.base_write(stream)
