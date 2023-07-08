@@ -349,7 +349,11 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 		lookahead = stream.read(9)
 		stream.seek(pos)
 		
-		if _looks_like_start_of_blob_body(lookahead[1:]):
+		if lookahead.startswith(b"\x00\x00\x00\x00\x00"):
+			(self.variable_array_length,) = structs.stream_unpack(stream, structs.UINT32)
+			assert self.variable_array_length == 0
+			self.values_indices = True
+		elif _looks_like_start_of_blob_body(lookahead[1:]):
 			self.variable_array_length = None
 			self.values_indices = False
 		elif _looks_like_start_of_blob_body(lookahead[2:]):
