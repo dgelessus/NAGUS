@@ -310,6 +310,22 @@ def _looks_like_start_of_blob_body(data: bytes) -> bool:
 	return data[:3] in {b"\x00\x00\x06", b"\x01\x00\x06"}
 
 
+def _find_start_of_blob_body(data: bytes) -> int:
+	"""Find the first index in the given data that looks like the start of an SDL blob body.
+	
+	:raises ValueError: If no matching index could be found in the data.
+	"""
+	
+	next_pos = 1
+	# If no start of blob body was found,
+	# the loop is terminated by the ValueError thrown by bytes.index.
+	while True:
+		pos = data.index(b"\x00\x06", next_pos)
+		if _looks_like_start_of_blob_body(data[pos-1:pos+2]):
+			return pos - 1
+		next_pos = pos + 2
+
+
 class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 	variable_array_length: typing.Optional[int]
 	values_indices: bool
@@ -532,13 +548,23 @@ class GuessedSDLRecord(SDLRecordBase):
 				lookahead = stream.read(128)
 				stream.seek(pos)
 				
-				# Find end of data for this variable by looking for the start of the next variable.
+				# Find end of data for this variable by looking for the start of the next variable or blob body.
 				try:
-					data_len = _find_start_of_variable(lookahead)
+					next_var_pos = _find_start_of_variable(lookahead)
 				except ValueError:
+					next_var_pos = None
+				
+				try:
+					next_blob_pos = _find_start_of_blob_body(lookahead)
+				except ValueError:
+					next_blob_pos = None
+				
+				assert next_var_pos is None or next_blob_pos is None or next_var_pos != next_blob_pos
+				
+				if next_var_pos is None and next_blob_pos is None:
 					# If there are no nested SDL variables,
 					# the SDL blob will end shortly after the last simple variable
-					# and there will be no next variable.
+					# and there will be no next variable or blob.
 					# The last byte in the SDL blob will be the nested SDL variable count,
 					# which will be 0.
 					# (This assumes that a single state descriptor doesn't contain more than 255 nested SDL variables - see below.)
@@ -548,14 +574,33 @@ class GuessedSDLRecord(SDLRecordBase):
 						self.nested_sdl_values_indices = True
 					else:
 						raise ValueError(f"Unable to find end of data for variable {index} (index {i} in the blob). Lookahead is {lookahead!r}")
-				else:
-					if i == rang[-1]:
+				elif i == rang[-1]:
+					if next_blob_pos is not None and (next_var_pos is None or next_blob_pos < next_var_pos):
+						# Found start of a blob before start of a variable -
+						# this means that we're inside a nested SDL variable array containing more than one value
+						# and this blob has no nested SDL variables of its own.
+						data_len = next_blob_pos
+						assert data_len > 0
+						assert lookahead[data_len - 1] == 0
+						# FIXME This assumes that nested SDL variable array elements never have indices!
+						# (If there are indices, this has to go back 2 bytes, not just 1.)
+						data_len -= 1
+						self.nested_sdl_values_indices = True
+					else:
+						assert next_var_pos is not None
+						data_len = next_var_pos
 						assert data_len > 0
 						# FIXME This assumes that nested SDL values never have indices!
 						# (If there are indices, this has to go back 2 bytes, not just 1.)
 						data_len -= 1
 						self.nested_sdl_values_indices = False
-					elif self.simple_values_indices:
+				else:
+					if next_var_pos is None:
+						raise ValueError(f"Unable to find end of data for variable {index} (index {i} in the blob). Lookahead is {lookahead!r}")
+					
+					assert next_blob_pos is None or next_var_pos < next_blob_pos
+					data_len = next_var_pos
+					if self.simple_values_indices:
 						# Exclude the next variable's index from this variable's data.
 						assert data_len > 0
 						data_len -= 1
