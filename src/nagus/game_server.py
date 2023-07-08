@@ -1065,7 +1065,10 @@ class NetMessageSDLState(NetMessageStreamedObject):
 					logger_sdl.warning("Failed to parse SDL blob body for %r v%d", header.descriptor_name, header.descriptor_version, exc_info=True)
 					record = None
 				else:
-					logger_sdl.debug("Parsed SDL blob for %r v%d: %r", header.descriptor_name, header.descriptor_version, record)
+					if logger_sdl.isEnabledFor(logging.DEBUG):
+						logger_sdl.debug("Parsed SDL blob for %r v%d:", header.descriptor_name, header.descriptor_version)
+						for line in record.as_multiline_str():
+							logger_sdl.debug("%s", line.replace("\t", "    "))
 		
 		if self.persist_on_server:
 			if header is None or record is None:

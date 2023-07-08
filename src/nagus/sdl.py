@@ -233,6 +233,30 @@ class GuessedSimpleVariableValue(SimpleVariableValueBase):
 		fields["data"] = repr(self.data)
 		return fields
 	
+	def __str__(self) -> str:
+		flags = self.flags
+		if SimpleVariableValueBase.Flags.same_as_default in flags:
+			assert not self.data
+			flags &= ~SimpleVariableValueBase.Flags.same_as_default
+			res = "<default>"
+		else:
+			res = repr(self.data)
+		
+		if self.timestamp is None:
+			assert SimpleVariableValueBase.Flags.has_timestamp not in flags
+		else:
+			assert SimpleVariableValueBase.Flags.has_timestamp in flags
+			flags &= ~SimpleVariableValueBase.Flags.has_timestamp
+			res += f" @ {self.timestamp.isoformat()}"
+		
+		if flags:
+			res += f" ({flags})"
+		
+		if self.hint:
+			res += f" # {self.hint!r}"
+		
+		return res
+	
 	def write(self, stream: typing.BinaryIO) -> None:
 		"""Write the full variable value back.
 		
@@ -339,6 +363,30 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 			fields["self.values_indices"] = repr(self.values_indices)
 		fields["values"] = repr(self.values)
 		return fields
+	
+	def as_multiline_str(self) -> typing.Iterable[str]:
+		if self.variable_array_length is None:
+			desc = f"{len(self.values)} elements"
+		else:
+			desc = f"{len(self.values)} of {self.variable_array_length} elements"
+		
+		if not self.values_indices:
+			desc += " (complete)"
+		
+		if self.hint:
+			desc += f" # {self.hint!r}"
+		
+		if self.values:
+			yield f"{desc}:"
+		else:
+			yield desc
+		
+		for index, value in self.values.items():
+			it = iter(value.as_multiline_str())
+			first = next(it, "")
+			yield f"\t[{index}] = {first}"
+			for line in it:
+				yield "\t\t" + line
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		self.base_read(stream)
@@ -497,6 +545,35 @@ class GuessedSDLRecord(SDLRecordBase):
 		if self.nested_sdl_values:
 			fields["nested_sdl_values"] = repr(self.nested_sdl_values)
 		return fields
+	
+	def as_multiline_str(self) -> typing.Iterable[str]:
+		if not self.simple_values and not self.nested_sdl_values:
+			yield f"Empty blob"
+		
+		if self.simple_values:
+			desc = f"{len(self.simple_values)} simple values"
+			
+			if not self.simple_values_indices:
+				desc += " (complete)"
+			
+			yield f"{desc}:"
+			
+			for index, value in self.simple_values.items():
+				yield f"({index}) = {value}"
+		
+		if self.nested_sdl_values:
+			desc = f"{len(self.nested_sdl_values)} nested SDL values"
+			
+			if not self.nested_sdl_values_indices:
+				desc += " (complete)"
+			
+			yield f"{desc}:"
+			
+			for index, value in self.nested_sdl_values.items():
+				it = iter(value.as_multiline_str())
+				first = next(it, "")
+				yield f"({index}) = {first}"
+				yield from it
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		self.base_read(stream)
