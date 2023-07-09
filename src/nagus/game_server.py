@@ -1046,7 +1046,8 @@ class NetMessageSDLState(NetMessageStreamedObject):
 		if NetMessageFlags.echo_back_to_sender in self.flags:
 			await connection.send_propagate_buffer(self)
 		
-		with io.BytesIO(self.decompress_data()) as stream:
+		blob_data = self.decompress_data()
+		with io.BytesIO(blob_data) as stream:
 			try:
 				header = sdl.SDLStreamHeader.from_stream(stream)
 			except ValueError:
@@ -1069,6 +1070,23 @@ class NetMessageSDLState(NetMessageStreamedObject):
 						logger_sdl.debug("Parsed SDL blob for %r v%d:", header.descriptor_name, header.descriptor_version)
 						for line in record.as_multiline_str():
 							logger_sdl.debug("%s", line.replace("\t", "    "))
+					
+					lookahead = stream.read(16)
+					if lookahead:
+						logger_sdl.warning("SDL blob for %r v%d has trailing data (probably not parsed correctly): %r", lookahead)
+					else:
+						try:
+							with io.BytesIO() as stream_out:
+								header.write(stream_out)
+								record.write(stream_out)
+								roundtripped_data = stream_out.getvalue()
+						except Exception:
+							logger_sdl.warning("Failed to write parsed SDL blob for %r v%d", header.descriptor_name, header.descriptor_version, exc_info=True)
+						else:
+							if roundtripped_data != blob_data:
+								logger_sdl.warning("Failed to roundtrip SDL blob for %r v%d", header.descriptor_name, header.descriptor_version)
+								logger_sdl.debug("Original blob data: %r", blob_data)
+								logger_sdl.debug("Parsed and rewritten blob data: %r", roundtripped_data)
 		
 		if self.persist_on_server:
 			if header is None or record is None:
