@@ -401,18 +401,18 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 			(self.variable_array_length,) = structs.stream_unpack(stream, structs.UINT32)
 			assert self.variable_array_length == 0
 			self.values_indices = True
-		elif _looks_like_start_of_blob_body(lookahead[1:]):
-			self.variable_array_length = None
-			self.values_indices = False
-		elif _looks_like_start_of_blob_body(lookahead[2:]):
-			self.variable_array_length = None
+		elif _looks_like_start_of_blob_body(lookahead[6:]):
+			(self.variable_array_length,) = structs.stream_unpack(stream, structs.UINT32)
 			self.values_indices = True
 		elif _looks_like_start_of_blob_body(lookahead[5:]):
 			(self.variable_array_length,) = structs.stream_unpack(stream, structs.UINT32)
 			self.values_indices = False
-		elif _looks_like_start_of_blob_body(lookahead[6:]):
-			(self.variable_array_length,) = structs.stream_unpack(stream, structs.UINT32)
+		elif _looks_like_start_of_blob_body(lookahead[2:]):
+			self.variable_array_length = None
 			self.values_indices = True
+		elif _looks_like_start_of_blob_body(lookahead[1:]):
+			self.variable_array_length = None
+			self.values_indices = False
 		else:
 			raise ValueError(f"Unable to guess whether or not this nested SDL variable has indices before its element values. Lookahead is {lookahead!r}")
 		
