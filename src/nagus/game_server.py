@@ -822,29 +822,15 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 				raise base.ProtocolError(f"SDL node {age_sdl_node_id} has SDL name {age_sdl_node_data.string64_1!r}, which doesn't match the age file name {connection.client_state.age_file_name!r}")
 			
 			if age_sdl_node_data.blob_1:
-				try:
-					age_sequence_prefix = connection.client_state.age_sequence_prefix
-				except AttributeError:
-					logger_sdl.warning("Client requested game state, but hasn't yet sent any messages that would allow guessing the age sequence prefix! Not sending AgeSDLHook state - this will probably break age state and scripts!")
+				count += 1
+				# TODO It's probably not enough to send the SDL blob from the vault as-is!
+				age_sdl_blob = age_sdl_node_data.blob_1
+				
+				if hasattr(connection.client_state, "age_sequence_prefix"):
+					await connection.send_initial_age_sdl(age_sdl_blob)
 				else:
-					count += 1
-					
-					age_sdl_hook_uoid = structs.Uoid()
-					age_sdl_hook_uoid.location = structs.Location(structs.make_sequence_number(age_sequence_prefix, -2), structs.Location.Flags.built_in)
-					age_sdl_hook_uoid.load_mask = 0xff
-					age_sdl_hook_uoid.class_type = 0x0001 # Scene Object
-					age_sdl_hook_uoid.object_id = 1
-					age_sdl_hook_uoid.object_name = b"AgeSDLHook"
-					age_sdl_hook_uoid.clone_ids = None
-					
-					age_sdl_hook_state = NetMessageSDLState()
-					age_sdl_hook_state.uoid = age_sdl_hook_uoid
-					# TODO It's probably not enough to send the SDL blob from the vault as-is!
-					age_sdl_hook_state.compress_and_set_data(age_sdl_node_data.blob_1)
-					age_sdl_hook_state.is_initial_state = True
-					age_sdl_hook_state.persist_on_server = True
-					age_sdl_hook_state.is_avatar_state = False
-					await connection.send_propagate_buffer(age_sdl_hook_state)
+					logger_sdl.info("Age sequence prefix not known yet - will delay sending the AgeSDLHook initial state")
+					connection.client_state.delayed_age_sdl_blob = age_sdl_blob
 		
 		# TODO Send all other states
 		
@@ -1175,7 +1161,7 @@ class NetMessageGameMessage(NetMessageStream):
 			logger_pl_message.debug("Parsed plMessage: %r", message)
 			
 			if message.sender is not None:
-				connection.client_state.try_find_age_sequence_prefix(message.sender.location)
+				await connection.try_age_sdl_stuff(message.sender.location)
 			
 			# Double-check the containing network game message's has_game_message_receivers flag
 			# and check for nullptr receivers.
@@ -1184,7 +1170,7 @@ class NetMessageGameMessage(NetMessageStream):
 				if receiver is None:
 					logger_pl_message.warning("plMessage %s has nullptr receiver at index %d", message.class_description, i)
 				else:
-					connection.client_state.try_find_age_sequence_prefix(receiver.location)
+					await connection.try_age_sdl_stuff(receiver.location)
 					if game_message_receiver is None and receiver.location.sequence_number != 0 and structs.Location.Flags.reserved not in receiver.location.flags:
 						game_message_receiver = receiver
 			
@@ -1459,8 +1445,16 @@ class GameClientState(object):
 	age_sequence_prefix: int
 	account_uuid: uuid.UUID
 	ki_number: int
+	delayed_age_sdl_blob: typing.Optional[bytes]
 	
-	def try_find_age_sequence_prefix(self, location: structs.Location) -> None:
+	def __init__(self) -> None:
+		super().__init__()
+		
+		# Other attributes are intentionally left unset at first.
+		# They will be set in the join_age_request handler shortly after the client has connected.
+		self.delayed_age_sdl_blob = None
+	
+	def try_find_age_sequence_prefix(self, location: structs.Location) -> bool:
 		"""Try to derive (if necessary) the client's age sequence prefix from the given location.
 		
 		The client never directly sends the age sequence prefix,
@@ -1482,6 +1476,10 @@ class GameClientState(object):
 		(except for some simple ages like AvatarCustomization,
 		but that one doesn't have age SDL either,
 		so it doesn't matter there).
+		
+		:return: ``True`` if :attr:`age_sequence_prefix` was newly set by this call,
+			``False`` if it's still unset or was already set before.
+			(This indicates whether it's time to send any delayed AgeSDLHook initial state to the client.)
 		"""
 		
 		if not hasattr(self, "age_sequence_prefix"):
@@ -1489,6 +1487,9 @@ class GameClientState(object):
 				assert structs.Location.Flags.reserved not in location.flags
 				(self.age_sequence_prefix, _) = structs.split_sequence_number(location.sequence_number)
 				logger_sdl.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, self.age_sequence_prefix)
+				return True
+		
+		return False
 
 
 class GameConnection(base.BaseMOULConnection):
@@ -1607,6 +1608,42 @@ class GameConnection(base.BaseMOULConnection):
 		
 		await self.write_message(2, PROPAGATE_BUFFER_HEADER.pack(message.class_index, len(buffer)) + buffer)
 	
+	async def send_initial_age_sdl(self, age_sdl_blob: bytes) -> None:
+		"""Send the given SDL blob to the client as the initial state for the AgeSDLHook.
+		
+		Can only be called if the :attr:`GameClientState.age_sequence_prefix` has been initialized.
+		"""
+		
+		age_sdl_hook_uoid = structs.Uoid()
+		age_sdl_hook_uoid.location = structs.Location(structs.make_sequence_number(self.client_state.age_sequence_prefix, -2), structs.Location.Flags.built_in)
+		age_sdl_hook_uoid.load_mask = 0xff
+		age_sdl_hook_uoid.class_type = 0x0001 # Scene Object
+		age_sdl_hook_uoid.object_id = 1
+		age_sdl_hook_uoid.object_name = b"AgeSDLHook"
+		age_sdl_hook_uoid.clone_ids = None
+		
+		age_sdl_hook_state = NetMessageSDLState()
+		age_sdl_hook_state.uoid = age_sdl_hook_uoid
+		age_sdl_hook_state.compress_and_set_data(age_sdl_blob)
+		age_sdl_hook_state.is_initial_state = True
+		age_sdl_hook_state.persist_on_server = True
+		age_sdl_hook_state.is_avatar_state = False
+		await self.send_propagate_buffer(age_sdl_hook_state)
+	
+	async def try_age_sdl_stuff(self, location: structs.Location) -> None:
+		"""Try to derive the client's age sequence prefix from the given location
+		and send any delayed initial AgeSDLHook state as needed.
+		"""
+		
+		if self.client_state.try_find_age_sequence_prefix(location):
+			# Found the age sequence prefix,
+			# so now we're ready to send the AgeSDLHook state
+			# (if the client already requested it).
+			if self.client_state.delayed_age_sdl_blob is not None:
+				logger_sdl.info("Age sequence prefix now known (%d) - sending delayed AgeSDLHook initial state", self.client_state.age_sequence_prefix)
+				await self.send_initial_age_sdl(self.client_state.delayed_age_sdl_blob)
+				self.client_state.delayed_age_sdl_blob = None
+	
 	@base.message_handler(2)
 	async def receive_propagate_buffer(self) -> None:
 		buffer_type, buffer_length = await self.read_unpack(PROPAGATE_BUFFER_HEADER)
@@ -1652,6 +1689,6 @@ class GameConnection(base.BaseMOULConnection):
 			logger_net_message.warning("PropagateBuffer message %s has extra trailing data: %r", message.class_description, extra_data)
 		
 		if isinstance(message, NetMessageObject):
-			self.client_state.try_find_age_sequence_prefix(message.uoid.location)
+			await self.try_age_sdl_stuff(message.uoid.location)
 		
 		await message.handle(self)

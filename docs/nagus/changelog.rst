@@ -22,8 +22,9 @@ Version 0.1.0
 * Changed the single placeholder account to use a non-zero UUID.
 * Improved status server to work around the quirks and limitations of current clients,
   specifically with status messages that are very long and/or contain non-ASCII characters.
-* Fixed calculation of AgeSDLHook sequence numbers ---
-  clients should now receive the initial age SDL correctly.
+* Improved sending of AgeSDLHook initial SDL states
+  and fixed calculation of their sequence numbers.
+  Clients should now receive the initial age SDL correctly and more reliably.
 * Fixed vault node creator info not being set in most cases.
 * Fixed ``plNetMsgSDLStateBroadcast`` parsing.
 
