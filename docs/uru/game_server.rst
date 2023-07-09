@@ -628,16 +628,20 @@ and not supported by MOSS or DIRTSAND
     The client always sets it to false.
   * **Persist on server:** 1-byte boolean.
     Normally always set to true.
-    The client sets it to false for SDL states that should only be propagated to other clients,
-    but not saved permanently on the server.
-    Should only be set for :cpp:class:`plNetMsgSDLStateBCast` messages.
-    (Plain :cpp:class:`plNetMsgSDLState` messages are handled by the server *only* and not forwarded to any other clients,
-    so a :cpp:class:`plNetMsgSDLState` with this flag set would have no effect at all.)
+    The client sets it to false for SDL states that shouldn't be saved permanently on the server.
+    In that case,
+    the state is only broadcast to other clients (if requested)
+    and saved temporarily as long as the game server is running
+    so that it can be sent to newly joining clients.
+    MOSS ignores this flag and instead only saves states
+    if the blob doesn't have the volatile flag set
+    and the UOID doesn't have clone IDs
+    (this filters out all avatar states).
   * **Is avatar state:** 1-byte boolean.
     Set to true by the client for SDL states related/attached to an avatar.
     If true,
     the persist on server flag should be false.
-    Should only be set for :cpp:class:`plNetMsgSDLStateBCast` messages.
+    MOSS and DIRTSAND ignore this flag.
   
   The stream data is an :ref:`SDL blob <sdl_blob>`,
   including its stream header.

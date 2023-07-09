@@ -639,7 +639,9 @@ this structure varies depending on the state descriptor.
   * **Volatile** = 1 << 0: Unclear.
     The open-sourced client code sometimes sets this flag,
     but never reads it.
-    MOSS and DIRTSAND ignore it.
+    MOSS won't save the blob permanently on the server side
+    if it has this flag set.
+    DIRTSAND ignores it.
     Unclear if Cyan's server software does anything with it.
 * **IO version:** 1-byte unsigned int.
   Always 6.
