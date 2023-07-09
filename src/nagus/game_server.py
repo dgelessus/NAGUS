@@ -1013,10 +1013,13 @@ class NetMessageSDLState(NetMessageStreamedObject):
 	
 	async def handle(self, connection: "GameConnection") -> None:
 		if logger_sdl.isEnabledFor(logging.DEBUG):
-			if isinstance(self, NetMessageSDLStateBroadcast):
-				desc = "server and clients" if self.persist_on_server else "clients only"
+			if self.persist_on_server:
+				desc = "persistent"
 			else:
-				desc = "server only" if self.persist_on_server else "for nobody??"
+				desc = "temporary"
+			
+			if isinstance(self, NetMessageSDLStateBroadcast):
+				desc += ", broadcast"
 			
 			if NetMessageFlags.new_sdl_state in self.flags:
 				desc += ", new"
@@ -1037,7 +1040,7 @@ class NetMessageSDLState(NetMessageStreamedObject):
 			try:
 				header = sdl.SDLStreamHeader.from_stream(stream)
 			except ValueError:
-				logger_sdl.warning("Failed to parse SDL blob header", exc_info=True)
+				logger_sdl.warning("Failed to parse SDL blob header - this state will not be saved or sent to new clients", exc_info=True)
 				header = None
 				record = None
 			else:
@@ -1049,7 +1052,7 @@ class NetMessageSDLState(NetMessageStreamedObject):
 				try:
 					record.read(stream)
 				except ValueError:
-					logger_sdl.warning("Failed to parse SDL blob body for %r v%d", header.descriptor_name, header.descriptor_version, exc_info=True)
+					logger_sdl.error("Failed to parse SDL blob body for %r v%d - this state will not be saved or sent to new clients", header.descriptor_name, header.descriptor_version, exc_info=True)
 					record = None
 				else:
 					if logger_sdl.isEnabledFor(logging.DEBUG):
@@ -1074,13 +1077,11 @@ class NetMessageSDLState(NetMessageStreamedObject):
 								logger_sdl.debug("Original blob data: %r", blob_data)
 								logger_sdl.debug("Parsed and rewritten blob data: %r", roundtripped_data)
 		
+		if header is None or record is None:
+			return
+		
 		if self.persist_on_server:
-			if header is None or record is None:
-				logger_sdl.error("Cannot persist SDL state because parsing failed")
-			else:
-				pass # TODO Actually save the state
-		elif not isinstance(self, NetMessageSDLStateBroadcast):
-			logger_sdl.warning("SDL state message is neither broadcast nor persisted on server - ignoring")
+			pass # TODO Actually save the state
 
 
 class NetMessageSDLStateBroadcast(NetMessageSDLState):
