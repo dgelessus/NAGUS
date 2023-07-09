@@ -1041,44 +1041,40 @@ class NetMessageSDLState(NetMessageStreamedObject):
 				header = sdl.SDLStreamHeader.from_stream(stream)
 			except ValueError:
 				logger_sdl.warning("Failed to parse SDL blob header - this state will not be saved or sent to new clients", exc_info=True)
-				header = None
-				record = None
-			else:
-				assert header is not None # mypy's type inference isn't very smart...
-				if header.uoid is not None:
-					logger_sdl.info("SDL blob header contains UOID: %s", header.uoid)
-				
-				record = sdl.GuessedSDLRecord()
-				try:
-					record.read(stream)
-				except ValueError:
-					logger_sdl.error("Failed to parse SDL blob body for %r v%d - this state will not be saved or sent to new clients", header.descriptor_name, header.descriptor_version, exc_info=True)
-					record = None
-				else:
-					if logger_sdl.isEnabledFor(logging.DEBUG):
-						logger_sdl.debug("Parsed SDL blob for %r v%d:", header.descriptor_name, header.descriptor_version)
-						for line in record.as_multiline_str():
-							logger_sdl.debug("%s", line.replace("\t", "    "))
-					
-					lookahead = stream.read(16)
-					if lookahead:
-						logger_sdl.warning("SDL blob for %r v%d has trailing data (probably not parsed correctly): %r", lookahead)
-					else:
-						try:
-							with io.BytesIO() as stream_out:
-								header.write(stream_out)
-								record.write(stream_out)
-								roundtripped_data = stream_out.getvalue()
-						except Exception:
-							logger_sdl.warning("Failed to write parsed SDL blob for %r v%d", header.descriptor_name, header.descriptor_version, exc_info=True)
-						else:
-							if roundtripped_data != blob_data:
-								logger_sdl.warning("Failed to roundtrip SDL blob for %r v%d", header.descriptor_name, header.descriptor_version)
-								logger_sdl.debug("Original blob data: %r", blob_data)
-								logger_sdl.debug("Parsed and rewritten blob data: %r", roundtripped_data)
+				return
+			
+			if header.uoid is not None:
+				logger_sdl.info("SDL blob header contains UOID: %s", header.uoid)
+			
+			record = sdl.GuessedSDLRecord()
+			try:
+				record.read(stream)
+			except ValueError:
+				logger_sdl.error("Failed to parse SDL blob body for %r v%d - this state will not be saved or sent to new clients", header.descriptor_name, header.descriptor_version, exc_info=True)
+				return
+			
+			if logger_sdl.isEnabledFor(logging.DEBUG):
+				logger_sdl.debug("Parsed SDL blob for %r v%d:", header.descriptor_name, header.descriptor_version)
+				for line in record.as_multiline_str():
+					logger_sdl.debug("%s", line.replace("\t", "    "))
+			
+			lookahead = stream.read(16)
 		
-		if header is None or record is None:
-			return
+		if lookahead:
+			logger_sdl.warning("SDL blob for %r v%d has trailing data (probably not parsed correctly): %r", lookahead)
+		else:
+			try:
+				with io.BytesIO() as stream_out:
+					header.write(stream_out)
+					record.write(stream_out)
+					roundtripped_data = stream_out.getvalue()
+			except Exception:
+				logger_sdl.warning("Failed to write parsed SDL blob for %r v%d", header.descriptor_name, header.descriptor_version, exc_info=True)
+			else:
+				if roundtripped_data != blob_data:
+					logger_sdl.warning("Failed to roundtrip SDL blob for %r v%d", header.descriptor_name, header.descriptor_version)
+					logger_sdl.debug("Original blob data: %r", blob_data)
+					logger_sdl.debug("Parsed and rewritten blob data: %r", roundtripped_data)
 		
 		if self.persist_on_server:
 			pass # TODO Actually save the state
