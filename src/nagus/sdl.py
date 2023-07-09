@@ -679,7 +679,6 @@ class GuessedSDLRecord(SDLRecordBase):
 					if next_var_pos is None:
 						raise ValueError(f"Unable to find end of data for variable {index} (index {i} in the blob). Lookahead is {lookahead!r}")
 					
-					assert next_blob_pos is None or next_var_pos < next_blob_pos
 					data_len = next_var_pos
 					if self.simple_values_indices:
 						# Exclude the next variable's index from this variable's data.
