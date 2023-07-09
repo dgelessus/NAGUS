@@ -559,11 +559,17 @@ class GuessedSDLRecord(SDLRecordBase):
 		return fields
 	
 	def as_multiline_str(self) -> typing.Iterable[str]:
+		if SDLRecordBase.Flags.volatile in self.flags:
+			prefix = "volatile, "
+		else:
+			prefix = ""
+		
 		if not self.simple_values and not self.nested_sdl_values:
-			yield f"Empty blob"
+			yield prefix + "empty blob"
 		
 		if self.simple_values:
-			desc = f"{len(self.simple_values)} simple values"
+			desc = f"{prefix}{len(self.simple_values)} simple values"
+			prefix = ""
 			
 			if not self.simple_values_indices:
 				desc += " (complete)"
@@ -574,7 +580,8 @@ class GuessedSDLRecord(SDLRecordBase):
 				yield f"({index}) = {value}"
 		
 		if self.nested_sdl_values:
-			desc = f"{len(self.nested_sdl_values)} nested SDL values"
+			desc = f"{prefix}{len(self.nested_sdl_values)} nested SDL values"
+			prefix = ""
 			
 			if not self.nested_sdl_values_indices:
 				desc += " (complete)"
