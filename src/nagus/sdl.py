@@ -429,7 +429,19 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 			value = self.values[index] = GuessedSDLRecord()
 			value.read(stream)
 	
-	# TODO write
+	def write(self, stream: typing.BinaryIO) -> None:
+		self.base_write(stream)
+		
+		if self.variable_array_length is not None:
+			stream.write(structs.UINT32.pack(self.variable_array_length))
+		
+		stream.write(bytes([len(self.values)]))
+		
+		for index, value in self.values.items():
+			if self.values_indices:
+				stream.write(bytes([index]))
+			
+			value.write(stream)
 
 
 class NestedSDLVariableValue(NestedSDLVariableValueBase):
@@ -713,7 +725,11 @@ class GuessedSDLRecord(SDLRecordBase):
 			value.write(stream)
 		
 		stream.write(bytes([len(self.nested_sdl_values)]))
-		# TODO Write nested SDL variable values
+		for index, value in self.nested_sdl_values.items():
+			if self.nested_sdl_values_indices:
+				stream.write(bytes([index]))
+			
+			value.write(stream)
 
 
 def guess_parse_sdl_blob(stream: typing.BinaryIO) -> typing.Tuple[typing.Optional[SDLStreamHeader], GuessedSDLRecord]:
