@@ -1282,6 +1282,12 @@ class NetMessageLoadClone(NetMessageGameMessage):
 		super().write(stream)
 		self.uoid.write(stream)
 		stream.write(NET_MESSAGE_LOAD_CLONE_BOOLS.pack(self.is_player, self.is_loading, self.is_initial_state))
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		logger_pl_message.debug("Received load clone message for %s, player? %r, loading? %r", self.uoid, self.is_player, self.is_loading)
+		if self.is_initial_state:
+			logger_pl_message.warning("Load clone message from client has initial state flag set")
+		await super().handle(connection)
 
 
 class NetMessageMembersListRequest(NetMessage):
