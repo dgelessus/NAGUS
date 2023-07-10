@@ -588,8 +588,8 @@ class GuessedSDLRecord(SDLRecordBase):
 			
 			yield f"{desc}:"
 			
-			for index, value in self.nested_sdl_values.items():
-				it = iter(value.as_multiline_str())
+			for index, sdl_value in self.nested_sdl_values.items():
+				it = iter(sdl_value.as_multiline_str())
 				first = next(it, "")
 				yield f"({index}) = {first}"
 				yield from it
@@ -732,11 +732,11 @@ class GuessedSDLRecord(SDLRecordBase):
 			value.write(stream)
 		
 		stream.write(bytes([len(self.nested_sdl_values)]))
-		for index, value in self.nested_sdl_values.items():
+		for index, sdl_value in self.nested_sdl_values.items():
 			if self.nested_sdl_values_indices:
 				stream.write(bytes([index]))
 			
-			value.write(stream)
+			sdl_value.write(stream)
 
 
 def guess_parse_sdl_blob(stream: typing.BinaryIO) -> typing.Tuple[typing.Optional[SDLStreamHeader], GuessedSDLRecord]:
