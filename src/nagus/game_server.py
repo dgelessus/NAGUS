@@ -65,6 +65,8 @@ NET_MESSAGE_LOAD_CLONE_BOOLS = struct.Struct("<???")
 
 COMPRESSION_THRESHOLD = 256
 
+AGE_SDL_HOOK_NAME = b"AgeSDLHook"
+
 
 class GroupId(object):
 	class Flags(structs.IntFlag):
@@ -806,10 +808,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 		# TODO Send currently loaded clones
 		
 		try:
-			age_sdl_node_id = await connection.server_state.find_unique_vault_node(
-				state.VaultNodeData(node_type=state.VaultNodeType.sdl),
-				parent_id=connection.client_state.age_info_node_id,
-			)
+			age_sdl_node_id = await connection.find_age_sdl_node()
 		except state.VaultNodeNotFound:
 			# No age SDL saved for this instance -
 			# assuming that this age has no AgeSDLHook.
@@ -986,6 +985,71 @@ class NetMessageTestAndSet(NetMessageSharedState):
 			# TODO Actually unlock the thing
 
 
+def _update_blob_using_parsed_state(current_blob: bytes, update_header: sdl.SDLStreamHeader, update_record: sdl.GuessedSDLRecord) -> bytes:
+	"""Parse the SDL blob ``current_blob``,
+	update it with the values from the already parsed SDL record ``update_record``,
+	and return the updated SDL blob.
+	"""
+	
+	with io.BytesIO(current_blob) as stream:
+		current_header = sdl.SDLStreamHeader.from_stream(stream)
+		
+		if current_header.uoid is not None:
+			logger_sdl.info("Currently saved SDL blob header contains UOID: %s", current_header.uoid)
+		
+		if update_header != current_header:
+			raise ValueError(f"Mismatched state descriptors in update - current SDL blob has header {update_header}, but the update SDL blob has header {current_header})")
+		
+		current_record = sdl.GuessedSDLRecord()
+		current_record.read(stream)
+		
+		if logger_sdl.isEnabledFor(logging.DEBUG):
+			logger_sdl.debug("Parsed currently saved SDL blob:")
+			for line in current_record.as_multiline_str():
+				logger_sdl.debug("%s", line.replace("\t", "    "))
+		
+		lookahead = stream.read(16)
+	
+	if lookahead:
+		raise ValueError(f"Currently saved SDL blob has trailing data (probably not parsed correctly): {lookahead!r}")
+	
+	# TODO Update current_record based on update_record
+	
+	if logger_sdl.isEnabledFor(logging.DEBUG):
+		logger_sdl.debug("Updated state:")
+		for line in current_record.as_multiline_str():
+			logger_sdl.debug("%s", line.replace("\t", "    "))
+	
+	with io.BytesIO() as stream:
+		current_header.write(stream)
+		current_record.write(stream)
+		updated_blob = stream.getvalue()
+	
+	# Check that the updated blob can be re-parsed successfully.
+	
+	with io.BytesIO(updated_blob) as stream:
+		roundtripped_header = sdl.SDLStreamHeader.from_stream(stream)
+		if roundtripped_header != current_header:
+			raise ValueError(f"Re-parsed updated SDL blob header ({update_header}) doesn't match original header ({current_header})")
+		
+		roundtripped_record = sdl.GuessedSDLRecord()
+		roundtripped_record.read(stream)
+		if roundtripped_record != current_record:
+			if logger_sdl.isEnabledFor(logging.DEBUG):
+				logger_sdl.debug("Re-parsed updated blob:")
+				for line in roundtripped_record.as_multiline_str():
+					logger_sdl.debug("%s", line.replace("\t", "    "))
+			
+			raise ValueError("Re-parsed updated SDL blob body doesn't match original body")
+		
+		lookahead = stream.read(16)
+	
+	if lookahead:
+		raise ValueError(f"Re-parsed updated SDL blob has trailing data (probably not parsed correctly): {lookahead!r}")
+	
+	return updated_blob
+
+
 class NetMessageSDLState(NetMessageStreamedObject):
 	CLASS_INDEX = 0x02cd
 	
@@ -1076,7 +1140,40 @@ class NetMessageSDLState(NetMessageStreamedObject):
 					logger_sdl.debug("Original blob data: %r", blob_data)
 					logger_sdl.debug("Parsed and rewritten blob data: %r", roundtripped_data)
 		
-		if self.persist_on_server:
+		if self.uoid.object_name == AGE_SDL_HOOK_NAME:
+			# Special treatment for AgeSDLHook:
+			# save in the appropriate vault node
+			# and not together with all the other per-instance SDL states.
+			
+			if not self.persist_on_server:
+				logger_sdl.warning("AgeSDLHook state doesn't have persist on server flag set - will save anyway")
+			if self.is_avatar_state:
+				logger_sdl.warning("AgeSDLHook state is marked as an avatar state")
+			if self.uoid != connection.client_state.age_sdl_hook_uoid:
+				logger_sdl.warning("Received an AgeSDLHook state with UOID %s, which doesn't match the expected UOID %s for this age", self.uoid, connection.client_state.age_sdl_hook_uoid)
+			
+			try:
+				age_sdl_node_id = await connection.find_age_sdl_node()
+			except state.VaultNodeNotFound:
+				logger_sdl.info("Age instance SDL vault node not found - creating one...")
+				age_sdl_node_id = await connection.server_state.create_vault_node(state.VaultNodeData(creator_account_uuid=connection.client_state.account_uuid, creator_id=connection.client_state.ki_number, node_type=state.VaultNodeType.sdl, int32_1=0, string64_1=connection.client_state.age_file_name))
+				await connection.server_state.add_vault_node_ref(state.VaultNodeRef(connection.client_state.age_info_node_id, age_sdl_node_id))
+			
+			age_sdl_node_data = await connection.server_state.fetch_vault_node(age_sdl_node_id)
+			age_sdl_blob = age_sdl_node_data.blob_1
+			
+			if age_sdl_blob:
+				try:
+					updated_blob = _update_blob_using_parsed_state(age_sdl_blob, header, record)
+				except ValueError:
+					logger_sdl.error("Failed to update SDL blob from age instance SDL vault node", exc_info=True)
+					return
+			else:
+				logger_sdl.info("Age instance SDL vault node is empty - will initialize it with the blob sent by the client")
+				updated_blob = blob_data
+			
+			await connection.server_state.update_vault_node(age_sdl_node_id, state.VaultNodeData(blob_1=updated_blob))
+		elif self.persist_on_server:
 			pass # TODO Actually save the state
 
 
@@ -1442,6 +1539,7 @@ class GameClientState(object):
 	age_sequence_prefix: int
 	account_uuid: uuid.UUID
 	ki_number: int
+	age_sdl_hook_uoid: structs.Uoid
 	delayed_age_sdl_blob: typing.Optional[bytes]
 	
 	def __init__(self) -> None:
@@ -1484,6 +1582,15 @@ class GameClientState(object):
 				assert structs.Location.Flags.reserved not in location.flags
 				(self.age_sequence_prefix, _) = structs.split_sequence_number(location.sequence_number)
 				logger_sdl.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, self.age_sequence_prefix)
+				
+				self.age_sdl_hook_uoid = structs.Uoid()
+				self.age_sdl_hook_uoid.location = structs.Location(structs.make_sequence_number(self.age_sequence_prefix, -2), structs.Location.Flags.built_in)
+				self.age_sdl_hook_uoid.load_mask = 0xff
+				self.age_sdl_hook_uoid.class_type = 0x0001 # Scene Object
+				self.age_sdl_hook_uoid.object_id = 1
+				self.age_sdl_hook_uoid.object_name = AGE_SDL_HOOK_NAME
+				self.age_sdl_hook_uoid.clone_ids = None
+				
 				return True
 		
 		return False
@@ -1605,22 +1712,20 @@ class GameConnection(base.BaseMOULConnection):
 		
 		await self.write_message(2, PROPAGATE_BUFFER_HEADER.pack(message.class_index, len(buffer)) + buffer)
 	
+	async def find_age_sdl_node(self) -> int:
+		return await self.server_state.find_unique_vault_node(
+			state.VaultNodeData(node_type=state.VaultNodeType.sdl),
+			parent_id=self.client_state.age_info_node_id,
+		)
+	
 	async def send_initial_age_sdl(self, age_sdl_blob: bytes) -> None:
 		"""Send the given SDL blob to the client as the initial state for the AgeSDLHook.
 		
 		Can only be called if the :attr:`GameClientState.age_sequence_prefix` has been initialized.
 		"""
 		
-		age_sdl_hook_uoid = structs.Uoid()
-		age_sdl_hook_uoid.location = structs.Location(structs.make_sequence_number(self.client_state.age_sequence_prefix, -2), structs.Location.Flags.built_in)
-		age_sdl_hook_uoid.load_mask = 0xff
-		age_sdl_hook_uoid.class_type = 0x0001 # Scene Object
-		age_sdl_hook_uoid.object_id = 1
-		age_sdl_hook_uoid.object_name = b"AgeSDLHook"
-		age_sdl_hook_uoid.clone_ids = None
-		
 		age_sdl_hook_state = NetMessageSDLState()
-		age_sdl_hook_state.uoid = age_sdl_hook_uoid
+		age_sdl_hook_state.uoid = self.client_state.age_sdl_hook_uoid
 		age_sdl_hook_state.compress_and_set_data(age_sdl_blob)
 		age_sdl_hook_state.is_initial_state = True
 		age_sdl_hook_state.persist_on_server = True

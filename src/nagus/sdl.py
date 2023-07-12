@@ -62,6 +62,16 @@ class SDLStreamHeader(object):
 		self.descriptor_version = descriptor_version
 		self.uoid = uoid
 	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, SDLStreamHeader):
+			return NotImplemented
+		
+		return (
+			self.descriptor_name == other.descriptor_name
+			and self.descriptor_version == other.descriptor_version
+			and self.uoid == other.uoid
+		)
+	
 	def __repr__(self) -> str:
 		parts = [
 			repr(self.descriptor_name),
@@ -185,6 +195,12 @@ class SimpleVariableValueBase(VariableValueBase):
 	flags: "SimpleVariableValueBase.Flags"
 	timestamp: typing.Optional[datetime.datetime]
 	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, SimpleVariableValueBase):
+			return NotImplemented
+		
+		return self.flags == other.flags and self.timestamp == other.timestamp
+	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
 		fields["flags"] = repr(self.flags)
@@ -227,6 +243,12 @@ class GuessedSimpleVariableValue(SimpleVariableValueBase):
 	"""
 	
 	data: bytes
+	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, GuessedSimpleVariableValue):
+			return NotImplemented
+		
+		return super().__eq__(other) and self.data == other.data
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
@@ -276,6 +298,12 @@ class SimpleVariableValue(SimpleVariableValueBase):
 		fields = super().repr_fields()
 		fields["values"] = repr(self.values)
 		return fields
+	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, SimpleVariableValue):
+			return NotImplemented
+		
+		return super().__eq__(other) and self.values == other.values
 	
 	def read(self, stream: typing.BinaryIO, element_count: typing.Optional[int], element_reader: typing.Callable[[typing.BinaryIO], typing.Any]) -> None:
 		"""Read a full variable value from an SDL blob.
@@ -354,6 +382,16 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 	variable_array_length: typing.Optional[int]
 	values_indices: bool
 	values: "typing.Dict[int, GuessedSDLRecord]"
+	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, GuessedNestedSDLVariableValue):
+			return NotImplemented
+		
+		return (
+			self.variable_array_length == other.variable_array_length
+			and self.values_indices == other.values_indices
+			and self.values == other.values
+		)
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
@@ -448,6 +486,15 @@ class NestedSDLVariableValue(NestedSDLVariableValueBase):
 	variable_array_length: typing.Optional[int]
 	values: "typing.Dict[int, SDLRecordBase]" # TODO Use SDLRecord class once it exists
 	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, NestedSDLVariableValue):
+			return NotImplemented
+		
+		return (
+			self.variable_array_length == other.variable_array_length
+			and self.values == other.values
+		)
+	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
 		if self.variable_array_length is not None:
@@ -469,6 +516,12 @@ class SDLRecordBase(object):
 	IO_VERSION: int = 6
 	
 	flags: "SDLRecordBase.Flags"
+	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, SDLRecordBase):
+			return NotImplemented
+		
+		return self.flags == other.flags
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = collections.OrderedDict()
@@ -545,6 +598,18 @@ class GuessedSDLRecord(SDLRecordBase):
 	simple_values: typing.Dict[int, GuessedSimpleVariableValue]
 	nested_sdl_values_indices: bool
 	nested_sdl_values: typing.Dict[int, GuessedNestedSDLVariableValue]
+	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, GuessedSDLRecord):
+			return NotImplemented
+		
+		return (
+			super().__eq__(other)
+			and self.simple_values_indices == other.simple_values_indices
+			and self.simple_values == other.simple_values
+			and self.nested_sdl_values_indices == other.nested_sdl_values_indices
+			and self.nested_sdl_values == other.nested_sdl_values
+		)
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
