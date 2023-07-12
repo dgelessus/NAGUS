@@ -16,11 +16,19 @@ by relaying Plasma messages over the network.
 The game server also provides the "game manager" (GameMgr),
 a different mechanism used for some multiplayer activities,
 like Ayoheek, marker games, and the hood garden age puzzle.
-To reduce complexity of the server side,
-the H'uru client has moved away from using the game manager
-and the DIRTSAND server has never implemented it.
-The OpenUru client continues to use the game manager
-and the necessary server support is implemented in MOSS and Cyan's server software.
+The game manager is implemented by MOSS and Cyan's server software,
+but is notably absent from DIRTSAND ---
+H'uru has moved away from using the game manager
+to reduce complexity on the server side.
+Instead,
+H'uru clients support alternative implementations
+for all mechanics that originally relied on the game manager.
+Between 2015 and 2022,
+H'uru clients didn't support the game manager at all,
+but this support is being gradually reintroduced
+for compatibility with non-H'uru clients.
+The OpenUru client continues to use the game manager,
+with essentially no changes compared to the original open-sourced client code.
 
 There can theoretically be multiple game server instances,
 but in practice all MOULa servers use a single game server for all age instances.
