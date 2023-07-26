@@ -985,10 +985,10 @@ class NetMessageTestAndSet(NetMessageSharedState):
 			# TODO Actually unlock the thing
 
 
-def _update_blob_using_parsed_state(current_blob: bytes, update_header: sdl.SDLStreamHeader, update_record: sdl.GuessedSDLRecord) -> bytes:
+def _merge_parsed_change_into_blob(current_blob: bytes, change_header: sdl.SDLStreamHeader, change_record: sdl.GuessedSDLRecord) -> bytes:
 	"""Parse the SDL blob ``current_blob``,
-	update it with the values from the already parsed SDL record ``update_record``,
-	and return the updated SDL blob.
+	apply the changed values from the already parsed SDL record ``change_record`` onto it,
+	and return the merged SDL blob.
 	"""
 	
 	with io.BytesIO(current_blob) as stream:
@@ -997,8 +997,8 @@ def _update_blob_using_parsed_state(current_blob: bytes, update_header: sdl.SDLS
 		if current_header.uoid is not None:
 			logger_sdl.info("Currently saved SDL blob header contains UOID: %s", current_header.uoid)
 		
-		if update_header != current_header:
-			raise ValueError(f"Mismatched state descriptors in update - current SDL blob has header {update_header}, but the update SDL blob has header {current_header})")
+		if change_header != current_header:
+			raise ValueError(f"Mismatched state descriptors in merge - current SDL blob has header {change_header}, but the change SDL blob has header {current_header})")
 		
 		current_record = sdl.GuessedSDLRecord()
 		current_record.read(stream)
@@ -1013,7 +1013,7 @@ def _update_blob_using_parsed_state(current_blob: bytes, update_header: sdl.SDLS
 	if lookahead:
 		raise ValueError(f"Currently saved SDL blob has trailing data (probably not parsed correctly): {lookahead!r}")
 	
-	# TODO Update current_record based on update_record
+	# TODO Merge change_record into current_record
 	
 	if logger_sdl.isEnabledFor(logging.DEBUG):
 		logger_sdl.debug("Updated state:")
@@ -1023,31 +1023,31 @@ def _update_blob_using_parsed_state(current_blob: bytes, update_header: sdl.SDLS
 	with io.BytesIO() as stream:
 		current_header.write(stream)
 		current_record.write(stream)
-		updated_blob = stream.getvalue()
+		merged_blob = stream.getvalue()
 	
-	# Check that the updated blob can be re-parsed successfully.
+	# Check that the merged blob can be re-parsed successfully.
 	
-	with io.BytesIO(updated_blob) as stream:
+	with io.BytesIO(merged_blob) as stream:
 		roundtripped_header = sdl.SDLStreamHeader.from_stream(stream)
 		if roundtripped_header != current_header:
-			raise ValueError(f"Re-parsed updated SDL blob header ({update_header}) doesn't match original header ({current_header})")
+			raise ValueError(f"Re-parsed merged SDL blob header ({change_header}) doesn't match original header ({current_header})")
 		
 		roundtripped_record = sdl.GuessedSDLRecord()
 		roundtripped_record.read(stream)
 		if roundtripped_record != current_record:
 			if logger_sdl.isEnabledFor(logging.DEBUG):
-				logger_sdl.debug("Re-parsed updated blob:")
+				logger_sdl.debug("Re-parsed merged blob:")
 				for line in roundtripped_record.as_multiline_str():
 					logger_sdl.debug("%s", line.replace("\t", "    "))
 			
-			raise ValueError("Re-parsed updated SDL blob body doesn't match original body")
+			raise ValueError("Re-parsed merged SDL blob body doesn't match original body")
 		
 		lookahead = stream.read(16)
 	
 	if lookahead:
-		raise ValueError(f"Re-parsed updated SDL blob has trailing data (probably not parsed correctly): {lookahead!r}")
+		raise ValueError(f"Re-parsed merged SDL blob has trailing data (probably not parsed correctly): {lookahead!r}")
 	
-	return updated_blob
+	return merged_blob
 
 
 class NetMessageSDLState(NetMessageStreamedObject):
@@ -1091,7 +1091,7 @@ class NetMessageSDLState(NetMessageStreamedObject):
 			if self.is_avatar_state:
 				desc += ", avatar"
 			
-			logger_sdl.debug("Received SDL update (%s) for %s", desc, self.uoid)
+			logger_sdl.debug("Received SDL change (%s) for %s", desc, self.uoid)
 		
 		if self.is_initial_state:
 			logger_sdl.warning("SDL state message from client has initial state flag set")
@@ -1164,15 +1164,15 @@ class NetMessageSDLState(NetMessageStreamedObject):
 			
 			if age_sdl_blob:
 				try:
-					updated_blob = _update_blob_using_parsed_state(age_sdl_blob, header, record)
+					merged_blob = _merge_parsed_change_into_blob(age_sdl_blob, header, record)
 				except ValueError:
-					logger_sdl.error("Failed to update SDL blob from age instance SDL vault node", exc_info=True)
+					logger_sdl.error("Failed to merge change into SDL blob from age instance SDL vault node", exc_info=True)
 					return
 			else:
 				logger_sdl.info("Age instance SDL vault node is empty - will initialize it with the blob sent by the client")
-				updated_blob = blob_data
+				merged_blob = blob_data
 			
-			await connection.server_state.update_vault_node(age_sdl_node_id, state.VaultNodeData(blob_1=updated_blob))
+			await connection.server_state.update_vault_node(age_sdl_node_id, state.VaultNodeData(blob_1=merged_blob))
 		elif self.persist_on_server:
 			pass # TODO Actually save the state
 
