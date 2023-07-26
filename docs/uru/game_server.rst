@@ -634,6 +634,10 @@ and not supported by MOSS or DIRTSAND
   * **Is initial state:** 1-byte boolean.
     Set to true by the server when replying to a :cpp:class:`plNetMsgGameStateRequest`.
     The client always sets it to false.
+    When the client receives a message with this flag set,
+    it initializes all variables *not* present in the received SDL record to their default values
+    and sets the dirty flag on *all* variables,
+    regardless of the dirty flags in the received SDL record.
   * **Persist on server:** 1-byte boolean.
     Normally always set to true.
     The client sets it to false for SDL states that shouldn't be saved permanently on the server.
