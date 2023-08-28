@@ -322,9 +322,10 @@ and not supported by MOSS or DIRTSAND
     
     .. cpp:enumerator:: kNewSDLState = 1 << 10
       
-      When a ``plSDLModifier`` sends a :cpp:class:`plNetMsgSDLState` (or subclass) message for the first time,
-      the client sets this flag in the message.
-      All further messages from the same ``plSDLModifier`` have it unset.
+      Set by the client when sending a :cpp:class:`plNetMsgSDLState` (or subclass) message for an object that the server doesn't know about yet.
+      Once a message with this flag has been sent for an object,
+      or if the client receives a state for an object from the server,
+      this flag will be unset for all further :cpp:class:`plNetMsgSDLState` messages for that object.
       Should never be set for other message types.
       Ignored by MOSS and DIRTSAND.
     
@@ -635,9 +636,8 @@ and not supported by MOSS or DIRTSAND
     Set to true by the server when replying to a :cpp:class:`plNetMsgGameStateRequest`.
     The client always sets it to false.
     When the client receives a message with this flag set,
-    it initializes all variables *not* present in the received SDL record to their default values
-    and sets the dirty flag on *all* variables,
-    regardless of the dirty flags in the received SDL record.
+    it initializes all variables *not* present in the received SDL record to their default values and sets their dirty flag.
+    (See also the :cpp:enumerator:`~plNetMessage::BitVectorFlags::kNewSDLState` flag.)
   * **Persist on server:** 1-byte boolean.
     Normally always set to true.
     The client sets it to false for SDL states that shouldn't be saved permanently on the server.
@@ -655,8 +655,88 @@ and not supported by MOSS or DIRTSAND
     the persist on server flag should be false.
     MOSS and DIRTSAND ignore this flag.
   
+  Notifies the other side about the SDL state of an object in the age instance.
+  The UOID field (from :cpp:class:`plNetMsgObject`) identifies the object to which the state belongs.
   The stream data is an :ref:`SDL blob <sdl_blob>`,
   including its stream header.
+  
+  This message can be sent both from the client to the server and the other way around.
+  In most cases,
+  the message is sent from the client and then possibly broadcast by the server to other clients.
+  When a client joins an age instance,
+  the server sends it the states of all objects in the age instance
+  (see :cpp:class:`plNetMsgGameStateRequest`).
+  In a few cases,
+  the server also sends this message to clients unprompted,
+  especially for the :ref:`AgeSDLHook <age_sdl_hook>`.
+  
+  The SDL blob often doesn't contain the object's entire state,
+  but only the variable values that were actually changed.
+  The complete state is only sent if the other side doesn't know the object's state yet ---
+  that is,
+  when the server sends the initial SDL states to a client joining the age instance,
+  or when the client sends the SDL state for an object that the server doesn't know about yet.
+  
+  If the receiver already has an SDL state for the object in question,
+  it updates that state using the received SDL blob.
+  For every variable in the received SDL blob:
+  
+  * Copy the notification info from the received variable to the existing variable.
+    The client does this only if the received variable has notification info at all
+    and its hint string is non-empty ---
+    i. e. it avoids overwriting an existing non-empty string with an empty one.
+    MOSS and DIRTSAND overwrite the string unconditionally.
+  * If it's a simple variable:
+    
+    * If the received variable does *not* have the dirty flag set,
+      MOSS skips the variable entirely.
+      DIRTSAND and the client don't interpret the dirty flag this way.
+      (This makes no difference in practice,
+      because the client only sends variables with the dirty flag set.)
+    * Copy the variable value from the received variable to the existing variable.
+    * Update the timestamp and flags of the existing (now updated) variable.
+      
+      * MOSS unconditionally sets the timestamp to the current time
+        and sets the "has timestamp" flag.
+        All other flags are copied as-is from the received variable.
+      * DIRTSAND checks if the dirty and "want timestamp" flags are set
+        and if so,
+        sets the timestamp to the current time,
+        sets the "has timestamp" flag
+        and unsets the "want timestamp" flag.
+        All other flags are copied as-is from the received variable.
+      * The client unconditionally *unsets* the timestamp and all flags,
+        except for the "same as default" flag,
+        which is updated based on whether the variable value is equal to the default.
+  * If it's a nested SDL variable,
+    copy the variable value from the received variable to the existing variable.
+    The client recursively updates every record in the existing variable
+    using the corresponding record in the received variable.
+    MOSS and DIRTSAND instead *overwrite* the existing records without any recursive updates.
+  
+  If the receiver doesn't have an SDL state for the object in question yet,
+  the received SDL blob *must* contain a complete SDL record with all variables set.
+  In this case,
+  the client still follows the update process above,
+  but using a new SDL record with no variables set as the "existing" state.
+  DIRTSAND skips most of the update process
+  and uses the received SDL record mostly unchanged,
+  except for updating its timestamps as described above.
+  MOSS skips the update process entirely
+  and uses the received SDL record as-is.
+  
+  As a special case,
+  the :ref:`AgeSDLHook <age_sdl_hook>` object stands for the state of the age instance itself.
+  The AgeSDLHook state is handled differently on the server side than all other object states:
+  it isn't stored directly as an SDL record,
+  but is actually a combination of the age instance's :ref:`vault_node_sdl` vault node
+  and any shard-wide settings for the age.
+  For any SDL variables set in both places,
+  the age instance vault node takes priority over the shard-wide settings.
+  If a client changes the AgeSDLHook state,
+  the changed values are always stored in the age instance vault node ---
+  even when changing a variable whose value came from the shard-wide settings
+  and wasn't previously set in the age instance!
 
 :cpp:class:`plNetMsgSDLStateBCast`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -666,6 +746,16 @@ and not supported by MOSS or DIRTSAND
   *Class index = 0x0329 = 809*
   
   Identical structure to its superclass :cpp:class:`plNetMsgSDLState`.
+  
+  Handled the same way as :cpp:class:`plNetMsgSDLState`,
+  except that on the server side,
+  the state change is additionally broadcast to all other clients in the same age instance.
+  
+  MOSS broadcasts the received SDL blob as-is,
+  which most likely contains an incomplete SDL record.
+  DIRTSAND instead always broadcasts a complete SDL record,
+  serialized from its own version of the object's state
+  after it was updated with the SDL record received from the client.
 
 :cpp:class:`plNetMsgGetSharedState`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
