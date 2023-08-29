@@ -117,10 +117,18 @@ class AccountBillingType(structs.IntFlag):
 
 class AuthClientState(object):
 	cleanup_handle: asyncio.TimerHandle
+	messages_while_disconnected: typing.List[bytes]
 	token: uuid.UUID
 	server_challenge: int
 	account_uuid: uuid.UUID
 	ki_number: int
+	
+	def __init__(self) -> None:
+		super().__init__()
+		
+		# Other attributes are intentionally left unset at first.
+		# They will be set in read_connect_packet_data and the message handlers once appropriate.
+		self.messages_while_disconnected = []
 
 
 class AuthConnection(base.BaseMOULConnection):
@@ -144,6 +152,13 @@ class AuthConnection(base.BaseMOULConnection):
 			(addr, port) = sockname
 			return ipaddress.IPv4Address(addr)
 	
+	async def write(self, data: bytes) -> None:
+		try:
+			await super().write(data)
+		except ConnectionResetError:
+			# Remember the message to potentially re-send it if the client reconnects soon.
+			self.client_state.messages_while_disconnected.append(data)
+	
 	async def handle_disconnect(self) -> None:
 		try:
 			token = self.client_state.token
@@ -154,7 +169,11 @@ class AuthConnection(base.BaseMOULConnection):
 			return
 		
 		def _remove_disconnected_connection_callback() -> None:
-			logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state", token, type(self).DISCONNECTED_CLIENT_TIMEOUT)
+			if self.client_state.messages_while_disconnected:
+				logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state and %d unsent messages", token, type(self).DISCONNECTED_CLIENT_TIMEOUT, len(self.client_state.messages_while_disconnected))
+			else:
+				logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state", token, type(self).DISCONNECTED_CLIENT_TIMEOUT)
+			
 			if token not in self.server_state.auth_connections:
 				raise AssertionError(f"Cleanup callback for token {token} fired even though the corresponding state has already been discarded")
 			elif self.server_state.auth_connections[token] != self:
@@ -185,11 +204,21 @@ class AuthConnection(base.BaseMOULConnection):
 				# When client reconnects with a token,
 				# restore the corresponding server-side state,
 				# assuming it still exists.
-				self.client_state = self.server_state.auth_connections[token].client_state
-				self.client_state.cleanup_handle.cancel()
-				self.server_state.auth_connections[token] = self
+				prev_conn = self.server_state.auth_connections[token]
 			except KeyError:
 				raise base.ProtocolError(f"Client attempted to reconnect using an unknown token: {token}")
+			
+			self.client_state = prev_conn.client_state
+			self.client_state.cleanup_handle.cancel()
+			self.server_state.auth_connections[token] = self
+			
+			# Send any messages that we tried to send during the disconnect.
+			if self.client_state.messages_while_disconnected:
+				logger_connect.debug("Sending %d messages that were queued during the disconnect", len(self.client_state.messages_while_disconnected))
+				while self.client_state.messages_while_disconnected:
+					message = self.client_state.messages_while_disconnected[0]
+					await self.write(message)
+					self.client_state.messages_while_disconnected.pop(0)
 		else:
 			# Client doesn't have a token yet (probably a new connection) - assign it one.
 			self.client_state.token = uuid.uuid4()
