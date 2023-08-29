@@ -299,6 +299,9 @@ class Location(object):
 		
 		return self.sequence_number == other.sequence_number and self.flags == other.flags
 	
+	def __hash__(self) -> int:
+		return hash((self.sequence_number, self.flags))
+	
 	def __repr__(self) -> str:
 		parts = [hex(self.sequence_number)]
 		if self.flags:
@@ -369,6 +372,16 @@ class Uoid(object):
 			and self.object_name == other.object_name
 			and self.clone_ids == other.clone_ids
 		)
+	
+	def __hash__(self) -> int:
+		return hash((
+			self.location,
+			self.load_mask,
+			self.class_type,
+			self.object_id,
+			self.object_name,
+			self.clone_ids,
+		))
 	
 	def __repr__(self) -> str:
 		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())

@@ -13,7 +13,7 @@ Version 0.1.0
 * Added initial handling of ``plNetMsgGameMessage``.
   Currently only echoes (if requested) and does no propagation,
   because inter-client communication isn't supported yet.
-* Added placeholder handling of ``plNetMsgTestAndSet``,
+* Added handling of ``plNetMsgTestAndSet``,
   allowing the player to interact with most clickables.
 * Implemented handling of init age requests with a zero instance UUID,
   which is needed when linking to a child age for the first time.

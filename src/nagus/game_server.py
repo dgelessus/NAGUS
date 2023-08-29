@@ -956,19 +956,25 @@ class NetMessageTestAndSet(NetMessageSharedState):
 	UNTRIGGER_DATA = b"\t\x00TrigState\x01\x00\x00\x00\x01\t\xf0\xab\x8d\x96\x98\x98\x9a\x8d\x9a\x9b\x02\x00"
 	
 	async def handle(self, connection: "GameConnection") -> None:
-		logger_test_and_set.debug("Avatar %d requesting %s of %s", self.ki_number, "lock" if self.lock_request else "unlock", self.uoid)
-		
 		data = self.decompress_data()
 		
 		if self.lock_request:
 			if data != type(self).TRIGGER_DATA:
 				logger_test_and_set.warning("Unexpected stream data for TestAndSet trigger request! Ignoring the stream data and locking as usual.")
 			
-			# TODO Actually check and lock the thing instead of unconditionally affirming the lock
+			try:
+				lock_owner = connection.client_state.locks[self.uoid]
+			except KeyError:
+				logger_test_and_set.debug("Avatar %d locking %s", connection.client_state.ki_number, self.uoid)
+				connection.client_state.locks[self.uoid] = connection.client_state.ki_number
+				reply_code = ServerReplyMessage.Type.affirm
+			else:
+				logger_test_and_set.debug("Avatar %d was denied lock of %s - already locked by %d", connection.client_state.ki_number, self.uoid, lock_owner)
+				reply_code = ServerReplyMessage.Type.deny
 			
 			server_reply_message = ServerReplyMessage()
 			server_reply_message.receivers.append(self.uoid)
-			server_reply_message.type = ServerReplyMessage.Type.affirm
+			server_reply_message.type = reply_code
 			
 			with io.BytesIO() as message_stream:
 				server_reply_message.write(message_stream)
@@ -982,7 +988,15 @@ class NetMessageTestAndSet(NetMessageSharedState):
 			if data != type(self).UNTRIGGER_DATA:
 				logger_test_and_set.warning("Unexpected stream data for TestAndSet un-trigger request! Ignoring the stream data and unlocking as usual.")
 			
-			# TODO Actually unlock the thing
+			try:
+				lock_owner = connection.client_state.locks[self.uoid]
+			except KeyError:
+				logger_test_and_set.warning("Avatar %d tried to unlock %s even though it's not locked - ignoring", connection.client_state.ki_number, self.uoid)
+			else:
+				if lock_owner == connection.client_state.ki_number:
+					del connection.client_state.locks[self.uoid]
+				else:
+					logger_test_and_set.warning("Avatar %d tried to unlock %s even though it's locked by %d - ignoring", connection.client_state.ki_number, self.uoid, lock_owner)
 
 
 def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStreamHeader, change_record: sdl.GuessedSDLRecord) -> bytes:
@@ -1531,6 +1545,7 @@ class NetMessagePlayerPage(NetMessage):
 
 
 class GameClientState(object):
+	# TODO A lot of this needs to be moved into some kind of shared state when implementing actual multiplayer.
 	mcp_id: int
 	age_node_id: int
 	age_info_node_id: int
@@ -1541,6 +1556,7 @@ class GameClientState(object):
 	ki_number: int
 	age_sdl_hook_uoid: structs.Uoid
 	delayed_age_sdl_blob: typing.Optional[bytes]
+	locks: typing.Dict[structs.Uoid, int]
 	
 	def __init__(self) -> None:
 		super().__init__()
@@ -1548,6 +1564,7 @@ class GameClientState(object):
 		# Other attributes are intentionally left unset at first.
 		# They will be set in the join_age_request handler shortly after the client has connected.
 		self.delayed_age_sdl_blob = None
+		self.locks = {}
 	
 	def try_find_age_sequence_prefix(self, location: structs.Location) -> bool:
 		"""Try to derive (if necessary) the client's age sequence prefix from the given location.
