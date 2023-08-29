@@ -501,14 +501,13 @@ class AuthConnection(base.BaseMOULConnection):
 		node_data = state.VaultNodeData.unpack(packed_node_data)
 		logger_vault_write.debug("Vault node save: transaction ID %d, node ID %d, revision ID %s, node data %s", trans_id, node_id, revision_id, node_data)
 		try:
-			await self.server_state.update_vault_node(node_id, node_data)
+			await self.server_state.update_vault_node(node_id, node_data, revision_id)
 		except state.VaultNodeNotFound:
 			await self.vault_save_node_reply(trans_id, base.NetError.vault_node_not_found)
 		except Exception:
 			logger_vault_write.error("Unhandled exception while creating vault node", exc_info=True)
 			await self.vault_save_node_reply(trans_id, base.NetError.internal_error)
 		else:
-			await self.vault_node_changed(node_id, revision_id)
 			await self.vault_save_node_reply(trans_id, base.NetError.success)
 	
 	async def vault_node_deleted(self, node_id: int) -> None:
@@ -537,7 +536,6 @@ class AuthConnection(base.BaseMOULConnection):
 			logger_vault_write.error("Unhandled exception while adding vault node", exc_info=True)
 			await self.vault_add_node_reply(trans_id, base.NetError.internal_error)
 		else:
-			await self.vault_node_added(parent_id, child_id, owner_id)
 			await self.vault_add_node_reply(trans_id, base.NetError.success)
 	
 	async def vault_node_removed(self, parent_id: int, child_id: int) -> None:
@@ -560,7 +558,6 @@ class AuthConnection(base.BaseMOULConnection):
 			logger_vault_write.error("Unhandled exception while removing vault node", exc_info=True)
 			await self.vault_remove_node_reply(trans_id, base.NetError.internal_error)
 		else:
-			await self.vault_node_removed(parent_id, child_id)
 			await self.vault_remove_node_reply(trans_id, base.NetError.success)
 	
 	async def vault_node_refs_fetched(self, trans_id: int, result: base.NetError, refs: typing.Sequence[state.VaultNodeRef]) -> None:

@@ -1107,10 +1107,10 @@ class ServerState(object):
 			(node_id,) = row
 			return node_id
 	
-	async def update_vault_node(self, node_id: int, data: VaultNodeData) -> None:
+	async def update_vault_node(self, node_id: int, data: VaultNodeData, revision_id: uuid.UUID) -> None:
 		data.modify_time = int(datetime.datetime.now().timestamp())
 		
-		logger_vault.debug("Updating vault node %d: %s", node_id, data)
+		logger_vault.debug("Updating vault node %d, revision %s: %s", node_id, revision_id, data)
 		
 		fields = data.to_db_named_values()
 		assignment_parts = []
@@ -1127,7 +1127,10 @@ class ServerState(object):
 			if cursor.rowcount == 0:
 				raise VaultNodeNotFound(f"Couldn't update vault node with ID {node_id} as it doesn't exist")
 		
-		# TODO Notify all relevant clients
+		for conn in self.auth_connections.values():
+			# TODO Send notifications asynchronously
+			# TODO Notify only clients that care about this node
+			await conn.vault_node_changed(node_id, revision_id)
 	
 	async def delete_vault_node(self, node_id: int) -> None:
 		logger_vault.debug("Deleting vault node %d", node_id)
@@ -1137,7 +1140,10 @@ class ServerState(object):
 			if cursor.rowcount == 0:
 				raise VaultNodeNotFound(f"Couldn't delete vault node with ID {node_id} as it doesn't exist")
 		
-		# TODO Notify all relevant clients
+		for conn in self.auth_connections.values():
+			# TODO Send notifications asynchronously
+			# TODO Notify only clients that care about this node
+			await conn.vault_node_deleted(node_id)
 	
 	async def fetch_vault_node_child_refs(self, parent_id: int) -> typing.AsyncIterable[VaultNodeRef]:
 		async with await self.db.cursor() as cursor:
@@ -1194,7 +1200,10 @@ class ServerState(object):
 				else:
 					raise e
 		
-		# TODO Notify all relevant clients
+		for conn in self.auth_connections.values():
+			# TODO Send notifications asynchronously
+			# TODO Notify only clients that care about this node
+			await conn.vault_node_added(ref.parent_id, ref.child_id, ref.owner_id)
 	
 	async def remove_vault_node_ref(self, parent_id: int, child_id: int) -> None:
 		logger_vault.debug("Removing vault node ref: %d -> %d", parent_id, child_id)
@@ -1207,7 +1216,10 @@ class ServerState(object):
 			if cursor.rowcount == 0:
 				raise VaultNodeNotFound(f"Couldn't remove vault node ref {parent_id} -> {child_id} as id doesn't exist")
 		
-		# TODO Notify all relevant clients
+		for conn in self.auth_connections.values():
+			# TODO Send notifications asynchronously
+			# TODO Notify only clients that care about this node
+			await conn.vault_node_removed(parent_id, child_id)
 	
 	async def find_age_instance(self, age_file_name: str, instance_uuid: uuid.UUID) -> typing.Tuple[int, int]:
 		try:

@@ -1172,7 +1172,7 @@ class NetMessageSDLState(NetMessageStreamedObject):
 				logger_sdl.info("Age instance SDL vault node is empty - will initialize it with the blob sent by the client")
 				changed_blob = blob_data
 			
-			await connection.server_state.update_vault_node(age_sdl_node_id, state.VaultNodeData(blob_1=changed_blob))
+			await connection.server_state.update_vault_node(age_sdl_node_id, state.VaultNodeData(blob_1=changed_blob), structs.ZERO_UUID)
 		elif self.persist_on_server:
 			pass # TODO Actually save the state
 
