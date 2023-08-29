@@ -141,6 +141,11 @@ class VariableValueBase(object):
 		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
 		return f"{type(self).__qualname__}({joined_fields})"
 	
+	def copy(self) -> "VariableValueBase":
+		copy = type(self)()
+		copy.hint = self.hint
+		return copy
+	
 	def base_read(self, stream: typing.BinaryIO) -> None:
 		"""Read the part of the variable value structure that does *not* vary depending on the state descriptor."""
 		
@@ -207,6 +212,12 @@ class SimpleVariableValueBase(VariableValueBase):
 		if self.timestamp is not None:
 			fields["timestamp"] = repr(self.timestamp)
 		return fields
+	
+	def copy(self) -> "SimpleVariableValueBase":
+		copy = typing.cast(SimpleVariableValueBase, super().copy())
+		copy.flags = self.flags
+		copy.timestamp = self.timestamp
+		return copy
 	
 	def base_read(self, stream: typing.BinaryIO) -> None:
 		super().base_read(stream)
@@ -279,6 +290,11 @@ class GuessedSimpleVariableValue(SimpleVariableValueBase):
 		
 		return res
 	
+	def copy(self) -> "GuessedSimpleVariableValue":
+		copy = typing.cast(GuessedSimpleVariableValue, super().copy())
+		copy.data = self.data
+		return copy
+	
 	def write(self, stream: typing.BinaryIO) -> None:
 		"""Write the full variable value back.
 		
@@ -304,6 +320,11 @@ class SimpleVariableValue(SimpleVariableValueBase):
 			return NotImplemented
 		
 		return super().__eq__(other) and self.values == other.values
+	
+	def copy(self) -> "SimpleVariableValue":
+		copy = typing.cast(SimpleVariableValue, super().copy())
+		copy.values = list(self.values)
+		return copy
 	
 	def read(self, stream: typing.BinaryIO, element_count: typing.Optional[int], element_reader: typing.Callable[[typing.BinaryIO], typing.Any]) -> None:
 		"""Read a full variable value from an SDL blob.
@@ -426,6 +447,13 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 			for line in it:
 				yield "\t\t" + line
 	
+	def copy(self) -> "GuessedNestedSDLVariableValue":
+		copy = typing.cast(GuessedNestedSDLVariableValue, super().copy())
+		copy.variable_array_length = self.variable_array_length
+		copy.values_indices = self.values_indices
+		copy.values = dict(self.values)
+		return copy
+	
 	def read(self, stream: typing.BinaryIO) -> None:
 		self.base_read(stream)
 		
@@ -502,6 +530,12 @@ class NestedSDLVariableValue(NestedSDLVariableValueBase):
 		fields["values"] = repr(self.values)
 		return fields
 	
+	def copy(self) -> "NestedSDLVariableValue":
+		copy = typing.cast(NestedSDLVariableValue, super().copy())
+		copy.variable_array_length = self.variable_array_length
+		copy.values = dict(self.values)
+		return copy
+	
 	# TODO read, write
 
 
@@ -532,6 +566,11 @@ class SDLRecordBase(object):
 	def __repr__(self) -> str:
 		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
 		return f"{type(self).__qualname__}({joined_fields})"
+	
+	def copy(self) -> "SDLRecordBase":
+		copy = type(self)()
+		copy.flags = self.flags
+		return copy
 	
 	def base_read(self, stream: typing.BinaryIO) -> None:
 		(flags,) = structs.stream_unpack(stream, structs.UINT16)
@@ -658,6 +697,14 @@ class GuessedSDLRecord(SDLRecordBase):
 				first = next(it, "")
 				yield f"({index}) = {first}"
 				yield from it
+	
+	def copy(self) -> "GuessedSDLRecord":
+		copy = typing.cast(GuessedSDLRecord, super().copy())
+		copy.simple_values_indices = self.simple_values_indices
+		copy.simple_values = dict(self.simple_values)
+		copy.nested_sdl_values_indices = self.nested_sdl_values_indices
+		copy.nested_sdl_values = dict(self.nested_sdl_values)
+		return copy
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		self.base_read(stream)
@@ -802,6 +849,21 @@ class GuessedSDLRecord(SDLRecordBase):
 				stream.write(bytes([index]))
 			
 			sdl_value.write(stream)
+	
+	def with_change(self, change: "GuessedSDLRecord") -> "GuessedSDLRecord":
+		changed = self.copy()
+		
+		for i, change_value in change.simple_values.items():
+			# TODO Set timestamp if requested (may be better done as its own method)
+			# TODO Does this need to check the dirty flag?
+			changed.simple_values[i] = change_value.copy()
+		
+		for i, change_sdl_value in change.nested_sdl_values.items():
+			# TODO Call with_change recursively?
+			# (MOSS and DIRTSAND don't, so it might not be necessary.)
+			changed.nested_sdl_values[i] = change_sdl_value.copy()
+		
+		return changed
 
 
 def guess_parse_sdl_blob(stream: typing.BinaryIO) -> typing.Tuple[typing.Optional[SDLStreamHeader], GuessedSDLRecord]:

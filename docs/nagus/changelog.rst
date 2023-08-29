@@ -17,6 +17,11 @@ Version 0.1.0
   allowing the player to interact with most clickables.
 * Implemented handling of init age requests with a zero instance UUID,
   which is needed when linking to a child age for the first time.
+* Implemented experimental SDL blob parsing based on "guessing" the structure.
+  Works without .sdl files on the server side,
+  but can break for unlucky combinations of SDL variables.
+* Implemented saving of age instance SDL changes.
+  Object SDL is *not* saved yet.
 * Changed vault node refs to be unseen by default,
   matching what the client code assumes.
 * Changed the single placeholder account to use a non-zero UUID.

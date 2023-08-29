@@ -1013,16 +1013,16 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 	if lookahead:
 		raise ValueError(f"Currently saved SDL blob has trailing data (probably not parsed correctly): {lookahead!r}")
 	
-	# TODO Apply change_record to current_record
+	changed_record = current_record.with_change(change_record)
 	
 	if logger_sdl.isEnabledFor(logging.DEBUG):
-		logger_sdl.debug("Updated state:")
-		for line in current_record.as_multiline_str():
+		logger_sdl.debug("Changed state:")
+		for line in changed_record.as_multiline_str():
 			logger_sdl.debug("%s", line.replace("\t", "    "))
 	
 	with io.BytesIO() as stream:
 		current_header.write(stream)
-		current_record.write(stream)
+		changed_record.write(stream)
 		changed_blob = stream.getvalue()
 	
 	# Check that the changed blob can be re-parsed successfully.
@@ -1034,7 +1034,7 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 		
 		roundtripped_record = sdl.GuessedSDLRecord()
 		roundtripped_record.read(stream)
-		if roundtripped_record != current_record:
+		if roundtripped_record != changed_record:
 			if logger_sdl.isEnabledFor(logging.DEBUG):
 				logger_sdl.debug("Re-parsed changed blob:")
 				for line in roundtripped_record.as_multiline_str():
