@@ -31,6 +31,7 @@ The normal version will be finished later.
 
 import collections
 import datetime
+import io
 import typing
 
 from . import structs
@@ -273,7 +274,28 @@ class GuessedSimpleVariableValue(SimpleVariableValueBase):
 			flags &= ~SimpleVariableValueBase.Flags.same_as_default
 			res = "<default>"
 		else:
-			res = repr(self.data)
+			# Try to give a nicer, but still unambiguous representation for easily recognized data types.
+			if len(self.data) == 32 and 0x20 <= self.data[0] <= 0x7f:
+				# STRING32
+				s = self.data.rstrip(b"\x00").decode("latin-1")
+				res = repr(s)
+			elif (
+				len(self.data) >= 17 # minimum possible length for UOID
+				and self.data[0] & ~0x3 == 0 # UOID flags valid
+				and self.data[5] & ~0x1f == 0 # location flags valid
+				and self.data[6] == 0 # location flags MSB unused
+			):
+				# PLKEY
+				with io.BytesIO(self.data) as stream:
+					try:
+						uoid = structs.Uoid.from_stream(stream)
+						ok = not stream.read()
+					except (EOFError, ValueError):
+						ok = False
+				
+				res = str(uoid) if ok else repr(self.data)
+			else:
+				res = repr(self.data)
 		
 		if self.timestamp is None:
 			assert SimpleVariableValueBase.Flags.has_timestamp not in flags
