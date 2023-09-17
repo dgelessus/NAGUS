@@ -80,8 +80,8 @@ Still to be implemented
 * The :ref:`file server <file_server>` to make the patcher work
   (or at least safely do nothing).
 * Serving "secure" files (SDL, Python) via the :ref:`auth server <auth_server>`
-  to support external clients
-  (especially OpenUru).
+  to support OpenUru external clients
+  and H'uru clients without :option:`/LocalSDL`.
 * Missing vault features:
   sending nodes (KI mail)
   and marking node refs as seen

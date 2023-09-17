@@ -186,10 +186,6 @@ This makes overriding the file server only useful in combination with :option:`/
   
   Skip all update checks
   and force using the local copies of all data and script files.
-  With this option enabled,
-  the gatekeeper and file servers are never contacted
-  and no "secure files" are downloaded from the auth server.
-  Any files that are normally served as "secure files" (usually Python and SDL) must be manually placed into the game folder.
   
   .. warning::
     
@@ -204,11 +200,65 @@ This makes overriding the file server only useful in combination with :option:`/
     Then you can use :option:`/LocalData` safely (until the shard updates anything)
     and make local modifications (carefully!).
   
+  When enabling this option for OpenUru clients or older H'uru clients (before August 2023),
+  the gatekeeper and file servers are never contacted
+  and no "secure files" are downloaded from the auth server.
+  Any files that are normally served as "secure files" (usually Python and SDL) must be manually placed into the game folder.
+  
+  With recent H'uru clients (since August 2023),
+  this option does *not* affect SDL files ---
+  they are still downloaded from the file or auth server by default
+  to ensure that they always match what the server expects.
+  To force the use of local SDL files,
+  you have to enable :option:`/LocalSDL` separately.
+  To prevent the client from downloading any files from the server,
+  you have to enable both :option:`/LocalData` *and* :option:`/LocalSDL`.
+  
   This option is only supported by :ref:`internal clients <internal_external_client>`
   (both OpenUru and H'uru).
   To use this option,
   you should launch :program:`plClient` directly ---
   the launcher ignores it and will update the data files anyway.
+
+H'uru-only options
+^^^^^^^^^^^^^^^^^^
+
+The following options are only supported by H'uru :ref:`internal clients <internal_external_client>`.
+With OpenUru clients,
+you have to use the full :option:`/LocalData` option instead.
+
+.. option:: /LocalPython
+  
+  Skip downloading Python scripts from the auth server and use local scripts instead,
+  but update all other files as usual.
+  This is a subset of :option:`/LocalData`,
+  useful when you need to modify just the Python scripts and nothing else.
+
+.. option:: /LocalSDL
+  
+  Skip downloading SDL files from the auth server and use local copies instead,
+  but update all other files as usual.
+  Unlike :option:`/LocalPython`,
+  this option is *not* automatically enabled by :option:`/LocalData`.
+  
+  .. warning::
+    
+    Do not use this option when connecting to a public shard.
+    You should only use it with certain testing shards
+    that aren't set up to serve SDL files
+    (e. g. the Destiny shard or other shards that use a minimal DIRTSAND configuration).
+    
+    When using this option,
+    make sure that your local SDL files are compatible with what the server expects!
+    SDL files **must** match the server very closely,
+    or bad things will happen.
+    To be safe,
+    you should first let the launcher update the SDL files,
+    if the server supports this.
+  
+  If both :option:`/LocalSDL` and :option:`/LocalData` are enabled,
+  the gatekeeper and file servers are never contacted
+  and no "secure files" are downloaded from the auth server.
 
 .. option:: /SkipPreload
   
@@ -217,6 +267,6 @@ This makes overriding the file server only useful in combination with :option:`/
   This is a subset of :option:`/LocalData`,
   useful when you need to modify just the scripts and not any other data files.
   
-  This option is only supported by H'uru :ref:`internal clients <internal_external_client>`.
-  With OpenUru clients,
-  you have to use the full :option:`/LocalData` option instead.
+  This option is obsolete and only supported by older H'uru :ref:`internal clients <internal_external_client>` (from 2013 to 2023).
+  With newer H'uru clients (since August 2023),
+  use :option:`/LocalPython` and/or :option:`/LocalSDL` instead.
