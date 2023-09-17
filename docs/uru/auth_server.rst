@@ -137,7 +137,7 @@ not even their structure.
   :header: #,Cli2Auth,Auth2Cli,#
   :widths: auto
   
-  40,PropagateBuffer,PropagateBuffer,38
+  40,:ref:`PropagateBuffer <cli2auth_propagate_buffer>`,:ref:`PropagateBuffer <auth2cli_propagate_buffer>`,38
 
 .. csv-table:: Public ages
   :name: auth_messages_public_ages
@@ -2066,6 +2066,46 @@ The result is usually one of:
 * :cpp:enumerator:`kNetSuccess`
 * :cpp:enumerator:`kNetErrVaultNodeNotFound`: For some reason,
   the open-sourced client code considers this a success.
+
+.. _cli2auth_propagate_buffer:
+
+Cli2Auth_PropagateBuffer
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 40
+* **Class index:** 4-byte unsigned int.
+  ``plCreatable`` class index of the message stored in the following buffer.
+  Must be one of :cpp:class:`plNetMessage`'s subclasses.
+* **Buffer length:** 4-byte unsigned int.
+  Byte length of the following buffer field.
+  Can be at most 1 MiB.
+* **Buffer:** Variable-length byte array.
+  The serialized message,
+  in the format produced by ``plNetMessage::PokeBuffer``
+  and understood by ``plNetMessage::PeekBuffer``.
+  The class index in the serialized buffer must match the one in the class index field.
+
+Transmits a serialized :cpp:class:`plNetMessage` from the client to the server.
+Implemented in the open-sourced client code,
+but never actually used,
+and not supported by any fan server implementation.
+Unclear if Cyan's server software supports it.
+All :cpp:class:`plNetMessage`\s are sent via the game server instead ---
+see :ref:`cli2game_propagate_buffer`.
+
+.. _auth2cli_propagate_buffer:
+
+Auth2Cli_PropagateBuffer
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 38
+
+Identical message format as :ref:`cli2auth_propagate_buffer`
+(except for the type),
+but sent from the server to the client.
+Similarly unused in practice.
+All :cpp:class:`plNetMessage`\s are sent via the game server instead ---
+see :ref:`game2cli_propagate_buffer`.
 
 .. _cli2auth_log_python_traceback:
 
