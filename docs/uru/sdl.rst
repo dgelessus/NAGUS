@@ -313,14 +313,15 @@ Notes:
   The blob data format for ``CREATABLE`` values is:
   
   * **Class index:** 2-byte unsigned int.
-    Class index of the ``plCreatable`` stored in the following buffer,
+    Class index of the :cpp:class:`plCreatable` stored in the following buffer,
     or 0x8000 to represent a ``nullptr`` value.
   * **Buffer length:** 4-byte unsigned int.
     Byte length of the following buffer field.
     Only present if the class index is not 0x8000 (``nullptr``).
   * **Buffer:** Variable-length byte array.
-    The serialized ``plCreatable``,
-    in the format produced by ``plCreatable::Write`` and understood by ``plCreatable::Read``.
+    The serialized :cpp:class:`plCreatable`
+    (without a header,
+    because there is a class index field already).
     Only present if the class index is not 0x8000 (``nullptr``).
 5.
   Default values for ``TIME`` variables are handled inconsistently.

@@ -944,7 +944,72 @@ These data types/structures are used in multiple different parts of the protocol
     :cpp:class:`plKey` itself can't actually be read or written directly.
     The structure described here is used by ``hsResMgr::ReadKey``/``hsResMgr::WriteKey``.
   
-  * **Non-null:** False if this key is actually ``nullptr``,
+  * **Non-null:** 1-byte boolean.
+    False if this key is actually ``nullptr``,
     true otherwise.
-  * **UOID:** The UOID of the object identified by this key.
+  * **UOID:** :cpp:class:`plUoid`.
+    The UOID of the object identified by this key.
     Only present if the non-null field is true.
+
+.. index:: creatable
+  double: creatable; index
+  double: class; index
+  :name: class_index
+
+.. cpp:class:: plCreatable
+  
+  The abstract base class of many Plasma data types that can be read/written as a byte stream.
+  Every :cpp:class:`plCreatable` subclass is identified by a unique 16-bit :dfn:`class index`,
+  which Plasma uses to dynamically create objects of variable classes at runtime ---
+  hence the name "creatable".
+  
+  .. note::
+    
+    For a list of :cpp:class:`plCreatable` subclasses and class indices
+    that are relevant to the network protocol,
+    see the :ref:`game server <game_server>` documentation, 
+    particularly :cpp:class:`plNetMessage` and :cpp:class:`plMessage`.
+    I'm not going to list every class index in existence,
+    because there are *a lot* of them.
+    If you need a complete list,
+    have a look at:
+    
+    * plCreatableIndex.h in the `H'uru <https://github.com/H-uru/Plasma/blob/master/Sources/Plasma/NucleusLib/inc/plCreatableIndex.h>`__ and `OpenUru <https://foundry.openuru.org/gitblit/blob/?r=CWE-ou-minkata.git&f=Sources/Plasma/NucleusLib/inc/plCreatableIndex.h&h=master>`__ client source code
+    * `typecodes.h <https://foundry.openuru.org/gitblit/blob/?r=MOSS-minkata.git&f=typecodes.h&h=master>`__ in the MOSS source code
+    * `TypeMap.txt <https://github.com/H-uru/libhsplasma/blob/master/Misc/TypeMap.txt>`__ in the libHSPlasma source code
+      (also lists class indices for other Plasma games outside the MOUL family)
+  
+  :cpp:class:`plCreatable` itself doesn't specify the actual data format.
+  Although it defines generic ``Read`` and ``Write`` methods,
+  every subclass implements its own data format in these methods.
+  Notably,
+  ``Write`` usually doesn't include the object's class index,
+  so the serialized data can only be parsed if the class is already known from context.
+  
+  To allow reading/writing objects whose class can vary,
+  ``hsResMgr``/``plResManager`` defines two helper methods ``ReadCreatable`` and ``WriteCreatable``,
+  which add the following short header before the main ``Read``/``Write`` data:
+  
+  * **Class index:** 2-byte unsigned int.
+    Class index of the :cpp:class:`plCreatable` subclass that wrote the following data.
+    May also be the special value 0x8000 (32768),
+    which indicates a ``nullptr`` value.
+  
+  .. note::
+    
+    :cpp:class:`plCreatable` also defines another pair of serialization methods,
+    ``ReadVersion`` and ``WriteVersion``,
+    which are designed for long-term compatibility ---
+    ``ReadVersion`` should be able to parse data produced by any current or past implementation of ``WriteVersion``.
+    Like ``Read`` and ``Write``,
+    their data format is completely class-specific,
+    but there are ``plResManager`` methods ``ReadCreatableVersion`` and ``WriteCreatableVersion``
+    that add a class index header.
+    
+    The ``ReadVersion``/``WriteVersion`` data format is only used by ``plNetClientStreamRecorder`` and is never sent over the network or used in any data files,
+    so I won't cover it in detail in the rest of this documentation.
+    In short:
+    ``WriteVersion`` usually uses the same format as ``Write``,
+    but with a :cpp:class:`hsBitVector` added at the beginning
+    that indicates which fields are present in the data.
+    This information is used by ``ReadVersion`` to skip reading fields that didn't exist yet when the data was written.

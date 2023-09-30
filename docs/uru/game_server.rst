@@ -108,7 +108,7 @@ Cli2Game_PropagateBuffer
 
 * *Message type* = 2
 * **Class index:** 4-byte unsigned int.
-  ``plCreatable`` class index of the message stored in the following buffer.
+  :cpp:class:`plCreatable` class index of the message stored in the following buffer.
   Must be one of :cpp:class:`plNetMessage`'s subclasses.
 * **Buffer length:** 4-byte unsigned int.
   Byte length of the following buffer field.
@@ -140,7 +140,7 @@ Most communication with the game server
 happens using serialized :cpp:class:`plNetMessage` objects,
 which are wrapped in :ref:`cli2game_propagate_buffer`/:ref:`game2cli_propagate_buffer` when sent to/from the game server.
 
-The different :cpp:class:`plNetMessage` subclasses are identified by their ``plCreatable`` class index.
+The different :cpp:class:`plNetMessage` subclasses are identified by their :cpp:class:`plCreatable` class index.
 Unlike the :ref:`lower-level message protocol <messages>`,
 :cpp:class:`plNetMessage`\s aren't strictly separated by communication direction.
 Many message types are in fact sent in both directions between client and server,
@@ -810,12 +810,10 @@ and not supported by MOSS or DIRTSAND
     it's converted to the client's local game time and stored in the :cpp:class:`plMessage`'s timestamp field.
   
   Wraps a :cpp:class:`plMessage` to be sent between clients.
-  The stream data contains the serialized :cpp:class:`plMessage`
-  in the format produced by ``hsResMgr::WriteCreatable``
-  and understood by ``hsResMgr::ReadCreatable``.
+  The stream data contains the :cpp:class:`plMessage` as a serialized :cpp:class:`plCreatable` with header.
   See :ref:`pl_messages` for details on that format.
   
-  If the contained :cpp:class:`plMessage` is an instance of ``plLoadCloneMsg``,
+  If the contained :cpp:class:`plMessage` is an instance of :cpp:class:`plLoadCloneMsg`,
   then the wrapper message must have the class :cpp:class:`plNetMsgLoadClone` instead.
   
   When the client sends (locally) a :cpp:class:`plMessage` that has the :cpp:enumerator:`~plMessage::plBCastFlags::kNetPropagate` flag set,
@@ -908,12 +906,20 @@ and not supported by MOSS or DIRTSAND
   * **Header:** :cpp:class:`plNetMsgGameMessage`.
   * **UOID:** :cpp:class:`plUoid`.
   * **Is player:** 1-byte boolean.
+    If the wrapped message is a :cpp:class:`plLoadAvatarMsg`,
+    this field matches its "is player" field,
+    otherwise it's always set to false.
   * **Is loading:** 1-byte boolean.
+    Matches the "is loading" field of the wrapped :cpp:class:`plLoadCloneMsg`.
   * **Is initial state:** 1-byte boolean.
+    Set to true by the server when replying to a :cpp:class:`plNetMsgGameStateRequest`.
+    The client always sets it to false.
+    This field is only used by the client to count how many initial state messages it has received ---
+    it has no effect on how the message itself is handled.
   
   Special case of :cpp:class:`plNetMsgGameMessage`
-  used if the wrapped :cpp:class:`plMessage` is an instance of ``plLoadCloneMsg``
-  (or its only subclass ``plLoadAvatarMsg``).
+  used if the wrapped :cpp:class:`plMessage` is an instance of :cpp:class:`plLoadCloneMsg`
+  (or its only subclass :cpp:class:`plLoadAvatarMsg`).
   
   These messages are always forwarded to all clients within the same age instance ---
   they cannot be directed and should never have the :cpp:enumerator:`~plNetMessage::BitVectorFlags::kInterAgeRouting` or :cpp:enumerator:`~plNetMessage::BitVectorFlags::kRouteToAllPlayers` flags set.
@@ -1142,7 +1148,7 @@ the server also sends :cpp:class:`plMessage`\s of its own though,
 e. g. when responding to a :cpp:class:`plNetMsgTestAndSet`.
 
 Like with :cpp:class:`plNetMessage`,
-the different :cpp:class:`plMessage` subclasses are identified by their ``plCreatable`` class index
+the different :cpp:class:`plMessage` subclasses are identified by their :cpp:class:`plCreatable` class index
 and can often be sent both from client to server and from server to client.
 
 Below is an overview of the :cpp:class:`plMessage` class hierarchy in the open-sourced client code,
@@ -1166,6 +1172,9 @@ only of one of their non-abstract subclasses.
 
 * :cpp:class:`plMessage` = 0x0202 = 514 (abstract)
   
+  * :cpp:class:`plLoadCloneMsg` = 0x0253 = 595
+    
+    * :cpp:class:`plLoadAvatarMsg` = 0x03b1 = 945
   * :cpp:class:`plServerReplyMsg` = 0x026f = 623
 
 :cpp:class:`plMessage`
@@ -1178,11 +1187,11 @@ only of one of their non-abstract subclasses.
   The serialized format has the following common header structure,
   with any subclass-specific data directly after the header.
   
-  * **Class index:** 2-byte unsigned int.
-    Identifies the specific :cpp:class:`plMessage` subclass
-    that this message is an instance of.
-    (This field technically doesn't come from :cpp:class:`plMessage` itself,
-    but from the serialization infrastructure in ``hsResMgr::ReadCreatable``/``hsResMgr::WriteCreatable``.)
+  * **Header:** :cpp:class:`plCreatable` class index header.
+    (Strictly speaking,
+    this isn't part of the serialized :cpp:class:`plMessage` itself,
+    but in practice,
+    :cpp:class:`plMessage`\s are always serialized with a header.)
   * **Sender:** :cpp:class:`plKey`.
     Identifies the object that sent this message.
     Might be ``nullptr``?
@@ -1413,6 +1422,61 @@ only of one of their non-abstract subclasses.
       
       Although this flag is related to network propagation,
       it's ignored by the server and only used by clients.
+
+:cpp:class:`plLoadCloneMsg`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plLoadCloneMsg : public plMessage
+  
+  *Class index = 0x0253 = 595*
+  
+  * **Header:** :cpp:class:`plMessage`.
+  * **Clone:** :cpp:class:`plKey`.
+    The clone object that this message is about.
+  * **Requestor:** :cpp:class:`plKey`.
+  * **Originating player:** 4-byte unsigned int.
+    KI number of the player that created the clone.
+    For player avatar clones,
+    this should be the avatar's KI number.
+  * **User data:** 4-byte unsigned int.
+  * **Is valid:** 1-byte boolean.
+    Should always be true when sent over the network.
+    May be set to false internally by the client for messages that aren't fully constructed yet.
+  * **Is loading:** 1-byte boolean.
+    Set to true if this message loads a clone,
+    or to false if it unloads a clone.
+  * **Trigger message:** Serialized :cpp:class:`plCreatable` with header.
+    Must be an instance of a :cpp:class:`plMessage` subclass.
+    In practice,
+    this is usually ``nullptr``,
+    but may sometimes be a ``plParticleTransferMsg``.
+
+:cpp:class:`plLoadAvatarMsg`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plLoadAvatarMsg : public plLoadCloneMsg
+  
+  *Class index = 0x03b1 = 945*
+  
+  * **Header:** :cpp:class:`plLoadCloneMsg`.
+  * **Is player:** 1-byte boolean.
+    Set to true if the clone is a player avatar,
+    or to false if it's an NPC avatar.
+  * **Spawn point:** :cpp:class:`plKey`.
+    The ``plSceneObject`` for the spawn point at which the avatar will appear.
+  * **Initial task present:** 1-byte boolean.
+    Whether the following initial task field is present.
+  * **Initial task:** Serialized :cpp:class:`plCreatable` with header.
+    Must be an instance of a ``plAvTask`` subclass.
+    Only present if the preceding boolean field is true,
+    in which case the :cpp:class:`plCreatable` should not be ``nullptr``.
+    If the preceding boolean field is false,
+    this field is not present and defaults to ``nullptr``.
+  * **User string:** :ref:`SafeString <safe_string>`.
+    Usually empty,
+    but sometimes set to a short description
+    (e. g. for quabs).
+    Ignored by the client and all fan servers.
 
 :cpp:class:`plServerReplyMsg`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

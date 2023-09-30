@@ -55,6 +55,7 @@ JOIN_AGE_REPLY = struct.Struct("<II")
 PROPAGATE_BUFFER_HEADER = struct.Struct("<II")
 
 PLASMA_MESSAGE_HEADER_END = struct.Struct("<dI")
+LOAD_CLONE_MESSAGE_MID = struct.Struct("<II??")
 
 NET_MESSAGE_HEADER = struct.Struct("<HI")
 NET_MESSAGE_VERSION = struct.Struct("<BB")
@@ -66,6 +67,10 @@ NET_MESSAGE_LOAD_CLONE_BOOLS = struct.Struct("<???")
 COMPRESSION_THRESHOLD = 256
 
 AGE_SDL_HOOK_NAME = b"AgeSDLHook"
+
+
+class UnknownClassIndexError(Exception):
+	pass
 
 
 class GroupId(object):
@@ -433,6 +438,20 @@ class PlasmaMessage(object):
 		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
 		return f"<{self.class_description}: {joined_fields}>"
 	
+	@classmethod
+	def from_class_index(cls, class_index: int) -> "typing.Optional[PlasmaMessage]":
+		if class_index == structs.NULL_CLASS_INDEX:
+			return None
+		
+		try:
+			clazz = PLASMA_MESSAGE_CLASSES_BY_INDEX[class_index]
+		except KeyError:
+			raise UnknownClassIndexError(f"Cannot create/read plMessage with unknown class index 0x{class_index:>04x}")
+		else:
+			self = clazz()
+			self.class_index = class_index
+			return self
+	
 	@property
 	def class_description(self) -> str:
 		name = type(self).__qualname__
@@ -441,7 +460,6 @@ class PlasmaMessage(object):
 		return f"{name} (0x{self.class_index:>04x})"
 	
 	def read(self, stream: typing.BinaryIO) -> None:
-		(self.class_index,) = structs.stream_unpack(stream, structs.UINT16)
 		self.sender = structs.Uoid.key_from_stream(stream)
 		
 		(receiver_count,) = structs.stream_unpack(stream, structs.INT32)
@@ -453,26 +471,16 @@ class PlasmaMessage(object):
 		self.flags = PlasmaMessageFlags(flags)
 	
 	@classmethod
-	def from_stream(cls, stream: typing.BinaryIO) -> "PlasmaMessage":
-		# Peek the class index from the beginning of the message
-		pos = stream.tell()
-		try:
-			(class_index,) = structs.stream_unpack(stream, structs.UINT16)
-		finally:
-			stream.seek(pos)
+	def creatable_from_stream(cls, stream: typing.BinaryIO) -> "typing.Optional[PlasmaMessage]":
+		(class_index,) = structs.stream_unpack(stream, structs.CLASS_INDEX)
+		self = cls.from_class_index(class_index)
 		
-		try:
-			clazz = PLASMA_MESSAGE_CLASSES_BY_INDEX[class_index]
-		except KeyError:
-			self = cls()
-		else:
-			self = clazz()
+		if self is not None:
+			self.read(stream)
 		
-		self.read(stream)
 		return self
 	
 	def write(self, stream: typing.BinaryIO) -> None:
-		stream.write(structs.UINT16.pack(self.class_index))
 		structs.Uoid.key_to_stream(self.sender, stream)
 		
 		stream.write(structs.INT32.pack(len(self.receivers)))
@@ -480,11 +488,110 @@ class PlasmaMessage(object):
 			structs.Uoid.key_to_stream(receiver, stream)
 		
 		stream.write(PLASMA_MESSAGE_HEADER_END.pack(self.timestamp, self.flags))
+	
+	@classmethod
+	def creatable_to_stream(cls, message: "typing.Optional[PlasmaMessage]", stream: typing.BinaryIO) -> None:
+		if message is None:
+			stream.write(b"\x00\x80")
+		else:
+			stream.write(structs.CLASS_INDEX.pack(message.class_index))
+			message.write(stream)
 
 
 PLASMA_MESSAGE_CLASSES_BY_INDEX: typing.Dict[int, typing.Type[PlasmaMessage]] = {
 	PlasmaMessage.CLASS_INDEX: PlasmaMessage,
 }
+
+
+class LoadCloneMessage(PlasmaMessage):
+	CLASS_INDEX = 0x0253
+	
+	clone: typing.Optional[structs.Uoid]
+	requestor: typing.Optional[structs.Uoid]
+	originating_ki_number: int
+	user_data: int
+	is_valid: bool
+	is_loading: bool
+	trigger_message: typing.Optional[PlasmaMessage]
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["clone"] = str(self.clone)
+		fields["requestor"] = str(self.requestor)
+		fields["originating_ki_number"] = repr(self.originating_ki_number)
+		if self.user_data != 0:
+			fields["user_data"] = repr(self.user_data)
+		if not self.is_valid:
+			fields["is_valid"] = repr(self.is_valid)
+		fields["is_loading"] = repr(self.is_loading)
+		if self.trigger_message is not None:
+			fields["trigger_message"] = repr(self.trigger_message)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		
+		self.clone = structs.Uoid.key_from_stream(stream)
+		self.requestor = structs.Uoid.key_from_stream(stream)
+		(self.originating_ki_number, self.user_data, self.is_valid, self.is_loading) = structs.stream_unpack(stream, LOAD_CLONE_MESSAGE_MID)
+		
+		if not self.is_valid:
+			raise ValueError(f"plLoadCloneMsg has is_valid field set to {self.is_valid!r}, this should never happen!")
+		
+		self.trigger_message = PlasmaMessage.creatable_from_stream(stream)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		
+		structs.Uoid.key_to_stream(self.clone, stream)
+		structs.Uoid.key_to_stream(self.requestor, stream)
+		stream.write(LOAD_CLONE_MESSAGE_MID.pack(self.originating_ki_number, self.user_data, self.is_valid, self.is_loading))
+		PlasmaMessage.creatable_to_stream(self.trigger_message, stream)
+
+
+class LoadAvatarMessage(LoadCloneMessage):
+	CLASS_INDEX = 0x03b1
+	
+	is_player: bool
+	spawn_point: typing.Optional[structs.Uoid]
+	initial_task: typing.Any # TODO
+	user_string: bytes
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["is_player"] = repr(self.is_player)
+		if self.spawn_point:
+			fields["spawn_point"] = str(self.spawn_point)
+		if self.initial_task:
+			fields["initial_task"] = repr(self.initial_task)
+		if self.user_string:
+			fields["user_string"] = repr(self.user_string)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		
+		(is_player,) = stream.read(1)
+		self.is_player = bool(is_player)
+		self.spawn_point = structs.Uoid.key_from_stream(stream)
+		(initial_task_present,) = stream.read(1)
+		if initial_task_present:
+			raise NotImplementedError("Cannot parse plAvTask yet") # TODO
+		else:
+			self.initial_task = None
+		self.user_string = structs.read_safe_string(stream)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		
+		stream.write(bytes([self.is_player]))
+		structs.Uoid.key_to_stream(self.spawn_point, stream)
+		if self.initial_task is None:
+			stream.write(b"\x00")
+		else:
+			stream.write(b"\x01")
+			raise NotImplementedError("Cannot write plAvTask yet") # TODO
+		structs.write_safe_string(stream, self.user_string)
 
 
 class ServerReplyMessage(PlasmaMessage):
@@ -977,7 +1084,7 @@ class NetMessageTestAndSet(NetMessageSharedState):
 			server_reply_message.type = reply_code
 			
 			with io.BytesIO() as message_stream:
-				server_reply_message.write(message_stream)
+				PlasmaMessage.creatable_to_stream(server_reply_message, message_stream)
 				message_buffer = message_stream.getvalue()
 			
 			net_game_message = NetMessageGameMessage()
@@ -1261,7 +1368,17 @@ class NetMessageGameMessage(NetMessageStream):
 		try:
 			message_data = self.decompress_data()
 			with io.BytesIO(message_data) as message_stream:
-				message = PlasmaMessage.from_stream(message_stream)
+				(class_index,) = structs.stream_unpack(message_stream, structs.CLASS_INDEX)
+				try:
+					message = PlasmaMessage.from_class_index(class_index)
+				except UnknownClassIndexError:
+					message = PlasmaMessage()
+					message.class_index = class_index
+				
+				if message is None:
+					raise ValueError("plMessage is nullptr, this should never happen!")
+				
+				message.read(message_stream)
 				extra_data = message_stream.read()
 		except (EOFError, ValueError) as exc:
 			logger_pl_message.error("Failed to parse plMessage. Ignoring and forwarding anyway...", exc_info=exc)
@@ -1270,6 +1387,23 @@ class NetMessageGameMessage(NetMessageStream):
 			
 			if message.sender is not None:
 				await connection.try_age_sdl_stuff(message.sender.location)
+			
+			# Check that clone messages are wrapped in the correct network message class.
+			if isinstance(self, NetMessageLoadClone):
+				# FIXME This really belongs into NetMessageLoadClone.handle, but we don't have the parsed message there...
+				if isinstance(message, LoadCloneMessage):
+					if isinstance(message, LoadAvatarMessage):
+						if message.is_player != self.is_player:
+							logger_pl_message.warning("plLoadAvatarMsg %s is_player (%r) doesn't match containing network load clone message's is_player (%r)", message.class_description, message.is_player, self.is_player)
+					elif self.is_player:
+						logger_pl_message.warning("plLoadCloneMsg %s isn't an avatar message, but containing network load clone message's is_player is set", message.class_description)
+					
+					if message.is_loading != self.is_loading:
+						logger_pl_message.warning("plLoadCloneMsg %s is_loading (%r) doesn't match containing network load clone message's is_loading (%r)", message.class_description, message.is_loading, self.is_loading)
+				else:
+					logger_pl_message.warning("plMessage %s isn't a clone message, but is wrapped in a network load clone message", message.class_description)
+			elif isinstance(message, LoadCloneMessage):
+				logger_pl_message.warning("plLoadCloneMsg %s is wrapped in a non-clone network message %s", message.class_description, self.class_description)
 			
 			# Double-check the containing network game message's has_game_message_receivers flag
 			# and check for nullptr receivers.

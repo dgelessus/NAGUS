@@ -2074,7 +2074,7 @@ Cli2Auth_PropagateBuffer
 
 * *Message type* = 40
 * **Class index:** 4-byte unsigned int.
-  ``plCreatable`` class index of the message stored in the following buffer.
+  :cpp:class:`plCreatable` class index of the message stored in the following buffer.
   Must be one of :cpp:class:`plNetMessage`'s subclasses.
 * **Buffer length:** 4-byte unsigned int.
   Byte length of the following buffer field.

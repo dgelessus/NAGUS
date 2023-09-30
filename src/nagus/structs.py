@@ -44,6 +44,9 @@ LOCATION = struct.Struct("<IH")
 UOID_MID_PART = struct.Struct("<HI")
 UOID_CLONE_IDS = struct.Struct("<HHI")
 
+CLASS_INDEX = UINT16
+NULL_CLASS_INDEX = 0x8000
+
 
 class _TestEnum(enum.IntEnum):
 	thing = 1
