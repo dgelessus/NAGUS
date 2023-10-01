@@ -1395,6 +1395,9 @@ class NetMessageGameMessage(NetMessageStream):
 					if isinstance(message, LoadAvatarMessage):
 						if message.is_player != self.is_player:
 							logger_pl_message.warning("plLoadAvatarMsg %s is_player (%r) doesn't match containing network load clone message's is_player (%r)", message.class_description, message.is_player, self.is_player)
+						
+						if message.spawn_point is not None:
+							await connection.try_age_sdl_stuff(message.spawn_point.location)
 					elif self.is_player:
 						logger_pl_message.warning("plLoadCloneMsg %s isn't an avatar message, but containing network load clone message's is_player is set", message.class_description)
 					
