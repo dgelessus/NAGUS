@@ -161,13 +161,13 @@ not even their structure.
   :header: #,Cli2Auth,Auth2Cli,#
   :widths: auto
   
-  46,ScoreCreate,ScoreCreateReply,41
-  47,ScoreDelete,ScoreDeleteReply,42
-  48,ScoreGetScores,ScoreGetScoresReply,43
-  49,ScoreAddPoints,ScoreAddPointsReply,44
-  50,ScoreTransferPoints,ScoreTransferPointsReply,45
-  51,ScoreSetPoints,ScoreSetPointsReply,46
-  52,ScoreGetRanks,ScoreGetRanksReply,47
+  46,:ref:`ScoreCreate <cli2auth_score_create>`,:ref:`ScoreCreateReply <auth2cli_score_create_reply>`,41
+  47,:ref:`ScoreDelete <cli2auth_score_delete>`,:ref:`ScoreDeleteReply <auth2cli_score_delete_reply>`,42
+  48,:ref:`ScoreGetScores <cli2auth_score_get_scores>`,:ref:`ScoreGetScoresReply <auth2cli_score_get_scores_reply>`,43
+  49,:ref:`ScoreAddPoints <cli2auth_score_add_points>`,:ref:`ScoreAddPointsReply <auth2cli_score_add_points_reply>`,44
+  50,:ref:`ScoreTransferPoints <cli2auth_score_transfer_points>`,:ref:`ScoreTransferPointsReply <auth2cli_score_transfer_points_reply>`,45
+  51,:ref:`ScoreSetPoints <cli2auth_score_set_points>`,:ref:`ScoreSetPointsReply <auth2cli_score_set_points_reply>`,46
+  52,:ref:`ScoreGetRanks <cli2auth_score_get_ranks>`,:ref:`ScoreGetRanksReply <auth2cli_score_get_ranks_reply>`,47
 
 .. csv-table:: H'uru extensions
   :name: auth_messages_h_uru_extensions
@@ -2145,3 +2145,347 @@ The client automatically exits after sending this message.
 Since 2020,
 OpenUru-based clients have this debugger trap disabled by default,
 unless the macro ``PLASMA_EXTERNAL_NODEBUGGER`` is defined.
+
+.. _cli2auth_score_create:
+
+Cli2Auth_ScoreCreate
+^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 46
+* **Transaction ID:** 4-byte unsigned int.
+* **Owner ID:** 4-byte unsigned int.
+  Vault node ID of the thing that the score belongs to.
+  May be a :ref:`vault_node_player_info` ID (KI number) for a score owned by an avatar,
+  a :ref:`vault_node_age_info` ID for a score belonging to an age instance,
+  or 0 for a global score.
+* **Game name:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
+  The "game" to which the score belongs.
+  The following names are currently used:
+  
+  * :samp:`GreatZeroCalibration_{i}` (fixed): Great Zero calibration mission times.
+    :samp:`{i}` is the number of the calibration mission,
+    as a decimal index counting from 0
+    (always 2 digits,
+    with leading 0 if necessary).
+    Only used by H'uru clients since 2015.
+    OpenUru clients and older H'uru clients save the times as :ref:`chronicles <vault_node_chronicle>` in the vault instead.
+  * ``HeekPoints`` (accumulative allowing subtraction): Ayoheek points.
+  * ``PelletDrop`` (accumulative): Er'cana pellet points.
+* **Game type:** 4-byte unsigned int.
+  Indicates how the game scores are counted.
+  The following types are currently defined:
+  
+  * Fixed = 0: A normal high score.
+    Despite the name,
+    a fixed score's value *can* be changed after creation,
+    but it doesn't support the other operations that accumulative scores have.
+  * Accumulative = 1: A running total score that can have points added after creation.
+    Points can also be transferred from one accumulative score to another,
+    which reduces the source score's value again.
+    Other than that,
+    it's impossible to subtract points or set the score's value directly.
+    DIRTSAND calls this type "Football".
+  * Accumulative allowing subtraction = 2: A running total score that can have points added or subtracted after creation.
+    Although the score's value can't be set directly like a fixed score,
+    it can still be changed to any value by adding or subtracting points as needed.
+    DIRTSAND calls this type "Golf".
+* **Points:** 4-byte signed int.
+  The score's value.
+
+.. _auth2cli_score_create_reply:
+
+Auth2Cli_ScoreCreateReply
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 41
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Score ID:** 4-byte unsigned int.
+  ID of the newly created score.
+* **Creation time:** 4-byte unsigned int.
+  Unix timestamp when the score was created
+  (i. e. roughly the current time).
+  Ignored by the client.
+
+Reply to a :ref:`ScoreCreate <cli2auth_score_create>` message.
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrScoreWrongType`: Sent by MOSS if the game type isn't supported.
+* :cpp:enumerator:`kNetErrScoreAlreadyExists`: The owner already has a score for this game.
+
+.. _cli2auth_score_delete:
+
+Cli2Auth_ScoreDelete
+^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 47
+* **Transaction ID:** 4-byte unsigned int.
+* **Score ID:** 4-byte unsigned int.
+  ID of the score to delete.
+
+Delete a previously created score.
+Implemented in the open-sourced client code,
+but never actually used,
+and not supported by any fan server implementation.
+Unclear if Cyan's server software supports it.
+
+.. _auth2cli_score_delete_reply:
+
+Auth2Cli_ScoreDeleteReply
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 42
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to a :ref:`ScoreDelete <cli2auth_score_delete>` message
+and similarly unused in practice.
+
+.. _cli2auth_score_get_scores:
+
+Cli2Auth_ScoreGetScores
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 48
+* **Transaction ID:** 4-byte unsigned int.
+* **Owner ID:** 4-byte unsigned int.
+  Vault node ID of the thing for which to get the score,
+  as originally passed to :ref:`ScoreCreate <cli2auth_score_create>`.
+* **Game name:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
+  The "game" to which the score belongs,
+  as originally passed to :ref:`ScoreCreate <cli2auth_score_create>`.
+
+Retrieve all information about the given owner's scores for a game.
+Despite the plural in the name,
+this should only ever return a single score or none at all,
+because it's impossible to create multiple scores with the same game and owner.
+
+.. _auth2cli_score_get_scores_reply:
+
+Auth2Cli_ScoreGetScoresReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 43
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Score count:** 4-byte unsigned int.
+  Should always be either 0 or 1,
+  because there's no way to create multiple scores for the same game and owner.
+* **Score data length:** 4-byte unsigned int.
+  Byte length of the following score data field.
+  Can be at most 1 MiB.
+* **Score data:** Variable-length array.
+  Each element has the following structure:
+  
+  * **Score ID:** 4-byte unsigned int.
+  * **Owner ID:** 4-byte unsigned int.
+  * **Creation time:** 4-byte unsigned int.
+  * **Game type:** 4-byte unsigned int.
+  * **Points:** 4-byte signed int.
+  * **Game name byte count:** 4-byte unsigned int.
+    Byte length of the following game name field.
+  * **Game name:** Variable-length, zero-terminated UTF-16 string.
+    (The zero terminator is stored explicitly and included in the byte count.)
+
+Reply to a :ref:`ScoreGetScores <cli2auth_score_get_scores>` message.
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrInternalError`:
+  Sent by MOSS if more than one matching score was found.
+  DIRTSAND doesn't consider that an error,
+  even though it should normally never happen.
+  (TODO What does Cyan's server software do?)
+* :cpp:enumerator:`kNetErrScoreNoDataFound`:
+  Sent by MOSS if no matching scores were found.
+  DIRTSAND sends :cpp:enumerator:`kNetSuccess` (with count 0) in this case instead.
+  (TODO What does Cyan's server software do?)
+
+.. _cli2auth_score_add_points:
+
+Cli2Auth_ScoreAddPoints
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 49
+* **Transaction ID:** 4-byte unsigned int.
+* **Score ID:** 4-byte unsigned int.
+  ID of the score to modify.
+  The score's type must be one of the two accumulative types ---
+  fixed scores can only be updated using :ref:`ScoreSetPoints <cli2auth_score_set_points>`.
+* **Points difference:** 4-byte signed int.
+  Number of points to add to the current score value.
+  If the score is of type "accumulative allow negative",
+  this value may be negative to subtract points,
+  otherwise it must be positive.
+
+Modify an existing accumulative score by adding or subtracting points.
+
+.. _auth2cli_score_add_points_reply:
+
+Auth2Cli_ScoreAddPointsReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 44
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to a :ref:`ScoreAddPoints <cli2auth_score_add_points>` message.
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrScoreWrongType`: The ID refers to a fixed score,
+  which can't have points added/subtracted.
+  MOSS also sends this when trying to subtract points from an accumulative score that doesn't allow subtraction.
+  DIRTSAND allows this and sends :cpp:enumerator:`kNetSuccess` in that case,
+  but silently sets the score's value to 0 if it would have become negative.
+* :cpp:enumerator:`kNetErrScoreNoDataFound`: There is no score with the given ID.
+
+.. _cli2auth_score_transfer_points:
+
+Cli2Auth_ScoreTransferPoints
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 50
+* **Transaction ID:** 4-byte unsigned int.
+* **Source score ID:** 4-byte unsigned int.
+  ID of the score from which to transfer points.
+  The score's type must be one of the two accumulative types.
+* **Destination score ID:** 4-byte unsigned int.
+  ID of the score to which to transfer points.
+  The score's type must be one of the two accumulative types.
+* **Points to transfer:** 4-byte signed int.
+  The number of points to transfer.
+  May be negative to transfer points from the destination to the source score.
+  DIRTSAND considers this field an unsigned int
+  and doesn't support transferring a negative amount of points.
+
+Transfer a certain amount of points from one accumulative score to another.
+This is used to implement uploading personal pellet scores to neighborhoods.
+
+The client can theoretically transfer a negative amount of points,
+which transfers points in the reverse direction
+(from the destination to the source).
+This isn't used in practice though
+and fan servers only support it inconsistently.
+One can get the same result more reliably
+by transferring a positive amount of points with the source and destination swapped.
+
+.. _auth2cli_score_transfer_points_reply:
+
+Auth2Cli_ScoreTransferPointsReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 45
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to a :ref:`ScoreTransferPoints <cli2auth_score_transfer_points>` message.
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrScoreWrongType`: One or both score IDs refer to a fixed score.
+  Also sent by MOSS if the number of points is negative,
+  but one or both score IDs don't allow subtraction.
+  (DIRTSAND doesn't support negative score transfers at all.)
+  MOSS mistakenly sends :cpp:enumerator:`kNetErrScoreNoDataFound` instead of this result.
+* :cpp:enumerator:`kNetErrScoreNotEnoughPoints`: Tried to transfer more points than the source score currently has.
+  DIRTSAND allows this though if the source score allows subtraction,
+  in which case the transfer will make the source score go negative.
+  MOSS allows any transfer as long as it doesn't change the sign of the source score.
+* :cpp:enumerator:`kNetErrScoreNoDataFound`: One or both score IDs don't exist.
+  MOSS mistakenly sends :cpp:enumerator:`kNetErrScoreWrongType` instead of this result.
+
+.. _cli2auth_score_set_points:
+
+Cli2Auth_ScoreSetPoints
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 51
+* **Transaction ID:** 4-byte unsigned int.
+* **Score ID:** 4-byte unsigned int.
+  ID of the score to modify.
+  Must be a fixed score ---
+  accumulative scores can only be modified using :ref:`ScoreAddPoints <cli2auth_score_add_points>` or :ref:`ScoreTransferPoints <cli2auth_score_transfer_points>`.
+* **Points:** 4-byte signed int.
+  The score's new value.
+
+Set an existing fixed score to a new value.
+Not supported by MOSS.
+
+.. _auth2cli_score_set_points_reply:
+
+Auth2Cli_ScoreSetPointsReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 46
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+
+Reply to a :ref:`ScoreSetPoints <cli2auth_score_set_points>` message.
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrScoreWrongType`: The ID refers to an accumulative score,
+  whose value can't be set directly.
+* :cpp:enumerator:`kNetErrScoreNoDataFound`: There is no score with the given ID.
+
+.. _cli2auth_score_get_ranks:
+
+Cli2Auth_ScoreGetRanks
+^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 52
+* **Transaction ID:** 4-byte unsigned int.
+* **Owner ID:** 4-byte unsigned int.
+* **Score group:** 4-byte unsigned int.
+* **Parent folder ID:** 4-byte unsigned int.
+* **Game name:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
+* **Time period:** 4-byte unsigned int.
+* **Result count:** 4-byte unsigned int.
+* **Page number:** 4-byte unsigned int.
+* **Sort order:** 4-byte unsigned int.
+  0 if the returned ranks should be sorted in ascending order
+  or 1 for descending order.
+
+Implemented in the open-sourced client code,
+but never actually used,
+and not supported by any fan server implementation.
+Unclear if Cyan's server software supports it.
+
+H'uru clients and DIRTSAND implement a ScoreGetHighScores message as an extension,
+which has a similar purpose as this message presumably had,
+but is overall simpler.
+
+.. _auth2cli_score_get_ranks_reply:
+
+Auth2Cli_ScoreGetRanksReply
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 47
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Rank count:** 4-byte unsigned int.
+* **Rank data length:** 4-byte unsigned int.
+  Byte length of the following score data field.
+  Can be at most 1 MiB.
+* **Rank data:** Variable-length array.
+  Each element has the following structure:
+  
+  * **Rank:** 4-byte unsigned int.
+    Presumably the rank of this score on the leaderboard.
+  * **Score:** 4-byte signed int.
+    The score's value.
+  * **Name byte count:** 4-byte unsigned int.
+    Byte length of the following name field.
+  * **Name:** Variable-length, zero-terminated UTF-16 string.
+    (The zero terminator is stored explicitly and included in the byte count.)
+    Presumably the name of the player who owns this score.
+
+Reply to a :ref:`ScoreGetRanks <auth2cli_score_get_ranks_reply>` message
+and similarly unused in practice.
