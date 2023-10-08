@@ -30,7 +30,13 @@ I've moved a few entries
 so that related messages are grouped together
 and request/reply pairs align better.
 
-Message types in *italics* are completely unused in any open-source MOUL(a) code.
+Message types in (parentheses) are never used in practice,
+but are at least partially implemented in the open-sourced client code.
+Servers usually treat these messages as invalid,
+or always reply with an error,
+or ignore them outright.
+
+Message types in *(italics)* are completely unused in any open-source client or server code.
 Except for their message type number,
 nothing is known about them,
 not even their structure.
@@ -50,7 +56,7 @@ not even their structure.
   :widths: auto
   
   1,:ref:`ClientRegisterRequest <cli2auth_client_register_request>`,:ref:`ClientRegisterReply <auth2cli_client_register_reply>`,3
-  2,:ref:`ClientSetCCRLevel <cli2auth_client_set_ccr_level>`,,
+  2,(:ref:`ClientSetCCRLevel <cli2auth_client_set_ccr_level>`),,
 
 .. csv-table:: Account
   :name: auth_messages_account
@@ -59,42 +65,42 @@ not even their structure.
   
   3,:ref:`AcctLoginRequest <cli2auth_acct_login_request>`,:ref:`AcctPlayerInfo <auth2cli_acct_player_info>`,6
   ,,:ref:`AcctLoginReply <auth2cli_acct_login_reply>`,4
-  4,*AcctSetEulaVersion*,,
-  5,*AcctSetDataRequest*,*AcctData*,5
+  4,*(AcctSetEulaVersion)*,,
+  5,*(AcctSetDataRequest)*,*(AcctData)*,5
   6,:ref:`AcctSetPlayerRequest <cli2auth_acct_set_player_request>`,:ref:`AcctSetPlayerReply <auth2cli_acct_set_player_reply>`,7
-  7,:ref:`AcctCreateRequest <cli2auth_acct_create_request>`,:ref:`AcctCreateReply <auth2cli_acct_create_reply>`,8
+  7,(:ref:`AcctCreateRequest <cli2auth_acct_create_request>`),(:ref:`AcctCreateReply <auth2cli_acct_create_reply>`),8
   8,:ref:`AcctChangePasswordRequest <cli2auth_acct_change_password_request>`,:ref:`AcctChangePasswordReply <cli2auth_acct_change_password_reply>`,9
-  9,:ref:`AcctSetRolesRequest <cli2auth_acct_set_roles_request>`,:ref:`AcctSetRolesReply <auth2cli_acct_set_roles_reply>`,10
-  10,:ref:`AcctSetBillingTypeRequest <cli2auth_acct_set_billing_type_request>`,:ref:`AcctSetBillingTypeReply <auth2cli_acct_set_billing_type_reply>`,11
-  11,:ref:`AcctActivateRequest <cli2auth_acct_activate_request>`,:ref:`AcctActivateReply <auth2cli_acct_activate_reply>`,12
-  12,:ref:`AcctCreateFromKeyRequest <cli2auth_acct_create_from_key_request>`,:ref:`AcctCreateFromKeyReply <auth2cli_acct_create_from_key_reply>`,13
-  53,:ref:`AccountExistsRequest <cli2auth_account_exists_request>`,:ref:`AccountExistsReply <auth2cli_account_exists_reply>`,48
+  9,(:ref:`AcctSetRolesRequest <cli2auth_acct_set_roles_request>`),(:ref:`AcctSetRolesReply <auth2cli_acct_set_roles_reply>`),10
+  10,(:ref:`AcctSetBillingTypeRequest <cli2auth_acct_set_billing_type_request>`),(:ref:`AcctSetBillingTypeReply <auth2cli_acct_set_billing_type_reply>`),11
+  11,(:ref:`AcctActivateRequest <cli2auth_acct_activate_request>`),(:ref:`AcctActivateReply <auth2cli_acct_activate_reply>`),12
+  12,(:ref:`AcctCreateFromKeyRequest <cli2auth_acct_create_from_key_request>`),(:ref:`AcctCreateFromKeyReply <auth2cli_acct_create_from_key_reply>`),13
+  53,(:ref:`AccountExistsRequest <cli2auth_account_exists_request>`),(:ref:`AccountExistsReply <auth2cli_account_exists_reply>`),48
 
 .. csv-table:: Player
   :name: auth_messages_player
   :header: #,Cli2Auth,Auth2Cli,#
   :widths: auto
   
-  ,,*PlayerList*,14
+  ,,*(PlayerList)*,14
   13,:ref:`PlayerDeleteRequest <cli2auth_player_delete_request>`,:ref:`PlayerDeleteReply <auth2cli_player_delete_reply>`,17
-  14,*PlayerUndeleteRequest*,,
-  15,*PlayerSelectRequest*,,
-  16,*PlayerRenameRequest*,,
+  14,*(PlayerUndeleteRequest)*,,
+  15,*(PlayerSelectRequest)*,,
+  16,*(PlayerRenameRequest)*,,
   17,:ref:`PlayerCreateRequest <cli2auth_player_create_request>`,:ref:`PlayerCreateReply <auth2cli_player_create_reply>`,16
-  18,*PlayerSetStatus*,,
-  19,*PlayerChat*,*PlayerChat*,15
-  20,:ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`,:ref:`UpgradeVisitorReply <auth2cli_upgrade_visitor_reply>`,18
-  21,:ref:`SetPlayerBanStatusRequest <cli2auth_set_player_ban_status_request>`,:ref:`SetPlayerBanStatusReply <auth2cli_set_player_ban_status_reply>`,19
-  22,:ref:`KickPlayer <cli2auth_kick_player>`,:ref:`KickedOff <auth2cli_kicked_off>`,39
-  23,:ref:`ChangePlayerNameRequest <cli2auth_change_player_name_request>`,:ref:`ChangePlayerNameReply <auth2cli_change_player_name_reply>`,20
+  18,*(PlayerSetStatus)*,,
+  19,*(PlayerChat)*,*(PlayerChat)*,15
+  20,(:ref:`UpgradeVisitorRequest <cli2auth_upgrade_visitor_request>`),(:ref:`UpgradeVisitorReply <auth2cli_upgrade_visitor_reply>`),18
+  21,(:ref:`SetPlayerBanStatusRequest <cli2auth_set_player_ban_status_request>`),(:ref:`SetPlayerBanStatusReply <auth2cli_set_player_ban_status_reply>`),19
+  22,(:ref:`KickPlayer <cli2auth_kick_player>`),:ref:`KickedOff <auth2cli_kicked_off>`,39
+  23,(:ref:`ChangePlayerNameRequest <cli2auth_change_player_name_request>`),(:ref:`ChangePlayerNameReply <auth2cli_change_player_name_reply>`),20
 
 .. csv-table:: Friends
   :name: auth_messages_friends
   :header: #,Cli2Auth,Auth2Cli,#
   :widths: auto
   
-  24,:ref:`SendFriendInviteRequest <cli2auth_send_friend_invite_request>`,:ref:`SendFriendInviteReply <auth2cli_send_friend_invite_reply>`,21
-  ,,*FriendNotify*,22
+  24,(:ref:`SendFriendInviteRequest <cli2auth_send_friend_invite_request>`),(:ref:`SendFriendInviteReply <auth2cli_send_friend_invite_reply>`),21
+  ,,*(FriendNotify)*,22
 
 .. csv-table:: Vault
   :name: auth_messages_vault
@@ -105,7 +111,7 @@ not even their structure.
   26,:ref:`VaultNodeFetch <cli2auth_vault_node_fetch>`,:ref:`VaultNodeFetched <auth2cli_vault_node_fetched>`,24
   ,,:ref:`VaultNodeChanged <auth2cli_vault_node_changed>`,25
   27,:ref:`VaultNodeSave <cli2auth_vault_node_save>`,:ref:`VaultSaveNodeReply <auth2cli_vault_save_node_reply>`,32
-  28,*VaultNodeDelete*,:ref:`VaultNodeDeleted <auth2cli_vault_node_deleted>`,26
+  28,*(VaultNodeDelete)*,(:ref:`VaultNodeDeleted <auth2cli_vault_node_deleted>`),26
   ,,:ref:`VaultNodeAdded <auth2cli_vault_node_added>`,27
   29,:ref:`VaultNodeAdd <cli2auth_vault_node_add>`,:ref:`VaultAddNodeReply <auth2cli_vault_add_node_reply>`,33
   ,,:ref:`VaultNodeRemoved <auth2cli_vault_node_removed>`,28
@@ -113,7 +119,7 @@ not even their structure.
   31,:ref:`VaultFetchNodeRefs <cli2auth_vault_fetch_node_refs>`,:ref:`VaultNodeRefsFetched <auth2cli_vault_node_refs_fetched>`,29
   32,:ref:`VaultInitAgeRequest <cli2auth_vault_init_age_request>`,:ref:`VaultInitAgeReply <auth2cli_vault_init_age_reply>`,30
   33,:ref:`VaultNodeFind <cli2auth_vault_node_find>`,:ref:`VaultNodeFindReply <auth2cli_vault_node_find_reply>`,31
-  34,:ref:`VaultSetSeen <cli2auth_vault_set_seen>`,,
+  34,(:ref:`VaultSetSeen <cli2auth_vault_set_seen>`),,
   35,:ref:`VaultSendNode <cli2auth_vault_send_node>`,,
 
 .. csv-table:: Ages
@@ -137,7 +143,7 @@ not even their structure.
   :header: #,Cli2Auth,Auth2Cli,#
   :widths: auto
   
-  40,:ref:`PropagateBuffer <cli2auth_propagate_buffer>`,:ref:`PropagateBuffer <auth2cli_propagate_buffer>`,38
+  40,(:ref:`PropagateBuffer <cli2auth_propagate_buffer>`),(:ref:`PropagateBuffer <auth2cli_propagate_buffer>`),38
 
 .. csv-table:: Public ages
   :name: auth_messages_public_ages
@@ -162,12 +168,12 @@ not even their structure.
   :widths: auto
   
   46,:ref:`ScoreCreate <cli2auth_score_create>`,:ref:`ScoreCreateReply <auth2cli_score_create_reply>`,41
-  47,:ref:`ScoreDelete <cli2auth_score_delete>`,:ref:`ScoreDeleteReply <auth2cli_score_delete_reply>`,42
+  47,(:ref:`ScoreDelete <cli2auth_score_delete>`),(:ref:`ScoreDeleteReply <auth2cli_score_delete_reply>`),42
   48,:ref:`ScoreGetScores <cli2auth_score_get_scores>`,:ref:`ScoreGetScoresReply <auth2cli_score_get_scores_reply>`,43
   49,:ref:`ScoreAddPoints <cli2auth_score_add_points>`,:ref:`ScoreAddPointsReply <auth2cli_score_add_points_reply>`,44
   50,:ref:`ScoreTransferPoints <cli2auth_score_transfer_points>`,:ref:`ScoreTransferPointsReply <auth2cli_score_transfer_points_reply>`,45
   51,:ref:`ScoreSetPoints <cli2auth_score_set_points>`,:ref:`ScoreSetPointsReply <auth2cli_score_set_points_reply>`,46
-  52,:ref:`ScoreGetRanks <cli2auth_score_get_ranks>`,:ref:`ScoreGetRanksReply <auth2cli_score_get_ranks_reply>`,47
+  52,(:ref:`ScoreGetRanks <cli2auth_score_get_ranks>`),(:ref:`ScoreGetRanksReply <auth2cli_score_get_ranks_reply>`),47
 
 .. csv-table:: H'uru extensions
   :name: auth_messages_h_uru_extensions
