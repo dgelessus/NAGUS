@@ -19,7 +19,7 @@
 
 
 import asyncio
-import enum
+import datetime
 import ipaddress
 import logging
 import random
@@ -40,6 +40,7 @@ logger_client_errors = logger.getChild("client_errors")
 logger_connect = logger.getChild("connect")
 logger_login = logger.getChild("login")
 logger_ping = logger.getChild("ping")
+logger_score = logger.getChild("score")
 logger_vault = logger.getChild("vault")
 logger_vault_read = logger_vault.getChild("read")
 logger_vault_notify = logger_vault.getChild("notify")
@@ -94,6 +95,22 @@ VAULT_NODE_FIND_REPLY_HEADER = struct.Struct("<III")
 AGE_REQUEST_HEADER = struct.Struct("<I")
 AGE_REPLY = struct.Struct("<III16sII")
 LOG_CLIENT_DEBUGGER_CONNECT = struct.Struct("<I")
+SCORE_CREATE_HEADER = struct.Struct("<II")
+SCORE_CREATE_FOOTER = struct.Struct("<Ii")
+SCORE_CREATE_REPLY = struct.Struct("<IIII")
+SCORE_DELETE = struct.Struct("<II")
+SCORE_DELETE_REPLY = struct.Struct("<II")
+SCORE_GET_SCORES_HEADER = struct.Struct("<II")
+SCORE_GET_SCORES_REPLY_HEADER = struct.Struct("<IIII")
+SCORE_ADD_POINTS = struct.Struct("<IIi")
+SCORE_ADD_POINTS_REPLY = struct.Struct("<II")
+SCORE_TRANSFER_POINTS = struct.Struct("<IIIi")
+SCORE_TRANSFER_POINTS_REPLY = struct.Struct("<II")
+SCORE_SET_POINTS = struct.Struct("<IIi")
+SCORE_SET_POINTS_REPLY = struct.Struct("<II")
+SCORE_GET_RANKS_HEADER = struct.Struct("<IIII")
+SCORE_GET_RANKS_FOOTER = struct.Struct("<IIII")
+SCORE_GET_RANKS_REPLY_HEADER = struct.Struct("<IIII")
 
 
 SYSTEM_RANDOM = random.SystemRandom()
@@ -753,3 +770,105 @@ class AuthConnection(base.BaseMOULConnection):
 	async def log_client_debugger_connect(self) -> None:
 		(nothing,) = await self.read_unpack(LOG_CLIENT_DEBUGGER_CONNECT)
 		logger_client_errors.warning("Client debugger connect: nothing %d", nothing)
+	
+	async def score_create_reply(self, trans_id: int, result: base.NetError, score_id: int, creation_time: datetime.datetime) -> None:
+		logger_score.debug("Sending score create reply: transaction ID %d, result %r, score ID %d, creation time %s", trans_id, result, score_id, creation_time)
+		await self.write_message(41, SCORE_CREATE_REPLY.pack(trans_id, result, score_id, creation_time.timestamp()))
+	
+	@base.message_handler(46)
+	async def score_create(self) -> None:
+		trans_id, owner_id = await self.read_unpack(SCORE_CREATE_HEADER)
+		game_name = await self.read_string_field(64)
+		game_type, points = await self.read_unpack(SCORE_CREATE_FOOTER)
+		logger_score.debug("Score create: transaction ID %d, owner ID %d, game name %r, game type %d, %d points", trans_id, owner_id, game_name, game_type, points)
+		
+		# TODO Actually implement this
+		await self.score_create_reply(trans_id, base.NetError.internal_error, 0, structs.ZERO_DATETIME)
+	
+	async def score_delete_reply(self, trans_id: int, result: base.NetError) -> None:
+		logger_score.debug("Sending score delete reply: transaction ID %d, result %r", trans_id, result)
+		await self.write_message(42, SCORE_DELETE_REPLY.pack(trans_id, result))
+	
+	@base.message_handler(47)
+	async def score_delete(self) -> None:
+		trans_id, score_id = await self.read_unpack(SCORE_DELETE)
+		logger_score.debug("Score delete: transaction ID %d, score ID %d", trans_id, score_id)
+		
+		# TODO Actually implement this
+		await self.score_delete_reply(trans_id, base.NetError.score_no_data_found)
+	
+	async def score_get_scores_reply(self, trans_id: int, result: base.NetError, scores: typing.Sequence[typing.Any]) -> None:
+		logger_score.debug("Sending score get reply: transaction ID %d, result %r, scores %r", trans_id, result, scores)
+		
+		# TODO Implement writing scores
+		if scores:
+			raise NotImplementedError("Writing score data not supported yet")
+		await self.write_message(43, SCORE_GET_SCORES_REPLY_HEADER.pack(trans_id, result, len(scores), 0))
+	
+	@base.message_handler(48)
+	async def score_get_scores(self) -> None:
+		trans_id, owner_id = await self.read_unpack(SCORE_GET_SCORES_HEADER)
+		game_name = await self.read_string_field(64)
+		logger_score.debug("Score get: transaction ID %d, owner ID %d, game name %r", trans_id, owner_id, game_name)
+		
+		# TODO Actually implement this
+		await self.score_get_scores_reply(trans_id, base.NetError.score_no_data_found, [])
+	
+	async def score_add_points_reply(self, trans_id: int, result: base.NetError) -> None:
+		logger_score.debug("Sending score add points reply: transaction ID %d, result %r", trans_id, result)
+		await self.write_message(44, SCORE_ADD_POINTS_REPLY.pack(trans_id, result))
+	
+	@base.message_handler(49)
+	async def score_add_points(self) -> None:
+		trans_id, score_id, points_diff = await self.read_unpack(SCORE_ADD_POINTS)
+		logger_score.debug("Score add points: transaction ID %d, score ID %d, %d points difference", trans_id, score_id, points_diff)
+		
+		# TODO Actually implement this
+		await self.score_add_points_reply(trans_id, base.NetError.score_no_data_found)
+	
+	async def score_transfer_points_reply(self, trans_id: int, result: base.NetError) -> None:
+		logger_score.debug("Sending score transfer points reply: transaction ID %d, result %r", trans_id, result)
+		await self.write_message(45, SCORE_TRANSFER_POINTS_REPLY.pack(trans_id, result))
+	
+	@base.message_handler(50)
+	async def score_transfer_points(self) -> None:
+		trans_id, source_id, dest_id, points = await self.read_unpack(SCORE_TRANSFER_POINTS)
+		logger_score.debug("Score transfer points: transaction ID %d, from %d to %d, %d points", trans_id, source_id, dest_id, points)
+		
+		if points < 0:
+			logger_score.error("Attempted to transfer a negative (or very high...) number of points: %d", points)
+			await self.score_transfer_points_reply(trans_id, base.NetError.invalid_parameter)
+			return
+		
+		# TODO Actually implement this
+		await self.score_transfer_points_reply(trans_id, base.NetError.score_no_data_found)
+	
+	async def score_set_points_reply(self, trans_id: int, result: base.NetError) -> None:
+		logger_score.debug("Sending score set points reply: transaction ID %d, result %r", trans_id, result)
+		await self.write_message(46, SCORE_TRANSFER_POINTS_REPLY.pack(trans_id, result))
+	
+	@base.message_handler(51)
+	async def score_set_points(self) -> None:
+		trans_id, score_id, points = await self.read_unpack(SCORE_SET_POINTS)
+		logger_score.debug("Score set points: transaction ID %d, score ID %d, %d points", trans_id, score_id, points)
+		
+		# TODO Actually implement this
+		await self.score_set_points_reply(trans_id, base.NetError.score_no_data_found)
+	
+	async def score_get_ranks_reply(self, trans_id: int, result: base.NetError, ranks: typing.Sequence[typing.Any]) -> None:
+		logger_score.debug("Sending score get ranks reply: transaction ID %d, result %r, ranks %r", trans_id, result, ranks)
+		
+		# TODO Implement writing ranks
+		if ranks:
+			raise NotImplementedError("Writing rank data not supported yet")
+		await self.write_message(47, SCORE_GET_RANKS_REPLY_HEADER.pack(trans_id, result, len(ranks), 0))
+	
+	@base.message_handler(52)
+	async def score_get_ranks(self) -> None:
+		trans_id, owner_id, score_group, parent_folder_id = await self.read_unpack(SCORE_GET_RANKS_HEADER)
+		game_name = await self.read_string_field(64)
+		time_period, result_count, page_number, sort_order = await self.read_unpack(SCORE_GET_RANKS_FOOTER)
+		logger_score.debug("Score get ranks: transaction ID %d, owner ID %d, score group %d, parent folder ID %d, game name %r, time period %d, %d results, page %d, sort order %d", trans_id, owner_id, score_group, parent_folder_id, game_name, time_period, result_count, page_number, sort_order)
+		
+		# TODO Actually implement this (does anybody really care though?)
+		await self.score_get_ranks_reply(trans_id, base.NetError.score_no_data_found, [])

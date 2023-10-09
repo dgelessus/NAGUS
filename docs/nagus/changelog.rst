@@ -22,6 +22,9 @@ Version 0.1.0
   but can break for unlucky combinations of SDL variables.
 * Implemented saving of age instance SDL changes.
   Object SDL is *not* saved yet.
+* Implemented a minimal version of the score server ---
+  just enough to avoid errors when the player opens the big KI.
+  This doesn't actually allow saving any scores.
 * Changed vault node refs to be unseen by default,
   matching what the client code assumes.
 * Changed the single placeholder account to use a non-zero UUID.

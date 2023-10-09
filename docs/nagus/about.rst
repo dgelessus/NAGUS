@@ -46,6 +46,8 @@ What works so far
   (but not object SDL).
   Works without .sdl files on the server side,
   but can break for unlucky combinations of SDL variables.
+* The score server interface exists,
+  but doesn't actually allow saving any scores.
 * Status message over HTTP.
 * Receiving client error stack traces.
 * Adjustable configuration via a config file and/or command-line arguments.
@@ -98,7 +100,7 @@ Still to be implemented
   * Global (shard-wide) age SDL settings.
 * The :ref:`GameMgr <game_manager>` to support marker games and some puzzles with OpenUru clients.
 * Public age management.
-* The score server.
+* Actual score server functionality instead of the current stub implementation.
 * H'uru extended :ref:`auth server <auth_server>` messages.
 * More console commands.
   
