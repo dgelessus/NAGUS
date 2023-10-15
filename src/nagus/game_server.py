@@ -1380,7 +1380,7 @@ class NetMessageGameMessage(NetMessageStream):
 				
 				message.read(message_stream)
 				extra_data = message_stream.read()
-		except (EOFError, ValueError) as exc:
+		except (EOFError, UnknownClassIndexError, ValueError) as exc:
 			logger_pl_message.error("Failed to parse plMessage. Ignoring and forwarding anyway...", exc_info=exc)
 		else:
 			logger_pl_message.debug("Parsed plMessage: %r", message)
