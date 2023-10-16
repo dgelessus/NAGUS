@@ -182,6 +182,7 @@ class Configuration(object):
 					"nagus.game_server.join": {"level": "INFO"},
 					"nagus.game_server.net_message": {"level": "INFO"},
 					"nagus.game_server.ping": {"level": "INFO"},
+					"nagus.game_server.sdl.change": {"level": "INFO"},
 				},
 			}
 		if not hasattr(self, "logging_enable_crash_lines"):

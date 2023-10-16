@@ -43,6 +43,7 @@ logger_net_message_unhandled = logger_net_message.getChild("unhandled")
 logger_ping = logger.getChild("ping")
 logger_pl_message = logger.getChild("pl_message")
 logger_sdl = logger.getChild("sdl")
+logger_sdl_change = logger_sdl.getChild("change")
 logger_test_and_set = logger.getChild("test_and_set")
 
 
@@ -1128,7 +1129,7 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 		current_header = sdl.SDLStreamHeader.from_stream(stream)
 		
 		if current_header.uoid is not None:
-			logger_sdl.info("Currently saved SDL blob header contains UOID: %s", current_header.uoid)
+			logger_sdl_change.info("Currently saved SDL blob header contains UOID: %s", current_header.uoid)
 		
 		if change_header != current_header:
 			raise ValueError(f"Mismatched state descriptors when applying change - current SDL blob has header {change_header}, but the change SDL blob has header {current_header})")
@@ -1136,10 +1137,10 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 		current_record = sdl.GuessedSDLRecord()
 		current_record.read(stream)
 		
-		if logger_sdl.isEnabledFor(logging.DEBUG):
-			logger_sdl.debug("Parsed currently saved SDL blob:")
+		if logger_sdl_change.isEnabledFor(logging.DEBUG):
+			logger_sdl_change.debug("Parsed currently saved SDL blob:")
 			for line in current_record.as_multiline_str():
-				logger_sdl.debug("%s", line.replace("\t", "    "))
+				logger_sdl_change.debug("%s", line.replace("\t", "    "))
 		
 		lookahead = stream.read(16)
 	
@@ -1148,10 +1149,10 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 	
 	changed_record = current_record.with_change(change_record)
 	
-	if logger_sdl.isEnabledFor(logging.DEBUG):
-		logger_sdl.debug("Changed state:")
+	if logger_sdl_change.isEnabledFor(logging.DEBUG):
+		logger_sdl_change.debug("Changed state:")
 		for line in changed_record.as_multiline_str():
-			logger_sdl.debug("%s", line.replace("\t", "    "))
+			logger_sdl_change.debug("%s", line.replace("\t", "    "))
 	
 	with io.BytesIO() as stream:
 		current_header.write(stream)
@@ -1168,10 +1169,10 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 		roundtripped_record = sdl.GuessedSDLRecord()
 		roundtripped_record.read(stream)
 		if roundtripped_record != changed_record:
-			if logger_sdl.isEnabledFor(logging.DEBUG):
-				logger_sdl.debug("Re-parsed changed blob:")
+			if logger_sdl_change.isEnabledFor(logging.DEBUG):
+				logger_sdl_change.debug("Re-parsed changed blob:")
 				for line in roundtripped_record.as_multiline_str():
-					logger_sdl.debug("%s", line.replace("\t", "    "))
+					logger_sdl_change.debug("%s", line.replace("\t", "    "))
 			
 			raise ValueError("Re-parsed changed SDL blob body doesn't match original body")
 		
@@ -1231,9 +1232,9 @@ class NetMessageSDLState(NetMessageStreamedObject):
 		
 		if self.persist_on_server:
 			if self.is_avatar_state:
-				logger_sdl.warning("Avatar state has persist on server flag set - it will be saved, but will probably be unusable on future link-ins!")
+				logger_sdl.warning("Avatar state message has persist on server flag set - it will be saved, but will probably be unusable on future link-ins!")
 			if self.uoid.clone_ids is not None:
-				logger_sdl.warning("Clone object state has persist on server flag set - it will be saved, but will probably be unusable on future link-ins!")
+				logger_sdl.warning("Clone object state message has persist on server flag set - it will be saved, but will probably be unusable on future link-ins!")
 		
 		if NetMessageFlags.echo_back_to_sender in self.flags:
 			await connection.send_propagate_buffer(self)
@@ -1243,28 +1244,28 @@ class NetMessageSDLState(NetMessageStreamedObject):
 			try:
 				header = sdl.SDLStreamHeader.from_stream(stream)
 			except ValueError:
-				logger_sdl.warning("Failed to parse SDL blob header - this state will not be saved or sent to new clients", exc_info=True)
+				logger_sdl.warning("Failed to parse SDL change blob header - this change will not be saved or sent to new clients", exc_info=True)
 				return
 			
 			if header.uoid is not None:
-				logger_sdl.info("SDL blob header contains UOID: %s", header.uoid)
+				logger_sdl.info("SDL change blob header contains UOID: %s", header.uoid)
 			
 			record = sdl.GuessedSDLRecord()
 			try:
 				record.read(stream)
 			except ValueError:
-				logger_sdl.error("Failed to parse SDL blob body for %r v%d - this state will not be saved or sent to new clients", header.descriptor_name, header.descriptor_version, exc_info=True)
+				logger_sdl.error("Failed to parse SDL change blob body for %r v%d - this state will not be saved or sent to new clients", header.descriptor_name, header.descriptor_version, exc_info=True)
 				return
 			
 			if logger_sdl.isEnabledFor(logging.DEBUG):
-				logger_sdl.debug("Parsed SDL blob for %r v%d:", header.descriptor_name, header.descriptor_version)
+				logger_sdl.debug("Parsed SDL change for %r v%d:", header.descriptor_name, header.descriptor_version)
 				for line in record.as_multiline_str():
 					logger_sdl.debug("%s", line.replace("\t", "    "))
 			
 			lookahead = stream.read(16)
 		
 		if lookahead:
-			logger_sdl.warning("SDL blob for %r v%d has trailing data (probably not parsed correctly): %r", lookahead)
+			logger_sdl.warning("SDL change blob for %r v%d has trailing data (probably not parsed correctly): %r", lookahead)
 		else:
 			try:
 				with io.BytesIO() as stream_out:
@@ -1272,12 +1273,12 @@ class NetMessageSDLState(NetMessageStreamedObject):
 					record.write(stream_out)
 					roundtripped_data = stream_out.getvalue()
 			except Exception:
-				logger_sdl.warning("Failed to write parsed SDL blob for %r v%d", header.descriptor_name, header.descriptor_version, exc_info=True)
+				logger_sdl.warning("Failed to write parsed SDL change for %r v%d back to a blob", header.descriptor_name, header.descriptor_version, exc_info=True)
 			else:
 				if roundtripped_data != blob_data:
-					logger_sdl.warning("Failed to roundtrip SDL blob for %r v%d", header.descriptor_name, header.descriptor_version)
-					logger_sdl.debug("Original blob data: %r", blob_data)
-					logger_sdl.debug("Parsed and rewritten blob data: %r", roundtripped_data)
+					logger_sdl.warning("Failed to roundtrip SDL change blob for %r v%d", header.descriptor_name, header.descriptor_version)
+					logger_sdl.debug("Original change blob data: %r", blob_data)
+					logger_sdl.debug("Parsed and rewritten change blob data: %r", roundtripped_data)
 		
 		if self.uoid.object_name == AGE_SDL_HOOK_NAME:
 			# Special treatment for AgeSDLHook:
@@ -1285,11 +1286,11 @@ class NetMessageSDLState(NetMessageStreamedObject):
 			# and not together with all the other per-instance SDL states.
 			
 			if not self.persist_on_server:
-				logger_sdl.warning("AgeSDLHook state doesn't have persist on server flag set - will save anyway")
+				logger_sdl.warning("AgeSDLHook change doesn't have persist on server flag set - will save anyway")
 			if self.is_avatar_state:
-				logger_sdl.warning("AgeSDLHook state is marked as an avatar state")
+				logger_sdl.warning("AgeSDLHook change is marked as an avatar state")
 			if self.uoid != connection.client_state.age_sdl_hook_uoid:
-				logger_sdl.warning("Received an AgeSDLHook state with UOID %s, which doesn't match the expected UOID %s for this age", self.uoid, connection.client_state.age_sdl_hook_uoid)
+				logger_sdl.warning("Received an AgeSDLHook change with UOID %s, which doesn't match the expected UOID %s for this age's AgeSDLHook", self.uoid, connection.client_state.age_sdl_hook_uoid)
 			
 			try:
 				age_sdl_node_id = await connection.find_age_sdl_node()
@@ -1322,12 +1323,12 @@ class NetMessageSDLState(NetMessageStreamedObject):
 			except state.ObjectStateNotFound:
 				logger_sdl.debug("No existing SDL blob found for object %s - will initialize it with the blob sent by the client", self.uoid)
 				if NetMessageFlags.new_sdl_state not in self.flags:
-					logger_sdl.info("Client sent a non-new SDL update for object %s, but no SDL blob has been saved yet for that object - will use this SDL blob as the initial state", self.uoid)
+					logger_sdl.info("Client sent a non-new SDL change for object %s, but no SDL blob has been saved yet for that object - will use this SDL blob as the initial state", self.uoid)
 				
 				changed_blob = blob_data
 			else:
 				if NetMessageFlags.new_sdl_state in self.flags:
-					logger_sdl.info("Client sent a new SDL state for object %s, but there's already a saved SDL blob for that object - will update the saved blob using the new one", self.uoid)
+					logger_sdl.info("Client sent a new SDL state for object %s, but there's already a saved SDL blob for that object - will treat the new blob as a change and apply it to the saved one", self.uoid)
 				
 				try:
 					changed_blob = _apply_parsed_change_to_blob(existing_blob, header, record)
