@@ -942,6 +942,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 		
 		# Find and send saved SDL states for objects within the age instance.
 		async for uoid, _, sdl_blob in connection.server_state.find_object_sdl_states(connection.client_state.age_node_id):
+			logger_sdl.debug("Sending initial state for object %s", uoid)
 			object_state_message = NetMessageSDLState()
 			object_state_message.uoid = uoid
 			object_state_message.compress_and_set_data(sdl_blob)
@@ -953,6 +954,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 		
 		# TODO Send non-persistent object states from the running game server
 		
+		logger_sdl.debug("Sent/queued %d initial state messages", count)
 		initial_age_state_sent = NetMessageInitialAgeStateSent()
 		initial_age_state_sent.initial_sdl_state_count = count
 		await connection.send_propagate_buffer(initial_age_state_sent)
@@ -1921,6 +1923,7 @@ class GameConnection(base.BaseMOULConnection):
 		Can only be called if the :attr:`GameClientState.age_sequence_prefix` has been initialized.
 		"""
 		
+		logger_sdl.debug("Sending initial state for AgeSDLHook %s", self.client_state.age_sdl_hook_uoid)
 		age_sdl_hook_state = NetMessageSDLState()
 		age_sdl_hook_state.uoid = self.client_state.age_sdl_hook_uoid
 		age_sdl_hook_state.compress_and_set_data(age_sdl_blob)
