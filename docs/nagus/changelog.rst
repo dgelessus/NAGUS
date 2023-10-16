@@ -20,8 +20,7 @@ Version 0.1.0
 * Implemented experimental SDL blob parsing based on "guessing" the structure.
   Works without .sdl files on the server side,
   but can break for unlucky combinations of SDL variables.
-* Implemented saving of age instance SDL changes.
-  Object SDL is *not* saved yet.
+* Implemented saving of SDL states for age instances and objects within them.
 * Implemented a minimal version of the score server ---
   just enough to avoid errors when the player opens the big KI.
   This doesn't actually allow saving any scores.

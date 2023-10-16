@@ -914,6 +914,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 		
 		# TODO Send currently loaded clones
 		
+		# Send saved SDL state for the age instance (AgeSDLHook).
 		try:
 			age_sdl_node_id = await connection.find_age_sdl_node()
 		except state.VaultNodeNotFound:
@@ -938,7 +939,18 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 					logger_sdl.info("Age sequence prefix not known yet - will delay sending the AgeSDLHook initial state")
 					connection.client_state.delayed_age_sdl_blob = age_sdl_blob
 		
-		# TODO Send all other states
+		# Find and send saved SDL states for objects within the age instance.
+		async for uoid, _, sdl_blob in connection.server_state.find_object_sdl_states(connection.client_state.age_node_id):
+			object_state_message = NetMessageSDLState()
+			object_state_message.uoid = uoid
+			object_state_message.compress_and_set_data(sdl_blob)
+			object_state_message.is_initial_state = True
+			object_state_message.persist_on_server = True
+			object_state_message.is_avatar_state = False
+			await connection.send_propagate_buffer(object_state_message)
+			count += 1
+		
+		# TODO Send non-persistent object states from the running game server
 		
 		initial_age_state_sent = NetMessageInitialAgeStateSent()
 		initial_age_state_sent.initial_sdl_state_count = count
@@ -1217,6 +1229,12 @@ class NetMessageSDLState(NetMessageStreamedObject):
 		if self.is_initial_state:
 			logger_sdl.warning("SDL state message from client has initial state flag set")
 		
+		if self.persist_on_server:
+			if self.is_avatar_state:
+				logger_sdl.warning("Avatar state has persist on server flag set - it will be saved, but will probably be unusable on future link-ins!")
+			if self.uoid.clone_ids is not None:
+				logger_sdl.warning("Clone object state has persist on server flag set - it will be saved, but will probably be unusable on future link-ins!")
+		
 		if NetMessageFlags.echo_back_to_sender in self.flags:
 			await connection.send_propagate_buffer(self)
 		
@@ -1295,7 +1313,31 @@ class NetMessageSDLState(NetMessageStreamedObject):
 			
 			await connection.server_state.update_vault_node(age_sdl_node_id, state.VaultNodeData(blob_1=changed_blob), structs.ZERO_UUID)
 		elif self.persist_on_server:
-			pass # TODO Actually save the state
+			# Handle all other persistent object states.
+			# These currently go directly to the database.
+			# TODO Cache parsed object SDL states in memory for easier updating?
+			
+			try:
+				existing_blob = await connection.server_state.fetch_object_sdl_state(connection.client_state.age_node_id, self.uoid, header.descriptor_name)
+			except state.ObjectStateNotFound:
+				logger_sdl.debug("No existing SDL blob found for object %s - will initialize it with the blob sent by the client", self.uoid)
+				if NetMessageFlags.new_sdl_state not in self.flags:
+					logger_sdl.info("Client sent a non-new SDL update for object %s, but no SDL blob has been saved yet for that object - will use this SDL blob as the initial state", self.uoid)
+				
+				changed_blob = blob_data
+			else:
+				if NetMessageFlags.new_sdl_state in self.flags:
+					logger_sdl.info("Client sent a new SDL state for object %s, but there's already a saved SDL blob for that object - will update the saved blob using the new one", self.uoid)
+				
+				try:
+					changed_blob = _apply_parsed_change_to_blob(existing_blob, header, record)
+				except ValueError:
+					logger_sdl.error("Failed to apply change to existing saved SDL blob for object %s", self.uoid, exc_info=True)
+					return
+			
+			await connection.server_state.save_object_sdl_state(connection.client_state.age_node_id, self.uoid, header.descriptor_name, changed_blob)
+		else:
+			pass # TODO Save in memory for sending to other clients later
 
 
 class NetMessageSDLStateBroadcast(NetMessageSDLState):

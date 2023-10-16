@@ -42,8 +42,7 @@ What works so far
 * Walking around in-age and interacting with some basic things.
 * Creating and deleting avatars.
 * The vault mostly works and is saved persistently in a local SQLite database.
-* Limited saving of age instance SDL
-  (but not object SDL).
+* Limited saving of SDL states.
   Works without .sdl files on the server side,
   but can break for unlucky combinations of SDL variables.
 * The score server interface exists,
@@ -95,8 +94,6 @@ Still to be implemented
   * Proper parsing of SDL blobs based on state descriptors
     instead of guessing their structure.
   * Updating SDL blobs to a newer version of the same state descriptor.
-  * Saving object SDL states
-    (other than the AgeSDLHook).
   * Global (shard-wide) age SDL settings.
 * The :ref:`GameMgr <game_manager>` to support marker games and some puzzles with OpenUru clients.
 * Public age management.

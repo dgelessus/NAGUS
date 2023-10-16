@@ -41,6 +41,7 @@ if typing.TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 logger_db = logger.getChild("db")
+logger_states = logger.getChild("states")
 logger_vault = logger.getChild("vault")
 
 _T = typing.TypeVar("_T")
@@ -927,6 +928,10 @@ class AvatarAlreadyExists(Exception):
 	pass
 
 
+class ObjectStateNotFound(Exception):
+	pass
+
+
 class ServerState(object):
 	config: configuration.Configuration
 	loop: asyncio.AbstractEventLoop
@@ -997,6 +1002,16 @@ class ServerState(object):
 				-- No foreign key constraint for OwnerId
 				-- because it may be 0 instead of an actual node ID.
 				-- foreign key (OwnerId) references VaultNodes(NodeId)
+			);
+			
+			create table if not exists AgeInstanceObjectStates (
+				AgeVaultNodeId integer not null,
+				Uoid blob not null,
+				StateDescName text not null,
+				SdlBlob blob not null,
+				
+				primary key (AgeVaultNodeId, Uoid, StateDescName),
+				foreign key (AgeVaultNodeId) references VaultNodes(NodeId)
 			);
 			""")
 		
@@ -1460,3 +1475,56 @@ class ServerState(object):
 		
 		# Delete the Player node itself.
 		await self.delete_vault_node(ki_number)
+	
+	async def fetch_object_sdl_state(self, age_vault_node_id: int, uoid: structs.Uoid, state_desc_name: bytes) -> bytes:
+		with io.BytesIO() as stream:
+			uoid.write(stream)
+			uoid_data = stream.getvalue()
+		
+		async with await self.db.cursor() as cursor:
+			await cursor.execute(
+				"""
+				select SdlBlob
+				from AgeInstanceObjectStates
+				where AgeVaultNodeId = ? and Uoid = ? and StateDescName = ?
+				""",
+				(age_vault_node_id, uoid_data, state_desc_name.decode("ascii")),
+			)
+			row = await cursor.fetchone()
+			if row is None:
+				raise ObjectStateNotFound(f"Couldn't find SDL state {state_desc_name!r} for object {uoid!r} in age instance {age_vault_node_id}")
+			else:
+				(sdl_blob,) = row
+				return sdl_blob
+	
+	async def find_object_sdl_states(self, age_vault_node_id: int) -> typing.AsyncIterable[typing.Tuple[structs.Uoid, bytes, bytes]]:
+		async with await self.db.cursor() as cursor:
+			await cursor.execute(
+				"""
+				select Uoid, StateDescName, SdlBlob
+				from AgeInstanceObjectStates
+				where AgeVaultNodeId = ?
+				""",
+				(age_vault_node_id,),
+			)
+			
+			async for uoid_data, state_desc_name, sdl_blob in cursor:
+				with io.BytesIO(uoid_data) as stream:
+					uoid = structs.Uoid.from_stream(stream)
+				
+				yield uoid, state_desc_name.encode("ascii"), sdl_blob
+	
+	async def save_object_sdl_state(self, age_vault_node_id: int, uoid: structs.Uoid, state_desc_name: bytes, sdl_blob: bytes) -> None:
+		with io.BytesIO() as stream:
+			uoid.write(stream)
+			uoid_data = stream.getvalue()
+		
+		async with await self.db.cursor() as cursor:
+			await cursor.execute(
+				"""
+				insert into AgeInstanceObjectStates (AgeVaultNodeId, Uoid, StateDescName, SdlBlob)
+				values (?, ?, ?, ?)
+				on conflict do update set SdlBlob = ?
+				""",
+				(age_vault_node_id, uoid_data, state_desc_name.decode("ascii"), sdl_blob, sdl_blob),
+			)
