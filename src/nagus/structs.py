@@ -313,12 +313,15 @@ class Location(object):
 		return f"{type(self).__qualname__}({joined_parts})"
 	
 	def __str__(self) -> str:
-		try:
-			age, page = split_sequence_number(self.sequence_number)
-		except ValueError:
-			seqnum_str = f"0x{self.sequence_number:>08x}"
+		if self.sequence_number == 0:
+			seqnum_str = "fixed" # libHSPlasma calls this "virtual"
 		else:
-			seqnum_str = f"{age}, {page}"
+			try:
+				age, page = split_sequence_number(self.sequence_number)
+			except ValueError:
+				seqnum_str = f"0x{self.sequence_number:>08x}"
+			else:
+				seqnum_str = f"{age}, {page}"
 		
 		if self.flags:
 			return f"<loc: {seqnum_str}, {self.flags!s}>"
@@ -391,14 +394,27 @@ class Uoid(object):
 		return f"{type(self).__qualname__}({joined_fields})"
 	
 	def __str__(self) -> str:
-		ret = str(self.location)
-		if self.load_mask != 0xff:
-			ret += f", mask=0x{self.load_mask:>02x}"
-		ret += f", type=0x{self.class_type:>04x}"
-		ret += f", id={self.object_id}"
-		ret += f", name={self.object_name!r}"
-		if self.clone_ids is not None:
-			ret += f", clone={self.clone_ids!r}"
+		if (
+			self.location.sequence_number == 0
+			and not self.location.flags
+			and self.load_mask == 0xff
+			and self.object_id == 0
+			and self.clone_ids is None
+		):
+			# Compact form for global fixed key UOIDs.
+			ret = f"fixed {self.object_name!r}, type=0x{self.class_type:>04x}"
+		else:
+			# For all other UOIDs,
+			# display all fields that are present.
+			ret = str(self.location)
+			if self.load_mask != 0xff:
+				ret += f", mask=0x{self.load_mask:>02x}"
+			ret += f", type=0x{self.class_type:>04x}"
+			ret += f", id={self.object_id}"
+			ret += f", name={self.object_name!r}"
+			if self.clone_ids is not None:
+				ret += f", clone={self.clone_ids!r}"
+		
 		return f"<{type(self).__qualname__}: {ret}>"
 	
 	def read(self, stream: typing.BinaryIO) -> None:
