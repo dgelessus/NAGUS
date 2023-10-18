@@ -1533,6 +1533,10 @@ Auth2Cli_VaultNodeChanged
   ID of the vault node that changed.
 * **Revision ID:** 16-byte UUID.
   As sent in the :ref:`VaultNodeSave <cli2auth_vault_node_save>` message by the client that performed the change.
+  If the node change wasn't caused by a VaultNodeSave message,
+  this may be any UUID that's different from the last revision ID sent by any client.
+  The revision ID should never be all zeroes ---
+  otherwise the change notification may be ignored by the open-sourced client code.
 
 Notify the client about a change to a vault node.
 
