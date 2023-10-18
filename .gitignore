@@ -15,4 +15,5 @@ docs/_build
 
 # Server configuration, database, etc.
 *.sqlite
+*.sqlite-*
 nagus_config.ini
