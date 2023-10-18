@@ -52,6 +52,12 @@ _T = typing.TypeVar("_T")
 # I'm only using a fixed UUID for now
 # so I don't have to implement any special logic for finding public age instances yet.
 PUBLIC_AEGURA_UUID = uuid.UUID("7e0facea-dae1-4aec-a4ca-e76c05fdcfcf")
+# There's only a single neighborhood for now -
+# no need for dynamic DRC Hood creation if there can't be multiple accounts...
+# This UUID is hardcoded in the client scripts (psnlBookshelf.py)
+# as the only neighborhood to which visitors have access,
+# so it seems convenient to use that for the default neighborhood.
+DEFAULT_NEIGHBORHOOD_UUID = uuid.UUID("366f9aa1-c4c9-4c4c-a23a-cbe6896cc3b9")
 
 VAULT_NODE_DATA_HEADER = struct.Struct("<Q")
 VAULT_NODE_REF = struct.Struct("<III?")
@@ -1041,6 +1047,16 @@ class ServerState(object):
 		)
 		logger_vault.debug("Public Ae'gura instance: Age %d, Age Info %d", aegura_id, aegura_info_id)
 		
+		bevin_id, bevin_info_id = await self.create_age_instance(
+			age_file_name="Neighborhood",
+			instance_uuid=DEFAULT_NEIGHBORHOOD_UUID,
+			# Calling this Bevin is okay lore-wise,
+			# because there's only a single instance!
+			instance_name="Bevin",
+			allow_existing=True,
+		)
+		logger_vault.debug("Default neighborhood instance: Age %d, Age Info %d", bevin_id, bevin_info_id)
+		
 		logger_db.debug("Finished setting up the NAGUS database")
 	
 	async def fetch_vault_node(self, node_id: int) -> VaultNodeData:
@@ -1360,6 +1376,8 @@ class ServerState(object):
 		
 		system_id = await self.find_system_vault_node()
 		all_players_id = await self.find_all_players_vault_node()
+		# TODO Automatically create new hoods as needed
+		_, hood_info_id = await self.find_age_instance("Neighborhood", DEFAULT_NEIGHBORHOOD_UUID)
 		_, aegura_info_id = await self.find_age_instance("city", PUBLIC_AEGURA_UUID)
 		
 		player_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=0, node_type=VaultNodeType.player, int32_1=0, int32_2=explorer, uuid_1=account_id, string64_1=shape, istring64_1=name))
@@ -1438,7 +1456,14 @@ class ServerState(object):
 		await self.add_vault_node_ref(VaultNodeRef(relto_link_id, relto_info_id))
 		await self.add_vault_node_ref(VaultNodeRef(ages_i_own_id, relto_link_id))
 		
-		# TODO Find/create hood
+		# Make the avatar an owner of its neighborhood.
+		hood_owners_id = await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.age_owners), parent_id=hood_info_id)
+		await self.add_vault_node_ref(VaultNodeRef(hood_owners_id, player_info_id))
+		
+		# Add a link to the neighborhood to the avatar's Ages I Own list.
+		hood_link_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_link, blob_1=b"Default:LinkInPointDefault:;"))
+		await self.add_vault_node_ref(VaultNodeRef(hood_link_id, hood_info_id))
+		await self.add_vault_node_ref(VaultNodeRef(ages_i_own_id, hood_link_id))
 		
 		# Add a link to the public Ae'gura to the avatar's Ages I Own list.
 		aegura_link_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_link, blob_1=b"Ferry Terminal:LinkInPointFerry:;"))

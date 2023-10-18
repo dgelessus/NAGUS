@@ -15,6 +15,8 @@ Version 0.1.0
   because inter-client communication isn't supported yet.
 * Added handling of ``plNetMsgTestAndSet``,
   allowing the player to interact with most clickables.
+* Added Bevin as the only neighborhood instance for now.
+  All new avatars are members of Bevin.
 * Implemented handling of init age requests with a zero instance UUID,
   which is needed when linking to a child age for the first time.
 * Implemented experimental SDL blob parsing based on "guessing" the structure.
