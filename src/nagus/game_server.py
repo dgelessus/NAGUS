@@ -1267,7 +1267,7 @@ class NetMessageSDLState(NetMessageStreamedObject):
 			lookahead = stream.read(16)
 		
 		if lookahead:
-			logger_sdl.warning("SDL change blob for %r v%d has trailing data (probably not parsed correctly): %r", lookahead)
+			logger_sdl.warning("SDL change blob for %r v%d has trailing data (probably not parsed correctly): %r", header.descriptor_name, header.descriptor_version, lookahead)
 		else:
 			try:
 				with io.BytesIO() as stream_out:
