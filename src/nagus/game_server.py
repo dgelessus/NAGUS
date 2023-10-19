@@ -934,12 +934,7 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 				count += 1
 				# TODO It's probably not enough to send the SDL blob from the vault as-is!
 				age_sdl_blob = age_sdl_node_data.blob_1
-				
-				if hasattr(connection.client_state, "age_sequence_prefix"):
-					await connection.send_initial_age_sdl(age_sdl_blob)
-				else:
-					logger_sdl.info("Age sequence prefix not known yet - will delay sending the AgeSDLHook initial state")
-					connection.client_state.delayed_age_sdl_blob = age_sdl_blob
+				await connection.send_initial_age_sdl(age_sdl_blob)
 		
 		# Find and send saved SDL states for objects within the age instance.
 		async for uoid, _, sdl_blob in connection.server_state.find_object_sdl_states(connection.client_state.age_node_id):
@@ -1410,7 +1405,7 @@ class NetMessageGameMessage(NetMessageStream):
 			stream.write(b"\x01")
 			structs.write_unified_time(stream, self.delivery_time)
 	
-	async def inspect_wrapped_message(self, connection: "GameConnection") -> None:
+	def inspect_wrapped_message(self, connection: "GameConnection") -> None:
 		try:
 			message_data = self.decompress_data()
 			with io.BytesIO(message_data) as message_stream:
@@ -1440,7 +1435,7 @@ class NetMessageGameMessage(NetMessageStream):
 							logger_pl_message.warning("plLoadAvatarMsg %s is_player (%r) doesn't match containing network load clone message's is_player (%r)", message.class_description, message.is_player, self.is_player)
 						
 						if message.spawn_point is not None:
-							await connection.try_age_sdl_stuff(message.spawn_point.location)
+							connection.client_state.try_find_age_sequence_prefix(message.spawn_point.location)
 					elif self.is_player:
 						logger_pl_message.warning("plLoadCloneMsg %s isn't an avatar message, but containing network load clone message's is_player is set", message.class_description)
 					
@@ -1494,7 +1489,7 @@ class NetMessageGameMessage(NetMessageStream):
 		# any parse errors and failed checks are logged,
 		# but don't block forwarding/echoing of the message.
 		if connection.server_state.config.server_game_parse_pl_messages == configuration.ParsePlMessages.known:
-			await self.inspect_wrapped_message(connection)
+			self.inspect_wrapped_message(connection)
 		
 		# TODO Set kNetNonLocal flag on the wrapped plMessage before forwarding?
 		# TODO Forward to other clients
@@ -1564,7 +1559,7 @@ class NetMessageLoadClone(NetMessageGameMessage):
 		self.uoid.write(stream)
 		stream.write(NET_MESSAGE_LOAD_CLONE_BOOLS.pack(self.is_player, self.is_loading, self.is_initial_state))
 	
-	async def inspect_player_load_avatar_message(self, connection: "GameConnection") -> None:
+	def inspect_player_load_avatar_message(self, connection: "GameConnection") -> None:
 		try:
 			message_data = self.decompress_data()
 			with io.BytesIO(message_data) as message_stream:
@@ -1584,7 +1579,7 @@ class NetMessageLoadClone(NetMessageGameMessage):
 			# The client sometimes first sends a plLoadAvatarMsg without a spawn point,
 			# followed very soon by another almost identical plLoadAvatarMsg that does have a spawn point.
 			if message.spawn_point is not None:
-				await connection.try_age_sdl_stuff(message.spawn_point.location)
+				connection.client_state.try_find_age_sequence_prefix(message.spawn_point.location)
 			else:
 				logger_pl_message.debug("Player plLoadAvatarMsg spawn point is nullptr - cannot determine age sequence prefix yet")
 	
@@ -1604,7 +1599,7 @@ class NetMessageLoadClone(NetMessageGameMessage):
 			and self.is_player
 			and not hasattr(connection.client_state, "age_sequence_prefix")
 		):
-			await self.inspect_player_load_avatar_message(connection)
+			self.inspect_player_load_avatar_message(connection)
 		
 		await super().handle(connection)
 
@@ -1780,7 +1775,6 @@ class GameClientState(object):
 	account_uuid: uuid.UUID
 	ki_number: int
 	age_sdl_hook_uoid: structs.Uoid
-	delayed_age_sdl_blob: typing.Optional[bytes]
 	locks: typing.Dict[structs.Uoid, int]
 	
 	def __init__(self) -> None:
@@ -1788,11 +1782,10 @@ class GameClientState(object):
 		
 		# Other attributes are intentionally left unset at first.
 		# They will be set in the join_age_request handler shortly after the client has connected.
-		self.delayed_age_sdl_blob = None
 		self.locks = {}
 	
 	def try_find_age_sequence_prefix(self, location: structs.Location) -> bool:
-		"""Try to derive (if necessary) the client's age sequence prefix from the given location.
+		"""Try to derive the client's age sequence prefix from the given location.
 		
 		The client never directly sends the age sequence prefix,
 		but the server needs to know it so it can send the AgeSDLHook in reply to the GameStateRequest.
@@ -1803,39 +1796,32 @@ class GameClientState(object):
 		wait for a message from the client that contains a non-global location
 		and extract the sequence prefix from there.
 		
-		This is pretty janky -
-		it requires that before the client sends the GameStateRequest,
-		it sends at least one message with a non-global location,
-		and that message is for the current age.
-		This seems to work in practice,
-		thanks to plNetMsgTestAndSet and plNotifyMsg messages,
-		which get sent early during link-in before the GameStateRequest
-		(except for some simple ages like AvatarCustomization,
-		but that one doesn't have age SDL either,
-		so it doesn't matter there).
+		This is currently done based on the plLoadAvatarMsg for the player's avatar,
+		because that's been the most reliable solution so far.
+		The client always sends at least one such message before requesting the game state,
+		and at least one of those messages has its spawn point field set,
+		which refers to an object in the age that the player is linking to.
 		
-		:return: ``True`` if :attr:`age_sequence_prefix` was newly set by this call,
-			``False`` if it's still unset or was already set before.
-			(This indicates whether it's time to send any delayed AgeSDLHook initial state to the client.)
+		:return: ``True`` if :attr:`age_sequence_prefix` was set successfully from the location,
+			or ``False`` if the location didn't contain a usable prefix.
 		"""
 		
-		if not hasattr(self, "age_sequence_prefix"):
-			if location.sequence_number in range(0x21, 0x80000000):
-				assert structs.Location.Flags.reserved not in location.flags
-				(self.age_sequence_prefix, _) = structs.split_sequence_number(location.sequence_number)
-				logger_sdl.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, self.age_sequence_prefix)
-				
-				self.age_sdl_hook_uoid = structs.Uoid()
-				self.age_sdl_hook_uoid.location = structs.Location(structs.make_sequence_number(self.age_sequence_prefix, -2), structs.Location.Flags.built_in)
-				self.age_sdl_hook_uoid.load_mask = 0xff
-				self.age_sdl_hook_uoid.class_type = 0x0001 # Scene Object
-				self.age_sdl_hook_uoid.object_id = 1
-				self.age_sdl_hook_uoid.object_name = AGE_SDL_HOOK_NAME
-				self.age_sdl_hook_uoid.clone_ids = None
-				
-				return True
+		if location.sequence_number not in range(0x21, 0x80000000) or structs.Location.Flags.reserved in location.flags:
+			logger_sdl.debug("Attempted to derive the age's sequence prefix from a global or reserved location: %s", location)
+			return False
 		
-		return False
+		(self.age_sequence_prefix, _) = structs.split_sequence_number(location.sequence_number)
+		logger_sdl.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, self.age_sequence_prefix)
+		
+		self.age_sdl_hook_uoid = structs.Uoid()
+		self.age_sdl_hook_uoid.location = structs.Location(structs.make_sequence_number(self.age_sequence_prefix, -2), structs.Location.Flags.built_in)
+		self.age_sdl_hook_uoid.load_mask = 0xff
+		self.age_sdl_hook_uoid.class_type = 0x0001 # Scene Object
+		self.age_sdl_hook_uoid.object_id = 1
+		self.age_sdl_hook_uoid.object_name = AGE_SDL_HOOK_NAME
+		self.age_sdl_hook_uoid.clone_ids = None
+		
+		return True
 
 
 class GameConnection(base.BaseMOULConnection):
@@ -1974,20 +1960,6 @@ class GameConnection(base.BaseMOULConnection):
 		age_sdl_hook_state.persist_on_server = True
 		age_sdl_hook_state.is_avatar_state = False
 		await self.send_propagate_buffer(age_sdl_hook_state)
-	
-	async def try_age_sdl_stuff(self, location: structs.Location) -> None:
-		"""Try to derive the client's age sequence prefix from the given location
-		and send any delayed initial AgeSDLHook state as needed.
-		"""
-		
-		if self.client_state.try_find_age_sequence_prefix(location):
-			# Found the age sequence prefix,
-			# so now we're ready to send the AgeSDLHook state
-			# (if the client already requested it).
-			if self.client_state.delayed_age_sdl_blob is not None:
-				logger_sdl.info("Age sequence prefix now known (%d) - sending delayed AgeSDLHook initial state", self.client_state.age_sequence_prefix)
-				await self.send_initial_age_sdl(self.client_state.delayed_age_sdl_blob)
-				self.client_state.delayed_age_sdl_blob = None
 	
 	@base.message_handler(2)
 	async def receive_propagate_buffer(self) -> None:
