@@ -25,6 +25,7 @@ but this way is easier for now.
 
 import ast
 import configparser
+import enum
 import ipaddress
 import os
 import sys
@@ -58,6 +59,11 @@ def parse_ipv4_address(s: str) -> ipaddress.IPv4Address:
 		raise ConfigError(f"Invalid IPv4 address: {exc!s}")
 
 
+class ParsePlMessages(enum.Enum):
+	necessary = "necessary"
+	known = "known"
+
+
 class Configuration(object):
 	database_path: str
 	
@@ -80,6 +86,7 @@ class Configuration(object):
 	server_auth_address_for_client: typing.Optional[ipaddress.IPv4Address]
 	
 	server_game_address_for_client: typing.Optional[ipaddress.IPv4Address]
+	server_game_parse_pl_messages: ParsePlMessages
 	
 	def _set_option_internal(self, option: typing.Tuple[str, ...], value: str) -> None:
 		if option == ("database", "path"):
@@ -119,6 +126,11 @@ class Configuration(object):
 			self.server_auth_address_for_client = parse_ipv4_address(value) if value else None
 		elif option == ("server", "game", "address_for_client"):
 			self.server_game_address_for_client = parse_ipv4_address(value) if value else None
+		elif option == ("server", "game", "parse_pl_messages"):
+			try:
+				self.server_game_parse_pl_messages = ParsePlMessages(value)
+			except ValueError as exc:
+				raise ConfigError(f"Invalid value for option: {exc}")
 		else:
 			# Logging might not be set up here yet, so use stderr instead.
 			print("Warning: Ignoring unknown config option " + repr(".".join(option)), file=sys.stderr)
@@ -211,3 +223,5 @@ class Configuration(object):
 			self.server_auth_address_for_client = self.server_address_for_client
 		if not hasattr(self, "server_game_address_for_client"):
 			self.server_game_address_for_client = self.server_address_for_client
+		if not hasattr(self, "server_game_parse_pl_messages"):
+			self.server_game_parse_pl_messages = ParsePlMessages.known

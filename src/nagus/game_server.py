@@ -31,6 +31,7 @@ import uuid
 import zlib
 
 from . import base
+from . import configuration
 from . import sdl
 from . import state
 from . import structs
@@ -1409,7 +1410,7 @@ class NetMessageGameMessage(NetMessageStream):
 			stream.write(b"\x01")
 			structs.write_unified_time(stream, self.delivery_time)
 	
-	async def handle(self, connection: "GameConnection") -> None:
+	async def inspect_wrapped_message(self, connection: "GameConnection") -> None:
 		try:
 			message_data = self.decompress_data()
 			with io.BytesIO(message_data) as message_stream:
@@ -1485,6 +1486,15 @@ class NetMessageGameMessage(NetMessageStream):
 			
 			if extra_data:
 				logger_pl_message.debug("plMessage %s has extra trailing data: %r", message.class_description, extra_data)
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		# If full plMessage parsing is enabled,
+		# decompress and parse the message and run some consistency checks on it.
+		# This can never truly fail for now -
+		# any parse errors and failed checks are logged,
+		# but don't block forwarding/echoing of the message.
+		if connection.server_state.config.server_game_parse_pl_messages == configuration.ParsePlMessages.known:
+			await self.inspect_wrapped_message(connection)
 		
 		# TODO Set kNetNonLocal flag on the wrapped plMessage before forwarding?
 		# TODO Forward to other clients
@@ -1554,10 +1564,48 @@ class NetMessageLoadClone(NetMessageGameMessage):
 		self.uoid.write(stream)
 		stream.write(NET_MESSAGE_LOAD_CLONE_BOOLS.pack(self.is_player, self.is_loading, self.is_initial_state))
 	
+	async def inspect_player_load_avatar_message(self, connection: "GameConnection") -> None:
+		try:
+			message_data = self.decompress_data()
+			with io.BytesIO(message_data) as message_stream:
+				(class_index,) = structs.stream_unpack(message_stream, structs.CLASS_INDEX)
+				if class_index != LoadAvatarMessage.CLASS_INDEX:
+					logger_pl_message.warning("Player load clone message contains a plMessage of class 0x%04x instead of plLoadAvatarMsg - cannot determine age sequence prefix, but ignoring and forwarding anyway...", class_index)
+					return
+				
+				message = LoadAvatarMessage()
+				message.class_index = class_index
+				message.read(message_stream)
+		except (EOFError, UnknownClassIndexError, ValueError) as exc:
+			logger_pl_message.error("Failed to parse player load clone message - cannot determine age sequence prefix, but ignoring and forwarding anyway...", exc_info=exc)
+		else:
+			logger_pl_message.debug("Parsed player plLoadAvatarMsg: %r", message)
+			
+			# The client sometimes first sends a plLoadAvatarMsg without a spawn point,
+			# followed very soon by another almost identical plLoadAvatarMsg that does have a spawn point.
+			if message.spawn_point is not None:
+				await connection.try_age_sdl_stuff(message.spawn_point.location)
+			else:
+				logger_pl_message.debug("Player plLoadAvatarMsg spawn point is nullptr - cannot determine age sequence prefix yet")
+	
 	async def handle(self, connection: "GameConnection") -> None:
 		logger_pl_message.debug("Received load clone message for %s, player? %r, loading? %r", self.uoid, self.is_player, self.is_loading)
 		if self.is_initial_state:
 			logger_pl_message.warning("Load clone message from client has initial state flag set")
+		
+		# In "parse only if necessary" mode,
+		# skip parsing the wrapped plMessage,
+		# unless it's a player plLoadAvatarMsg
+		# and we still need to determine the age sequence prefix.
+		# (If full plMessage parsing is enabled,
+		# the age sequence prefix is determined in NetMessageGameMessage.inspect_wrapped_message instead.)
+		if (
+			connection.server_state.config.server_game_parse_pl_messages == configuration.ParsePlMessages.necessary
+			and self.is_player
+			and not hasattr(connection.client_state, "age_sequence_prefix")
+		):
+			await self.inspect_player_load_avatar_message(connection)
+		
 		await super().handle(connection)
 
 
