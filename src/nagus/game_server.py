@@ -1430,9 +1430,6 @@ class NetMessageGameMessage(NetMessageStream):
 		else:
 			logger_pl_message.debug("Parsed plMessage: %r", message)
 			
-			if message.sender is not None:
-				await connection.try_age_sdl_stuff(message.sender.location)
-			
 			# Check that clone messages are wrapped in the correct network message class.
 			if isinstance(self, NetMessageLoadClone):
 				# FIXME This really belongs into NetMessageLoadClone.handle, but we don't have the parsed message there...
@@ -1459,10 +1456,8 @@ class NetMessageGameMessage(NetMessageStream):
 			for i, receiver in enumerate(message.receivers):
 				if receiver is None:
 					logger_pl_message.warning("plMessage %s has nullptr receiver at index %d", message.class_description, i)
-				else:
-					await connection.try_age_sdl_stuff(receiver.location)
-					if game_message_receiver is None and receiver.location.sequence_number != 0 and structs.Location.Flags.reserved not in receiver.location.flags:
-						game_message_receiver = receiver
+				elif game_message_receiver is None and receiver.location.sequence_number != 0 and structs.Location.Flags.reserved not in receiver.location.flags:
+					game_message_receiver = receiver
 			
 			if game_message_receiver is None and NetMessageFlags.has_game_message_receivers in self.flags:
 				logger_pl_message.warning("plMessage %s has no (non-virtual, non-reserved) receivers, but the containing network game message has the has_game_message_receivers flag set", message.class_description)
@@ -1989,8 +1984,5 @@ class GameConnection(base.BaseMOULConnection):
 			logger_net_message.warning("PropagateBuffer message %s contains account UUID: %s", message.class_description, message.account_uuid)
 		if extra_data:
 			logger_net_message.warning("PropagateBuffer message %s has extra trailing data: %r", message.class_description, extra_data)
-		
-		if isinstance(message, NetMessageObject):
-			await self.try_age_sdl_stuff(message.uoid.location)
 		
 		await message.handle(self)
