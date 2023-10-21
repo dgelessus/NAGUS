@@ -361,7 +361,9 @@ class PlasmaMessageFlags(structs.IntFlag):
 	
 	all_expected = (
 		broadcast_by_type
+		| propagate_to_children
 		| broadcast_by_exact_type
+		| propagate_to_modifiers
 		| net_propagate
 		| net_sent
 		| net_use_relevance_regions
