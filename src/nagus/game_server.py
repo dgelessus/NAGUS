@@ -58,6 +58,7 @@ PROPAGATE_BUFFER_HEADER = struct.Struct("<II")
 
 PLASMA_MESSAGE_HEADER_END = struct.Struct("<dI")
 LOAD_CLONE_MESSAGE_MID = struct.Struct("<II??")
+PARTICLE_KILL_MESSAGE = struct.Struct("<ffB")
 
 NET_MESSAGE_HEADER = struct.Struct("<HI")
 NET_MESSAGE_VERSION = struct.Struct("<BB")
@@ -644,6 +645,35 @@ class ParticleTransferMessage(PlasmaMessage):
 		super().write(stream)
 		structs.Uoid.key_to_stream(self.particle_system, stream)
 		stream.write(structs.UINT16.pack(self.transfer_count))
+
+
+class ParticleKillMessage(PlasmaMessage):
+	class Flags(structs.IntFlag):
+		immortal_only = 1 << 0
+		percentage = 1 << 1
+	
+	CLASS_INDEX = 0x0334
+	
+	amount: float
+	time_left: float
+	kill_flags: "ParticleKillMessage.Flags"
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["amount"] = repr(self.amount)
+		fields["time_left"] = repr(self.time_left)
+		if self.kill_flags:
+			fields["kill_flags"] = repr(self.kill_flags)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		(self.amount, self.time_left, flags) = structs.stream_unpack(stream, PARTICLE_KILL_MESSAGE)
+		self.kill_flags = ParticleKillMessage.Flags(flags)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(PARTICLE_KILL_MESSAGE.pack(self.amount, self.time_left, self.kill_flags))
 
 
 class NetMessageFlags(structs.IntFlag):

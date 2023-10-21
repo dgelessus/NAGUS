@@ -1177,6 +1177,7 @@ only of one of their non-abstract subclasses.
     * :cpp:class:`plLoadAvatarMsg` = 0x03b1 = 945
   * :cpp:class:`plServerReplyMsg` = 0x026f = 623
   * :cpp:class:`plParticleTransferMsg` = 0x0333 = 819
+  * :cpp:class:`plParticleKillMsg` = 0x0334 = 820
 
 :cpp:class:`plMessage`
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -1508,6 +1509,26 @@ only of one of their non-abstract subclasses.
     The original particle system from which to transfer particles.
   * **Particle count to transfer:** 2-byte unsigned int.
     How many particles to transfer.
+
+:cpp:class:`plParticleKillMsg`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plParticleKillMsg : public plMessage
+  
+  *Class index = 0x0334 = 820*
+  
+  * **Header:** :cpp:class:`plMessage`.
+  * **Amount to kill:** 4-byte floating-point number.
+    How many particles to remove.
+    If the percentage flag is set,
+    this is a fractional amount (from 0 to 1) relative to the current particle count,
+    otherwise it's an absolute number.
+  * **Time left:** 4-byte floating-point number.
+  * **Flags:** 1-byte unsigned int.
+    The following flags are defined:
+    
+    * **Immortal only** = 1 << 0
+    * **Percentage** = 1 << 1: Whether the amount to kill is a fractional amount or an absolute number.
 
 Common data types
 -----------------
