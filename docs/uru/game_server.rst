@@ -1176,6 +1176,7 @@ only of one of their non-abstract subclasses.
     
     * :cpp:class:`plLoadAvatarMsg` = 0x03b1 = 945
   * :cpp:class:`plServerReplyMsg` = 0x026f = 623
+  * :cpp:class:`plParticleTransferMsg` = 0x0333 = 819
 
 :cpp:class:`plMessage`
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -1449,7 +1450,7 @@ only of one of their non-abstract subclasses.
     Must be an instance of a :cpp:class:`plMessage` subclass.
     In practice,
     this is usually ``nullptr``,
-    but may sometimes be a ``plParticleTransferMsg``.
+    but may sometimes be a :cpp:class:`plParticleTransferMsg`.
 
 :cpp:class:`plLoadAvatarMsg`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1494,6 +1495,19 @@ only of one of their non-abstract subclasses.
     * Affirm = 1
   
   Reply to a :cpp:class:`plNetMsgTestAndSet`.
+
+:cpp:class:`plParticleTransferMsg`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: plParticleTransferMsg : public plMessage
+  
+  *Class index = 0x0333 = 819*
+  
+  * **Header:** :cpp:class:`plMessage`.
+  * **Particle system scene object:** :cpp:class:`plKey`.
+    The original particle system from which to transfer particles.
+  * **Particle count to transfer:** 2-byte unsigned int.
+    How many particles to transfer.
 
 Common data types
 -----------------

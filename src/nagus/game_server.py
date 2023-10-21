@@ -621,6 +621,29 @@ class ServerReplyMessage(PlasmaMessage):
 		stream.write(structs.INT32.pack(self.type))
 
 
+class ParticleTransferMessage(PlasmaMessage):
+	CLASS_INDEX = 0x0333
+	
+	particle_system: typing.Optional[structs.Uoid]
+	transfer_count: int
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["particle_system"] = str(self.particle_system)
+		fields["transfer_count"] = repr(self.transfer_count)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		self.particle_system = structs.Uoid.key_from_stream(stream)
+		(self.transfer_count,) = structs.stream_unpack(stream, structs.UINT16)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		structs.Uoid.key_to_stream(self.particle_system, stream)
+		stream.write(structs.UINT16.pack(self.transfer_count))
+
+
 class NetMessageFlags(structs.IntFlag):
 	has_time_sent = 1 << 0
 	has_game_message_receivers = 1 << 1
