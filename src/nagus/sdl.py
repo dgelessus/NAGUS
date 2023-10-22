@@ -888,15 +888,21 @@ class GuessedSDLRecord(SDLRecordBase):
 		return changed
 
 
-def guess_parse_sdl_blob(stream: typing.BinaryIO) -> typing.Tuple[typing.Optional[SDLStreamHeader], GuessedSDLRecord]:
-	pos = stream.tell()
-	try:
-		header = SDLStreamHeader.from_stream(stream)
-	except ValueError:
-		stream.seek(pos)
-		header = None
+def guess_parse_sdl_blob(stream: typing.BinaryIO) -> typing.Tuple[SDLStreamHeader, GuessedSDLRecord]:
+	header = SDLStreamHeader.from_stream(stream)
 	
 	record = GuessedSDLRecord()
-	record.read(stream)
+	try:
+		record.read(stream)
+	except ValueError as exc:
+		raise ValueError(f"Failed to parse SDL blob of type {header.descriptor_name!r} v{header.descriptor_version}: {exc}")
+	
+	lookahead = stream.read(16)
+	
+	if lookahead:
+		lookahead_desc = repr(lookahead)
+		if len(lookahead) >= 16:
+			lookahead_desc += "..."
+		raise ValueError(f"SDL blob wasn't fully parsed and has trailing data: {lookahead_desc}")
 	
 	return header, record

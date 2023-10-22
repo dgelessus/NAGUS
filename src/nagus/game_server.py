@@ -1179,7 +1179,7 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 	"""
 	
 	with io.BytesIO(current_blob) as stream:
-		current_header = sdl.SDLStreamHeader.from_stream(stream)
+		current_header, current_record = sdl.guess_parse_sdl_blob(stream)
 		
 		if current_header.uoid is not None:
 			logger_sdl_change.info("Currently saved SDL blob header contains UOID: %s", current_header.uoid)
@@ -1187,18 +1187,10 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 		if change_header != current_header:
 			raise ValueError(f"Mismatched state descriptors when applying change - current SDL blob has header {change_header}, but the change SDL blob has header {current_header})")
 		
-		current_record = sdl.GuessedSDLRecord()
-		current_record.read(stream)
-		
 		if logger_sdl_change.isEnabledFor(logging.DEBUG):
 			logger_sdl_change.debug("Parsed currently saved SDL blob:")
 			for line in current_record.as_multiline_str():
 				logger_sdl_change.debug("%s", line.replace("\t", "    "))
-		
-		lookahead = stream.read(16)
-	
-	if lookahead:
-		raise ValueError(f"Currently saved SDL blob has trailing data (probably not parsed correctly): {lookahead!r}")
 	
 	changed_record = current_record.with_change(change_record)
 	
@@ -1215,12 +1207,10 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 	# Check that the changed blob can be re-parsed successfully.
 	
 	with io.BytesIO(changed_blob) as stream:
-		roundtripped_header = sdl.SDLStreamHeader.from_stream(stream)
+		roundtripped_header, roundtripped_record = sdl.guess_parse_sdl_blob(stream)
 		if roundtripped_header != current_header:
 			raise ValueError(f"Re-parsed changed SDL blob header ({change_header}) doesn't match original header ({current_header})")
 		
-		roundtripped_record = sdl.GuessedSDLRecord()
-		roundtripped_record.read(stream)
 		if roundtripped_record != changed_record:
 			if logger_sdl_change.isEnabledFor(logging.DEBUG):
 				logger_sdl_change.debug("Re-parsed changed blob:")
@@ -1228,11 +1218,6 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 					logger_sdl_change.debug("%s", line.replace("\t", "    "))
 			
 			raise ValueError("Re-parsed changed SDL blob body doesn't match original body")
-		
-		lookahead = stream.read(16)
-	
-	if lookahead:
-		raise ValueError(f"Re-parsed changed SDL blob has trailing data (probably not parsed correctly): {lookahead!r}")
 	
 	return changed_blob
 
@@ -1295,43 +1280,31 @@ class NetMessageSDLState(NetMessageStreamedObject):
 		blob_data = self.decompress_data()
 		with io.BytesIO(blob_data) as stream:
 			try:
-				header = sdl.SDLStreamHeader.from_stream(stream)
+				header, record = sdl.guess_parse_sdl_blob(stream)
 			except ValueError:
-				logger_sdl.warning("Failed to parse SDL change blob header - this change will not be saved or sent to new clients", exc_info=True)
+				logger_sdl.warning("Failed to parse SDL change blob - this change will not be saved or sent to new clients", exc_info=True)
 				return
 			
 			if header.uoid is not None:
 				logger_sdl.info("SDL change blob header contains UOID: %s", header.uoid)
 			
-			record = sdl.GuessedSDLRecord()
-			try:
-				record.read(stream)
-			except ValueError:
-				logger_sdl.error("Failed to parse SDL change blob body for %r v%d - this state will not be saved or sent to new clients", header.descriptor_name, header.descriptor_version, exc_info=True)
-				return
-			
 			if logger_sdl.isEnabledFor(logging.DEBUG):
 				logger_sdl.debug("Parsed SDL change for %r v%d:", header.descriptor_name, header.descriptor_version)
 				for line in record.as_multiline_str():
 					logger_sdl.debug("%s", line.replace("\t", "    "))
-			
-			lookahead = stream.read(16)
 		
-		if lookahead:
-			logger_sdl.warning("SDL change blob for %r v%d has trailing data (probably not parsed correctly): %r", header.descriptor_name, header.descriptor_version, lookahead)
+		try:
+			with io.BytesIO() as stream_out:
+				header.write(stream_out)
+				record.write(stream_out)
+				roundtripped_data = stream_out.getvalue()
+		except Exception:
+			logger_sdl.warning("Failed to write parsed SDL change for %r v%d back to a blob", header.descriptor_name, header.descriptor_version, exc_info=True)
 		else:
-			try:
-				with io.BytesIO() as stream_out:
-					header.write(stream_out)
-					record.write(stream_out)
-					roundtripped_data = stream_out.getvalue()
-			except Exception:
-				logger_sdl.warning("Failed to write parsed SDL change for %r v%d back to a blob", header.descriptor_name, header.descriptor_version, exc_info=True)
-			else:
-				if roundtripped_data != blob_data:
-					logger_sdl.warning("Failed to roundtrip SDL change blob for %r v%d", header.descriptor_name, header.descriptor_version)
-					logger_sdl.debug("Original change blob data: %r", blob_data)
-					logger_sdl.debug("Parsed and rewritten change blob data: %r", roundtripped_data)
+			if roundtripped_data != blob_data:
+				logger_sdl.warning("Failed to roundtrip SDL change blob for %r v%d", header.descriptor_name, header.descriptor_version)
+				logger_sdl.debug("Original change blob data: %r", blob_data)
+				logger_sdl.debug("Parsed and rewritten change blob data: %r", roundtripped_data)
 		
 		if self.uoid.object_name == AGE_SDL_HOOK_NAME:
 			# Special treatment for AgeSDLHook:
