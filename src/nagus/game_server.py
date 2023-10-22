@@ -1349,7 +1349,13 @@ class NetMessageSDLState(NetMessageStreamedObject):
 				age_sdl_node_id = await connection.find_age_sdl_node()
 			except state.VaultNodeNotFound:
 				logger_sdl.info("Age instance SDL vault node not found - creating one...")
-				age_sdl_node_id = await connection.server_state.create_vault_node(state.VaultNodeData(creator_account_uuid=connection.client_state.account_uuid, creator_id=connection.client_state.ki_number, node_type=state.VaultNodeType.sdl, int32_1=0, string64_1=connection.client_state.age_file_name))
+				age_sdl_node_id = await connection.server_state.create_vault_node(state.VaultNodeData(
+					creator_account_uuid=connection.client_state.account_uuid,
+					creator_id=connection.client_state.ki_number,
+					node_type=state.VaultNodeType.sdl,
+					int32_1=0,
+					string64_1=connection.client_state.age_file_name,
+				))
 				await connection.server_state.add_vault_node_ref(state.VaultNodeRef(connection.client_state.age_info_node_id, age_sdl_node_id))
 			
 			age_sdl_node_data = await connection.server_state.fetch_vault_node(age_sdl_node_id)
