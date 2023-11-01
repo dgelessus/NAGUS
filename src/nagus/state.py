@@ -1522,6 +1522,17 @@ class ServerState(object):
 		
 		logger.info("Deleting avatar %d, avatar shape %r, explorer? %r, account UUID %s", ki_number, player_data.string64_1, player_data.int32_2, account_id)
 		
+		# Kick any connection that's currently using this avatar.
+		try:
+			conn = self.auth_connections_by_ki_number[ki_number]
+		except KeyError:
+			pass
+		else:
+			from . import base # Avoid circular import problems
+			kick_task = conn.kick_async(base.NetError.logged_in_elsewhere, set_avatar_offline=True)
+			if kick_task is not None:
+				await kick_task
+		
 		# Remove all direct child refs of the Player node.
 		async for ref in self.fetch_vault_node_child_refs(ki_number):
 			await self.remove_vault_node_ref(ki_number, ref.child_id)
