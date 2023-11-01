@@ -36,6 +36,7 @@ Version 0.1.0
   Clients should now receive the initial age SDL correctly and more reliably.
 * Fixed vault node creator info not being set in most cases.
 * Fixed ``plNetMsgSDLStateBroadcast`` parsing.
+* Fixed avatars staying online if the game is closed without logging out first.
 
 Version 0.0.0
 -------------

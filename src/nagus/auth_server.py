@@ -133,6 +133,7 @@ class AccountBillingType(structs.IntFlag):
 
 
 class AuthClientState(object):
+	usable: bool
 	cleanup_handle: asyncio.TimerHandle
 	messages_while_disconnected: typing.List[bytes]
 	token: uuid.UUID
@@ -145,6 +146,7 @@ class AuthClientState(object):
 		
 		# Other attributes are intentionally left unset at first.
 		# They will be set in read_connect_packet_data and the message handlers once appropriate.
+		self.usable = False
 		self.messages_while_disconnected = []
 
 
@@ -177,19 +179,34 @@ class AuthConnection(base.BaseMOULConnection):
 			self.client_state.messages_while_disconnected.append(data)
 	
 	async def handle_disconnect(self) -> None:
-		try:
-			token = self.client_state.token
-		except AttributeError:
-			# Client disconnected very early
-			# or never received a token for some other reason,
-			# so there's nothing that needs to be cleaned up.
+		if not self.client_state.usable:
+			# Either the client disconnected very early
+			# and the connection was never added to the auth_connections dicts,
+			# or the server marked the connection as unusable
+			# and already removed it from the dicts.
+			# In either case,
+			# nothing needs to be kept around or cleaned up.
 			return
 		
 		def _remove_disconnected_connection_callback() -> None:
+			assert self.client_state.usable
+			token = self.client_state.token
+			
 			if self.client_state.messages_while_disconnected:
 				logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state and %d unsent messages", token, type(self).DISCONNECTED_CLIENT_TIMEOUT, len(self.client_state.messages_while_disconnected))
 			else:
 				logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state", token, type(self).DISCONNECTED_CLIENT_TIMEOUT)
+			
+			# The client didn't reconnect soon enough,
+			# so set its avatar to offline.
+			try:
+				ki_number = self.client_state.ki_number
+			except AttributeError:
+				pass
+			else:
+				self.server_state.loop.create_task(self.server_state.set_avatar_offline(ki_number))
+				assert self.server_state.auth_connections_by_ki_number[ki_number] == self
+				del self.server_state.auth_connections_by_ki_number[ki_number]
 			
 			if token not in self.server_state.auth_connections:
 				raise AssertionError(f"Cleanup callback for token {token} fired even though the corresponding state has already been discarded")
@@ -225,9 +242,22 @@ class AuthConnection(base.BaseMOULConnection):
 			except KeyError:
 				raise base.ProtocolError(f"Client attempted to reconnect using an unknown token: {token}")
 			
+			assert prev_conn.client_state.usable
+			# Transfer the client state from the previous connection.
 			self.client_state = prev_conn.client_state
+			
+			# Stop the previous connection's delayed cleanup logic
+			# (the new connection will clean everything up as needed).
 			self.client_state.cleanup_handle.cancel()
+			
+			# Replace the previous connection with this one in all auth_connections dicts.
 			self.server_state.auth_connections[token] = self
+			try:
+				ki_number = self.client_state.ki_number
+			except AttributeError:
+				pass
+			else:
+				self.server_state.auth_connections_by_ki_number[ki_number] = self
 			
 			# Send any messages that we tried to send during the disconnect.
 			if self.client_state.messages_while_disconnected:
@@ -244,20 +274,83 @@ class AuthConnection(base.BaseMOULConnection):
 				self.client_state.token = uuid.uuid4()
 			
 			logger_connect.info("New client connection, assigning token %s", self.client_state.token)
+			self.client_state.usable = True
 			self.server_state.auth_connections[self.client_state.token] = self
 	
 	async def kicked_off(self, reason: base.NetError) -> None:
 		await self.write_message(39, KICKED_OFF.pack(reason))
 	
 	async def disconnect_with_reason(self, client_reason: base.NetError, server_log_message: str) -> typing.NoReturn:
-		"""Send the client a reason why it's being disconnected before actually disconnecting it.
+		"""Send the client a reason why it's being disconnected before actually disconnecting it."""
 		
-		This must only be used after the connection has been fully set up!
-		Otherwise the client won't recognize the Auth2Cli_KickedOff message.
+		# Only send the message if the connection is fully set up
+		# (otherwise the client won't recognize the message)
+		# and hasn't already been kicked.
+		if self.client_state.usable:
+			await self.kicked_off(client_reason)
+		
+		raise base.ProtocolError(server_log_message)
+	
+	def kick_async(self, client_reason: base.NetError, *, set_avatar_offline: bool) -> typing.Optional[asyncio.Task[None]]:
+		"""Forcibly kick this connection asynchronously.
+		
+		This method is non-blocking and safe to call from anywhere
+		as long as the auth_connections dicts are in a consistent state.
+		
+		Once this method returns,
+		the connection has been marked as not usable anymore
+		and the server no longer tracks it in any way.
+		However,
+		you still have to await the returned task (if any)
+		to ensure that the client is actually disconnected.
 		"""
 		
-		await self.kicked_off(client_reason)
-		raise base.ProtocolError(server_log_message)
+		if not self.client_state.usable:
+			# Client never fully connected or was already kicked,
+			# so there's nothing to be cleaned up
+			# and we can't safely send a kicked_off message.
+			return None
+		
+		# In preparation for kicking the client,
+		# forget about this connection in all relevant places
+		# and mark it as not usable anymore to ensure that the client can't get it back by reconnecting.
+		del self.server_state.auth_connections[self.client_state.token]
+		del self.server_state.auth_connections_by_ki_number[self.client_state.ki_number]
+		self.client_state.usable = False
+		
+		if set_avatar_offline:
+			try:
+				ki_number = self.client_state.ki_number
+			except AttributeError:
+				ki_number = None
+		else:
+			ki_number = None
+		
+		try:
+			self.client_state.cleanup_handle
+		except AttributeError:
+			# Client is still connected,
+			# so tell the player why they're being kicked
+			# and then close the connection.
+			async def _get_kicked() -> None:
+				await self.kicked_off(client_reason)
+				# TODO Add a lock for "self is currently processing a message" and wait on that here to ensure that message handlers are never interrupted?
+				self.writer.close()
+				await self.writer.wait_closed()
+				if ki_number is not None:
+					await self.server_state.set_avatar_offline(ki_number)
+			return self.server_state.loop.create_task(_get_kicked())
+		else:
+			# Connection is disconnected,
+			# but hasn't timed out yet,
+			# so stop the usual delayed cleanup from running.
+			self.client_state.cleanup_handle.cancel()
+			
+			# But do still set the connection's avatar to offline if requested.
+			if ki_number is not None:
+				return self.server_state.loop.create_task(self.server_state.set_avatar_offline(ki_number))
+			else:
+				return None
 	
 	@base.message_handler(0)
 	async def ping_request(self) -> None:
@@ -406,8 +499,43 @@ class AuthConnection(base.BaseMOULConnection):
 		trans_id, ki_number = await self.read_unpack(ACCOUNT_SET_PLAYER_REQUEST)
 		logger_login.debug("Set player request: transaction ID %d, KI number %d", trans_id, ki_number)
 		# TODO Check that the KI number actually belongs to the player's account
-		self.client_state.ki_number = ki_number
-		logger_login.info("Account %s now playing as avatar %r", self.client_state.account_uuid, ki_number)
+		
+		# Dissociate the connection from the avatar that it's currently using.
+		try:
+			prev_ki_number = self.client_state.ki_number
+		except AttributeError:
+			prev_ki_number = 0
+		else:
+			del self.server_state.auth_connections_by_ki_number[prev_ki_number]
+			del self.client_state.ki_number
+			# Set the previous avatar to offline in the vault
+			# (though normally the client should have done this already).
+			await self.server_state.set_avatar_offline(prev_ki_number)
+		
+		if ki_number != 0:
+			# If the requested avatar is already in use by another connection,
+			# kick/discard that connection.
+			# BE CAREFUL: The following code must not await anything
+			# until auth_connections_by_ki_number is updated to contain self.
+			# Otherwise another connection might grab the same KI number,
+			# leading to conflicts with this connection!
+			# (... perhaps I should just add a lock around the auth_connections dicts instead?)
+			try:
+				existing_conn = self.server_state.auth_connections_by_ki_number[ki_number]
+			except KeyError:
+				pass
+			else:
+				logger.info("Discarding connection %s because its KI number %d will be used by another connection", existing_conn.client_state.token, ki_number)
+				kick_task = existing_conn.kick_async(base.NetError.logged_in_elsewhere, set_avatar_offline=False)
+				if kick_task is not None:
+					self.server_state.add_background_task(kick_task)
+			
+			self.client_state.ki_number = ki_number
+			self.server_state.auth_connections_by_ki_number[ki_number] = self
+			# After this point,
+			# await is safe again.
+		
+		logger_login.info("Account %s switched from avatar %d to %d", self.client_state.account_uuid, prev_ki_number, ki_number)
 		await self.account_set_player_reply(trans_id, base.NetError.success)
 	
 	async def player_delete_reply(self, trans_id: int, result: base.NetError) -> None:

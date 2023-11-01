@@ -943,8 +943,17 @@ class ServerState(object):
 	loop: asyncio.AbstractEventLoop
 	db: Database
 	
+	background_tasks: typing.Set[asyncio.Task[typing.Any]]
 	status_message: str
+	# All auth server connections that are currently considered "usable".
+	# These are all connections that are either connected or recently disconnected and not timed out yet,
+	# excluding ones that disconnected so early that they have no state that could be preserved
+	# and ones that were forcibly kicked by the server and can never reconnect.
+	# The key is the connection's token UUID.
 	auth_connections: typing.Dict[uuid.UUID, "auth_server.AuthConnection"]
+	# The subset of auth server connections that are currently active as an avatar.
+	# The key is the active avatar's KI number.
+	auth_connections_by_ki_number: typing.Dict[int, "auth_server.AuthConnection"]
 	
 	def __init__(self, config: configuration.Configuration, loop: asyncio.AbstractEventLoop, db: Database) -> None:
 		super().__init__()
@@ -953,8 +962,27 @@ class ServerState(object):
 		self.loop = loop
 		self.db = db
 		
+		self.background_tasks = set()
 		self.status_message = config.server_status_message
 		self.auth_connections = {}
+		self.auth_connections_by_ki_number = {}
+	
+	def add_background_task(self, task: asyncio.Task[typing.Any]) -> None:
+		"""Keep a reference to a background task while it's running.
+		
+		The reference to the task is dropped once it's done running.
+		If the task is already done,
+		this method does nothing.
+		
+		This is based on the recommendation in the docs for :func:`asyncio.create_task`,
+		which says that a background task may not run reliably if the task object is garbage collected while running.
+		"""
+		
+		if task.done():
+			return
+		
+		task.add_done_callback(self.background_tasks.discard)
+		self.background_tasks.add(task)
 	
 	async def setup_database(self) -> None:
 		async with self.db, await self.db.cursor() as cursor:
@@ -1500,6 +1528,13 @@ class ServerState(object):
 		
 		# Delete the Player node itself.
 		await self.delete_vault_node(ki_number)
+	
+	async def set_avatar_online_state(self, ki_number: int, online: bool, age_name: str, age_instance_uuid: uuid.UUID) -> None:
+		player_info_id = await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.player_info), parent_id=ki_number)
+		await self.update_vault_node(player_info_id, VaultNodeData(int32_1=online, uuid_1=age_instance_uuid, string64_1=age_name), uuid.uuid4())
+	
+	async def set_avatar_offline(self, ki_number: int) -> None:
+		await self.set_avatar_online_state(ki_number, False, "", structs.ZERO_UUID)
 	
 	async def fetch_object_sdl_state(self, age_vault_node_id: int, uoid: structs.Uoid, state_desc_name: bytes) -> bytes:
 		with io.BytesIO() as stream:
