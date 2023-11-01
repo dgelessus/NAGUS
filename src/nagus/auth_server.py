@@ -139,7 +139,7 @@ class AuthClientState(object):
 	token: uuid.UUID
 	server_challenge: int
 	account_uuid: uuid.UUID
-	ki_number: int
+	ki_number: typing.Optional[int]
 	
 	def __init__(self) -> None:
 		super().__init__()
@@ -148,6 +148,7 @@ class AuthClientState(object):
 		# They will be set in read_connect_packet_data and the message handlers once appropriate.
 		self.usable = False
 		self.messages_while_disconnected = []
+		self.ki_number = None
 
 
 class AuthConnection(base.BaseMOULConnection):
@@ -199,14 +200,10 @@ class AuthConnection(base.BaseMOULConnection):
 			
 			# The client didn't reconnect soon enough,
 			# so set its avatar to offline.
-			try:
-				ki_number = self.client_state.ki_number
-			except AttributeError:
-				pass
-			else:
-				self.server_state.loop.create_task(self.server_state.set_avatar_offline(ki_number))
-				assert self.server_state.auth_connections_by_ki_number[ki_number] == self
-				del self.server_state.auth_connections_by_ki_number[ki_number]
+			if self.client_state.ki_number is not None:
+				self.server_state.loop.create_task(self.server_state.set_avatar_offline(self.client_state.ki_number))
+				assert self.server_state.auth_connections_by_ki_number[self.client_state.ki_number] == self
+				del self.server_state.auth_connections_by_ki_number[self.client_state.ki_number]
 			
 			if token not in self.server_state.auth_connections:
 				raise AssertionError(f"Cleanup callback for token {token} fired even though the corresponding state has already been discarded")
@@ -252,12 +249,8 @@ class AuthConnection(base.BaseMOULConnection):
 			
 			# Replace the previous connection with this one in all auth_connections dicts.
 			self.server_state.auth_connections[token] = self
-			try:
-				ki_number = self.client_state.ki_number
-			except AttributeError:
-				pass
-			else:
-				self.server_state.auth_connections_by_ki_number[ki_number] = self
+			if self.client_state.ki_number is not None:
+				self.server_state.auth_connections_by_ki_number[self.client_state.ki_number] = self
 			
 			# Send any messages that we tried to send during the disconnect.
 			if self.client_state.messages_while_disconnected:
@@ -315,14 +308,12 @@ class AuthConnection(base.BaseMOULConnection):
 		# forget about this connection in all relevant places
 		# and mark it as not usable anymore to ensure that the client can't get it back by reconnecting.
 		del self.server_state.auth_connections[self.client_state.token]
-		del self.server_state.auth_connections_by_ki_number[self.client_state.ki_number]
+		if self.client_state.ki_number is not None:
+			del self.server_state.auth_connections_by_ki_number[self.client_state.ki_number]
 		self.client_state.usable = False
 		
 		if set_avatar_offline:
-			try:
-				ki_number = self.client_state.ki_number
-			except AttributeError:
-				ki_number = None
+			ki_number = self.client_state.ki_number
 		else:
 			ki_number = None
 		
@@ -501,13 +492,12 @@ class AuthConnection(base.BaseMOULConnection):
 		# TODO Check that the KI number actually belongs to the player's account
 		
 		# Dissociate the connection from the avatar that it's currently using.
-		try:
-			prev_ki_number = self.client_state.ki_number
-		except AttributeError:
+		if self.client_state.ki_number is None:
 			prev_ki_number = 0
 		else:
+			prev_ki_number = self.client_state.ki_number
 			del self.server_state.auth_connections_by_ki_number[prev_ki_number]
-			del self.client_state.ki_number
+			self.client_state.ki_number = None
 			# Set the previous avatar to offline in the vault
 			# (though normally the client should have done this already).
 			await self.server_state.set_avatar_offline(prev_ki_number)
@@ -546,7 +536,7 @@ class AuthConnection(base.BaseMOULConnection):
 	async def player_delete_request(self) -> None:
 		trans_id, ki_number = await self.read_unpack(PLAYER_DELETE_REQUEST)
 		logger_avatar.debug("Player delete request: transaction ID %d, KI number %d", trans_id, ki_number)
-		if ki_number == getattr(self.client_state, "ki_number", None):
+		if ki_number == self.client_state.ki_number:
 			# Can't delete current avatar
 			await self.player_delete_reply(trans_id, base.NetError.invalid_parameter)
 			return
@@ -627,6 +617,10 @@ class AuthConnection(base.BaseMOULConnection):
 		packed_node_data = await self.read(packed_node_data_length)
 		node_data = state.VaultNodeData.unpack(packed_node_data)
 		logger_vault_write.debug("Vault node create: transaction ID %d, node data %s", trans_id, node_data)
+		
+		if self.client_state.ki_number is None:
+			await self.vault_node_created(trans_id, base.NetError.vault_node_access_violation, 0)
+			await self.disconnect_with_reason(base.NetError.vault_node_access_violation, "Attempted to create a vault node without an active avatar")
 		
 		node_data.creator_account_uuid = self.client_state.account_uuid
 		node_data.creator_id = self.client_state.ki_number
