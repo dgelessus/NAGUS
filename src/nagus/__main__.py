@@ -138,10 +138,15 @@ async def async_main(config: configuration.Configuration) -> None:
 	try:
 		server_state = state.ServerState(config, asyncio.get_event_loop(), db)
 		await server_state.setup_database()
-		console_task = asyncio.create_task(console.run_console(server_state))
-		moul_task = asyncio.create_task(moul_server_main(server_state))
-		status_task = asyncio.create_task(status_server.run_status_server(server_state))
-		await asyncio.gather(console_task, moul_task, status_task)
+		try:
+			console_task = asyncio.create_task(console.run_console(server_state))
+			moul_task = asyncio.create_task(moul_server_main(server_state))
+			status_task = asyncio.create_task(status_server.run_status_server(server_state))
+			await asyncio.gather(console_task, moul_task, status_task)
+		finally:
+			count = await server_state.set_all_avatars_offline()
+			if count != 0:
+				logger.debug("Set %d avatars to offline while shutting down server", count)
 	finally:
 		await db.close()
 

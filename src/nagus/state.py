@@ -1547,6 +1547,18 @@ class ServerState(object):
 	async def set_avatar_offline(self, ki_number: int) -> None:
 		await self.set_avatar_online_state(ki_number, False, "", structs.ZERO_UUID)
 	
+	async def set_all_avatars_offline(self) -> int:
+		async with self.db, await self.db.cursor() as cursor:
+			await cursor.execute(
+				"""
+				update VaultNodes
+				set Int32_1 = 0, Uuid_1 = ?, String64_1 = ''
+				where NodeType = ? and Int32_1 != 0
+				""",
+				(structs.ZERO_UUID.bytes_le, VaultNodeType.player_info),
+			)
+			return cursor.rowcount
+	
 	async def fetch_object_sdl_state(self, age_vault_node_id: int, uoid: structs.Uoid, state_desc_name: bytes) -> bytes:
 		with io.BytesIO() as stream:
 			uoid.write(stream)
