@@ -1602,7 +1602,7 @@ class ServerState(object):
 			uoid.write(stream)
 			uoid_data = stream.getvalue()
 		
-		async with await self.db.cursor() as cursor:
+		async with self.db, await self.db.cursor() as cursor:
 			await cursor.execute(
 				"""
 				insert into AgeInstanceObjectStates (AgeVaultNodeId, Uoid, StateDescName, SdlBlob)
