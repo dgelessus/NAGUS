@@ -27,8 +27,6 @@ import hashlib
 import struct
 import typing
 
-from . import base
-
 
 SHA_0_1_CHUNK = struct.Struct(">16I")
 SHA_0_1_MESSAGE_LENGTH = struct.Struct(">Q")
@@ -153,10 +151,20 @@ def byte_swap_hash(hash: bytes) -> bytes:
 	return hash_array.tobytes()
 
 
+def truncate_utf_16_string(string: str, max_length: int) -> str:
+	"""Truncate a string to the given number of UTF-16 code units *minus one*.
+	
+	This simulates truncation of Windows wide strings when stored into a fixed-length ``wchar_t`` array.
+	"""
+	
+	# Decrement max_length by 1 to account for the U+0000 terminator.
+	return string.encode("utf-16-le")[:(max_length-1)*2].decode("utf-16-le", "surrogatepass")
+
+
 def truncate_credentials(account_name: str, password: str) -> typing.Tuple[str, str]:
 	"""Truncate an account name and password the same way that the MOULa client does."""
 	
-	return base.truncate_utf_16_string(account_name, 64), base.truncate_utf_16_string(password, 16)
+	return truncate_utf_16_string(account_name, 64), truncate_utf_16_string(password, 16)
 
 
 def password_hash_sha_1(password: str, *, encoding: str = "utf-8", errors: str = "strict") -> bytes:
