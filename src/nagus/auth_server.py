@@ -178,6 +178,23 @@ class AuthConnection(base.BaseMOULConnection):
 			# Remember the message to potentially re-send it if the client reconnects soon.
 			self.client_state.messages_while_disconnected.append(data)
 	
+	def _clean_up_now(self) -> None:
+		assert self.client_state.usable
+		token = self.client_state.token
+		
+		# Set the connection's avatar (if any) to offline.
+		if self.client_state.ki_number is not None:
+			self.server_state.loop.create_task(self.server_state.set_avatar_offline(self.client_state.ki_number))
+			assert self.server_state.auth_connections_by_ki_number[self.client_state.ki_number] == self
+			del self.server_state.auth_connections_by_ki_number[self.client_state.ki_number]
+		
+		if token not in self.server_state.auth_connections:
+			raise AssertionError(f"Attempted to clean up connection {token} even though the corresponding state has already been discarded")
+		elif self.server_state.auth_connections[token] != self:
+			raise AssertionError(f"Attempted to clean up connection {token} even though the client has reconnected")
+		else:
+			del self.server_state.auth_connections[token]
+	
 	async def handle_disconnect(self) -> None:
 		if not self.client_state.usable:
 			# Either the client disconnected very early
@@ -188,33 +205,25 @@ class AuthConnection(base.BaseMOULConnection):
 			# nothing needs to be kept around or cleaned up.
 			return
 		
-		def _remove_disconnected_connection_callback() -> None:
-			assert self.client_state.usable
-			token = self.client_state.token
-			
-			if self.client_state.messages_while_disconnected:
-				logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state and %d unsent messages", token, self.server_state.config.server_auth_disconnected_client_timeout, len(self.client_state.messages_while_disconnected))
-			else:
-				logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state", token, self.server_state.config.server_auth_disconnected_client_timeout)
-			
-			# The client didn't reconnect soon enough,
-			# so set its avatar to offline.
-			if self.client_state.ki_number is not None:
-				self.server_state.loop.create_task(self.server_state.set_avatar_offline(self.client_state.ki_number))
-				assert self.server_state.auth_connections_by_ki_number[self.client_state.ki_number] == self
-				del self.server_state.auth_connections_by_ki_number[self.client_state.ki_number]
-			
-			if token not in self.server_state.auth_connections:
-				raise AssertionError(f"Cleanup callback for token {token} fired even though the corresponding state has already been discarded")
-			elif self.server_state.auth_connections[token] != self:
-				raise AssertionError(f"Cleanup callback for token {token} fired even though the client has reconnected")
-			else:
-				del self.server_state.auth_connections[token]
+		timeout = self.server_state.config.server_auth_disconnected_client_timeout
 		
-		self.client_state.cleanup_handle = self.server_state.loop.call_later(
-			self.server_state.config.server_auth_disconnected_client_timeout,
-			_remove_disconnected_connection_callback,
-		)
+		if timeout == 0:
+			# If the auth connection timeout is disabled,
+			# skip all the timeout logic and clean up the connection immediately.
+			self._clean_up_now()
+		else:
+			def _remove_disconnected_connection_callback() -> None:
+				if self.client_state.messages_while_disconnected:
+					logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state and %d unsent messages", self.client_state.token, timeout, len(self.client_state.messages_while_disconnected))
+				else:
+					logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state", self.client_state.token, timeout)
+				
+				self._clean_up_now()
+			
+			self.client_state.cleanup_handle = self.server_state.loop.call_later(
+				timeout,
+				_remove_disconnected_connection_callback,
+			)
 	
 	async def read_connect_packet_data(self) -> None:
 		"""Read and unpack the client's token.
