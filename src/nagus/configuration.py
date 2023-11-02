@@ -84,6 +84,7 @@ class Configuration(object):
 	
 	server_auth_send_server_address: bool
 	server_auth_address_for_client: typing.Optional[ipaddress.IPv4Address]
+	server_auth_disconnected_client_timeout: int
 	
 	server_game_address_for_client: typing.Optional[ipaddress.IPv4Address]
 	server_game_parse_pl_messages: ParsePlMessages
@@ -124,6 +125,10 @@ class Configuration(object):
 			self.server_auth_send_server_address = parse_bool(value)
 		elif option == ("server", "auth", "address_for_client"):
 			self.server_auth_address_for_client = parse_ipv4_address(value) if value else None
+		elif option == ("server", "auth", "disconnected_client_timeout"):
+			self.server_auth_disconnected_client_timeout = parse_int(value)
+			if self.server_auth_disconnected_client_timeout < 0:
+				raise ConfigError(f"Timeout must not be negative: {self.server_auth_disconnected_client_timeout}")
 		elif option == ("server", "game", "address_for_client"):
 			self.server_game_address_for_client = parse_ipv4_address(value) if value else None
 		elif option == ("server", "game", "parse_pl_messages"):
@@ -221,6 +226,8 @@ class Configuration(object):
 			self.server_auth_send_server_address = True
 		if not hasattr(self, "server_auth_address_for_client"):
 			self.server_auth_address_for_client = self.server_address_for_client
+		if not hasattr(self, "server_auth_disconnected_client_timeout"):
+			self.server_auth_disconnected_client_timeout = 30 if self.server_auth_send_server_address else 0
 		if not hasattr(self, "server_game_address_for_client"):
 			self.server_game_address_for_client = self.server_address_for_client
 		if not hasattr(self, "server_game_parse_pl_messages"):

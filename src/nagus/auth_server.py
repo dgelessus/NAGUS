@@ -153,7 +153,6 @@ class AuthClientState(object):
 
 class AuthConnection(base.BaseMOULConnection):
 	CONNECTION_TYPE = base.ConnectionType.cli2auth
-	DISCONNECTED_CLIENT_TIMEOUT = 30
 	
 	client_state: AuthClientState
 	
@@ -194,9 +193,9 @@ class AuthConnection(base.BaseMOULConnection):
 			token = self.client_state.token
 			
 			if self.client_state.messages_while_disconnected:
-				logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state and %d unsent messages", token, type(self).DISCONNECTED_CLIENT_TIMEOUT, len(self.client_state.messages_while_disconnected))
+				logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state and %d unsent messages", token, self.server_state.config.server_auth_disconnected_client_timeout, len(self.client_state.messages_while_disconnected))
 			else:
-				logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state", token, type(self).DISCONNECTED_CLIENT_TIMEOUT)
+				logger_connect.info("Client with token %s didn't reconnect within %d seconds - discarding its state", token, self.server_state.config.server_auth_disconnected_client_timeout)
 			
 			# The client didn't reconnect soon enough,
 			# so set its avatar to offline.
@@ -213,7 +212,7 @@ class AuthConnection(base.BaseMOULConnection):
 				del self.server_state.auth_connections[token]
 		
 		self.client_state.cleanup_handle = self.server_state.loop.call_later(
-			type(self).DISCONNECTED_CLIENT_TIMEOUT,
+			self.server_state.config.server_auth_disconnected_client_timeout,
 			_remove_disconnected_connection_callback,
 		)
 	
