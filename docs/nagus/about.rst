@@ -101,7 +101,6 @@ Still to be implemented
 * H'uru extended :ref:`auth server <auth_server>` messages.
 * More console commands.
   
-  * Listing connections and associated info (account and avatar name, KI number, current age, etc.).
   * Force-disconnecting (i. e. kicking) clients.
   * Interacting with the vault.
   * Restricting connections and/or logins.

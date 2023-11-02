@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 HELP_TEXT = """Available commands:
 	exit, shutdown, stop, q, quit - Shut down the server
 	help, ? - Display this help text
+	list - List all clients connected to the server
 	loglevel CATEGORY [LEVEL_NAME] - Display or change the log level for a category of log messages (or category "root" for all)
 	status [STATUS_MESSAGE] [MORE_LINES ...] - Display or change the status message (option server.status.message)
 """
@@ -71,6 +72,32 @@ async def run_command(server_state: state.ServerState, command: str, args: typin
 	elif command == "version":
 		_check_arg_count(0)
 		print(f"This is NAGUS version {__version__}")
+	elif command == "list":
+		_check_arg_count(0)
+		
+		if not server_state.auth_connections:
+			print(f"There are no clients currently connected")
+			return
+		
+		print(f"There are {len(server_state.auth_connections)} clients currently connected:")
+		for token, conn in server_state.auth_connections.items():
+			try:
+				account_uuid = conn.client_state.account_uuid
+			except AttributeError:
+				player_state_desc = "not logged in"
+			else:
+				player_state_desc = f"account {account_uuid}"
+				if conn.client_state.ki_number is not None:
+					player_state_desc += f", avatar {conn.client_state.ki_number}"
+					# TODO Fetch avatar name and current age from vault
+				else:
+					player_state_desc += ", not playing"
+			
+			client_address = conn.writer.get_extra_info("peername")
+			desc = f"{token} {client_address!r} - {player_state_desc}"
+			if hasattr(conn.client_state, "cleanup_handle"):
+				desc += " (recently disconnected)"
+			print(desc)
 	elif command == "loglevel":
 		if len(args) not in {1, 2}:
 			raise UserError(f"Expected 1 or 2 arguments, not {len(args)}")
