@@ -184,7 +184,7 @@ class AuthConnection(base.BaseMOULConnection):
 		
 		# Set the connection's avatar (if any) to offline.
 		if self.client_state.ki_number is not None:
-			self.server_state.loop.create_task(self.server_state.set_avatar_offline(self.client_state.ki_number))
+			self.server_state.create_background_task(self.server_state.set_avatar_offline(self.client_state.ki_number))
 			assert self.server_state.auth_connections_by_ki_number[self.client_state.ki_number] == self
 			del self.server_state.auth_connections_by_ki_number[self.client_state.ki_number]
 		

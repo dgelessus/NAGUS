@@ -984,6 +984,9 @@ class ServerState(object):
 		task.add_done_callback(self.background_tasks.discard)
 		self.background_tasks.add(task)
 	
+	def create_background_task(self, coro: typing.Coroutine[typing.Any, typing.Any, typing.Any]) -> None:
+		self.add_background_task(self.loop.create_task(coro))
+	
 	async def setup_database(self) -> None:
 		async with self.db, await self.db.cursor() as cursor:
 			await cursor.executescript("""
