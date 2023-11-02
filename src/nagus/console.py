@@ -23,8 +23,11 @@ import logging
 import shlex
 import sys
 import typing
+import uuid
 
 from . import __version__
+from . import auth_server
+from . import base
 from . import state
 
 
@@ -34,6 +37,7 @@ logger = logging.getLogger(__name__)
 HELP_TEXT = """Available commands:
 	exit, shutdown, stop, q, quit - Shut down the server
 	help, ? - Display this help text
+	kick token|address|account|avatar WHO - Forcibly disconnect a client from the server
 	list - List all clients connected to the server
 	loglevel CATEGORY [LEVEL_NAME] - Display or change the log level for a category of log messages (or category "root" for all)
 	status [STATUS_MESSAGE] [MORE_LINES ...] - Display or change the status message (option server.status.message)
@@ -72,6 +76,61 @@ async def run_command(server_state: state.ServerState, command: str, args: typin
 	elif command == "version":
 		_check_arg_count(0)
 		print(f"This is NAGUS version {__version__}")
+	elif command == "kick":
+		_check_arg_count(2)
+		
+		what = args[0]
+		who = args[1]
+		
+		conns: typing.List[auth_server.AuthConnection] = []
+		if what == "token":
+			try:
+				token = uuid.UUID(who)
+			except ValueError as exc:
+				raise UserError(exc)
+			
+			try:
+				conns.append(server_state.auth_connections[token])
+			except KeyError:
+				pass
+		elif what == "address":
+			for conn in server_state.auth_connections.values():
+				client_address = conn.writer.get_extra_info("peername")
+				if client_address[0] == who:
+					conns.append(conn)
+		elif what == "account":
+			try:
+				account_uuid = uuid.UUID(who)
+			except ValueError as exc:
+				raise UserError(exc)
+			
+			for conn in server_state.auth_connections.values():
+				if getattr(conn.client_state, "account_uuid", None) == account_uuid:
+					conns.append(conn)
+		elif what == "avatar":
+			try:
+				ki_number = int(who)
+			except ValueError as exc:
+				raise UserError(exc)
+			
+			for conn in server_state.auth_connections.values():
+				if conn.client_state.ki_number == ki_number:
+					conns.append(conn)
+		else:
+			raise UserError(f"Don't know how to kick by {what!r} (expected token, address, account, or avatar)")
+		
+		if not conns:
+			raise UserError(f"Couldn't find a connected client with {what} {who}")
+		
+		for conn in conns:
+			kick_task = conn.kick_async(base.NetError.kicked_by_ccr, set_avatar_offline=True)
+			if kick_task is not None:
+				server_state.add_background_task(kick_task)
+		
+		if len(conns) == 1:
+			print(f"Kicked client with {what} {who}")
+		else:
+			print(f"Kicked {len(conns)} clients with {what} {who}")
 	elif command == "list":
 		_check_arg_count(0)
 		

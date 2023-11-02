@@ -101,6 +101,5 @@ Still to be implemented
 * H'uru extended :ref:`auth server <auth_server>` messages.
 * More console commands.
   
-  * Force-disconnecting (i. e. kicking) clients.
   * Interacting with the vault.
   * Restricting connections and/or logins.
