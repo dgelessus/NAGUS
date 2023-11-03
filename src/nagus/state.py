@@ -1191,8 +1191,8 @@ class ServerState(object):
 		
 		for conn in self.auth_connections.values():
 			# TODO Send notifications asynchronously
-			# TODO Notify only clients that care about this node
-			await conn.vault_node_changed(node_id, revision_id)
+			if conn.cares_about_vault_node(node_id):
+				await conn.vault_node_changed(node_id, revision_id)
 	
 	async def delete_vault_node(self, node_id: int) -> None:
 		logger_vault.debug("Deleting vault node %d", node_id)
@@ -1204,8 +1204,9 @@ class ServerState(object):
 		
 		for conn in self.auth_connections.values():
 			# TODO Send notifications asynchronously
-			# TODO Notify only clients that care about this node
-			await conn.vault_node_deleted(node_id)
+			if conn.cares_about_vault_node(node_id):
+				await conn.vault_node_deleted(node_id)
+				conn.stop_caring_about_vault_nodes({node_id})
 	
 	async def fetch_vault_node_child_refs(self, parent_id: int) -> typing.AsyncIterable[VaultNodeRef]:
 		async with await self.db.cursor() as cursor:
@@ -1264,8 +1265,8 @@ class ServerState(object):
 		
 		for conn in self.auth_connections.values():
 			# TODO Send notifications asynchronously
-			# TODO Notify only clients that care about this node
-			await conn.vault_node_added(ref.parent_id, ref.child_id, ref.owner_id)
+			if conn.cares_about_vault_node(ref.parent_id):
+				await conn.vault_node_added(ref.parent_id, ref.child_id, ref.owner_id)
 	
 	async def remove_vault_node_ref(self, parent_id: int, child_id: int) -> None:
 		logger_vault.debug("Removing vault node ref: %d -> %d", parent_id, child_id)
@@ -1280,8 +1281,8 @@ class ServerState(object):
 		
 		for conn in self.auth_connections.values():
 			# TODO Send notifications asynchronously
-			# TODO Notify only clients that care about this node
-			await conn.vault_node_removed(parent_id, child_id)
+			if conn.cares_about_vault_node(parent_id):
+				await conn.vault_node_removed(parent_id, child_id)
 	
 	async def find_age_instance(self, age_file_name: str, instance_uuid: uuid.UUID) -> typing.Tuple[int, int]:
 		try:

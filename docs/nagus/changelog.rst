@@ -31,6 +31,9 @@ Version 0.1.0
 * Changed the single placeholder account to use a non-zero UUID.
 * Improved status server to work around the quirks and limitations of current clients,
   specifically with status messages that are very long and/or contain non-ASCII characters.
+* Improved performance of some vault-heavy operations
+  (like creating a new avatar)
+  by sending vault change notifications only for nodes that the client knows about.
 * Improved sending of AgeSDLHook initial SDL states
   and fixed calculation of their sequence numbers.
   Clients should now receive the initial age SDL correctly and more reliably.

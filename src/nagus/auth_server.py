@@ -140,6 +140,7 @@ class AuthClientState(object):
 	server_challenge: int
 	account_uuid: uuid.UUID
 	ki_number: typing.Optional[int]
+	cares_about_vault_nodes: typing.Set[int]
 	
 	def __init__(self) -> None:
 		super().__init__()
@@ -149,6 +150,7 @@ class AuthClientState(object):
 		self.usable = False
 		self.messages_while_disconnected = []
 		self.ki_number = None
+		self.cares_about_vault_nodes = set()
 
 
 class AuthConnection(base.BaseMOULConnection):
@@ -615,6 +617,25 @@ class AuthConnection(base.BaseMOULConnection):
 		# TODO Actually implement this
 		await self.upgrade_visitor_reply(trans_id, base.NetError.success)
 	
+	def start_caring_about_vault_nodes(self, node_ids: typing.Set[int]) -> None:
+		if logger_vault_notify.isEnabledFor(logging.DEBUG):
+			newly_caring = node_ids - self.client_state.cares_about_vault_nodes
+			if newly_caring:
+				logger_vault_notify.debug("Client will now be notified about vault nodes: %s", sorted(newly_caring))
+		
+		self.client_state.cares_about_vault_nodes |= node_ids
+	
+	def stop_caring_about_vault_nodes(self, node_ids: typing.Set[int]) -> None:
+		if logger_vault_notify.isEnabledFor(logging.DEBUG):
+			no_longer_caring = node_ids & self.client_state.cares_about_vault_nodes
+			if no_longer_caring:
+				logger_vault_notify.debug("Client will no longer notified about vault nodes: %s", sorted(no_longer_caring))
+		
+		self.client_state.cares_about_vault_nodes -= node_ids
+	
+	def cares_about_vault_node(self, node_id: int) -> bool:
+		return node_id in self.client_state.cares_about_vault_nodes
+	
 	async def vault_node_created(self, trans_id: int, result: base.NetError, node_id: int) -> None:
 		logger_vault_write.debug("Sending vault node created: transaction ID %d, result %r, node ID %d", trans_id, result, node_id)
 		await self.write_message(23, VAULT_NODE_CREATED.pack(trans_id, result, node_id))
@@ -639,6 +660,7 @@ class AuthConnection(base.BaseMOULConnection):
 			logger_vault_write.error("Unhandled exception while creating vault node", exc_info=True)
 			await self.vault_node_created(trans_id, base.NetError.internal_error, 0)
 		else:
+			self.start_caring_about_vault_nodes({node_id})
 			await self.vault_node_created(trans_id, base.NetError.success, node_id)
 	
 	async def vault_node_fetched(self, trans_id: int, result: base.NetError, node_data: typing.Optional[state.VaultNodeData]) -> None:
@@ -650,6 +672,8 @@ class AuthConnection(base.BaseMOULConnection):
 	async def vault_node_fetch(self) -> None:
 		(trans_id, node_id) = await self.read_unpack(VAULT_NODE_FETCH)
 		logger_vault_read.debug("Vault node fetch: transaction ID %d, node ID %d", trans_id, node_id)
+		
+		self.start_caring_about_vault_nodes({node_id})
 		
 		try:
 			node_data = await self.server_state.fetch_vault_node(node_id)
@@ -676,6 +700,9 @@ class AuthConnection(base.BaseMOULConnection):
 		packed_node_data = await self.read(packed_node_data_length)
 		node_data = state.VaultNodeData.unpack(packed_node_data)
 		logger_vault_write.debug("Vault node save: transaction ID %d, node ID %d, revision ID %s, node data %s", trans_id, node_id, revision_id, node_data)
+		
+		self.start_caring_about_vault_nodes({node_id})
+		
 		try:
 			await self.server_state.update_vault_node(node_id, node_data, revision_id)
 		except state.VaultNodeNotFound:
@@ -702,6 +729,9 @@ class AuthConnection(base.BaseMOULConnection):
 	async def vault_node_add(self) -> None:
 		trans_id, parent_id, child_id, owner_id = await self.read_unpack(VAULT_NODE_ADD)
 		logger_vault_write.debug("Vault node add: transaction ID %d, parent ID %d, child ID %d, owner ID %d", trans_id, parent_id, child_id, owner_id)
+		
+		self.start_caring_about_vault_nodes({parent_id, child_id})
+		
 		try:
 			await self.server_state.add_vault_node_ref(state.VaultNodeRef(parent_id, child_id, owner_id))
 		except state.VaultNodeNotFound:
@@ -726,6 +756,9 @@ class AuthConnection(base.BaseMOULConnection):
 	async def vault_node_remove(self) -> None:
 		trans_id, parent_id, child_id = await self.read_unpack(VAULT_NODE_REMOVE)
 		logger_vault_write.debug("Vault node remove: transaction ID %d, parent ID %d, child ID %d", trans_id, parent_id, child_id)
+		
+		self.start_caring_about_vault_nodes({parent_id})
+		
 		try:
 			await self.server_state.remove_vault_node_ref(parent_id, child_id)
 		except state.VaultNodeNotFound:
@@ -754,8 +787,10 @@ class AuthConnection(base.BaseMOULConnection):
 		
 		try:
 			refs = []
+			care = {node_id}
 			async for ref in self.server_state.fetch_vault_node_refs_recursive(node_id):
 				refs.append(ref)
+				care.add(ref.child_id)
 				if len(refs) > 1048576:
 					raise ValueError(f"There are more than 1048576 node refs under node ID {node_id} - that's too many for the client")
 		except state.VaultNodeNotFound:
@@ -764,6 +799,7 @@ class AuthConnection(base.BaseMOULConnection):
 			logger_vault_read.error("Unhandled exception while fetching vault node refs", exc_info=True)
 			await self.vault_node_refs_fetched(trans_id, base.NetError.internal_error, [])
 		else:
+			self.start_caring_about_vault_nodes(care)
 			await self.vault_node_refs_fetched(trans_id, base.NetError.success, refs)
 	
 	async def vault_init_age_reply(self, trans_id: int, result: base.NetError, age_node_id: int, age_info_node_id: int) -> None:
