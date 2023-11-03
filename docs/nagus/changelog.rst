@@ -17,6 +17,8 @@ Version 0.1.0
   allowing the player to interact with most clickables.
 * Added Bevin as the only neighborhood instance for now.
   All new avatars are members of Bevin.
+* Implemented sending vault nodes
+  (KI mail).
 * Implemented handling of init age requests with a zero instance UUID,
   which is needed when linking to a child age for the first time.
 * Implemented experimental SDL blob parsing based on "guessing" the structure.

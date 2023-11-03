@@ -41,7 +41,7 @@ What works so far
 * Creating and linking to age instances.
 * Walking around in-age and interacting with some basic things.
 * Creating and deleting avatars.
-* The vault mostly works and is saved persistently in a local SQLite database.
+* The vault is fully working and saved persistently in a local SQLite database.
 * Limited saving of SDL states.
   Works without .sdl files on the server side,
   but can break for unlucky combinations of SDL variables.
@@ -59,7 +59,6 @@ Still to be implemented
   The server accepts multiple simultaneous clients,
   but they can't see each other or interact in-game in any way.
   
-  * Sending vault change notifications to other clients.
   * Propagating :cpp:class:`plNetMsgGameMessage`\s to other clients.
   * Handling concurrent :cpp:class:`plNetMsgTestAndSet`\s (locking) properly.
   * Multiplayer handling for all the other game server messages that aren't implemented yet.
@@ -83,9 +82,7 @@ Still to be implemented
 * Serving "secure" files (SDL, Python) via the :ref:`auth server <auth_server>`
   to support OpenUru external clients
   and H'uru clients without :option:`/LocalSDL`.
-* Missing vault features:
-  sending nodes (KI mail)
-  and marking node refs as seen
+* Marking vault node refs as seen
   (though other servers don't really implement that either).
 * Sending clients the list of avatars in an age instance
   and avatar join/leave updates.

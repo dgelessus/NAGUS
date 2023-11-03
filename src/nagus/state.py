@@ -1284,6 +1284,10 @@ class ServerState(object):
 			if conn.cares_about_vault_node(parent_id):
 				await conn.vault_node_removed(parent_id, child_id)
 	
+	async def send_vault_node(self, node_id: int, receiver_id: int, sender_id: int) -> None:
+		receiver_inbox_id = await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.folder, int32_1=1), parent_id=receiver_id)
+		await self.add_vault_node_ref(VaultNodeRef(receiver_inbox_id, node_id, sender_id))
+	
 	async def find_age_instance(self, age_file_name: str, instance_uuid: uuid.UUID) -> typing.Tuple[int, int]:
 		try:
 			age_info_id = await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.age_info, uuid_1=instance_uuid, string64_2=age_file_name))

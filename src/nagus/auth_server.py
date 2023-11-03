@@ -92,6 +92,7 @@ VAULT_INIT_AGE_REQUEST_FOOTER = struct.Struct("<ii")
 VAULT_INIT_AGE_REPLY = struct.Struct("<IIII")
 VAULT_NODE_FIND_HEADER = struct.Struct("<II")
 VAULT_NODE_FIND_REPLY_HEADER = struct.Struct("<III")
+VAULT_SEND_NODE = struct.Struct("<II")
 AGE_REQUEST_HEADER = struct.Struct("<I")
 AGE_REPLY = struct.Struct("<III16sII")
 LOG_CLIENT_DEBUGGER_CONNECT = struct.Struct("<I")
@@ -884,6 +885,25 @@ class AuthConnection(base.BaseMOULConnection):
 			await self.vault_node_find_reply(trans_id, base.NetError.internal_error, [])
 		else:
 			await self.vault_node_find_reply(trans_id, base.NetError.success if found_node_ids else base.NetError.vault_node_not_found, found_node_ids)
+	
+	@base.message_handler(35)
+	async def vault_send_node(self) -> None:
+		node_id, receiver_id = await self.read_unpack(VAULT_SEND_NODE)
+		logger_vault_write.debug("Vault send node: node ID %d, receiver ID %d", node_id, receiver_id)
+		
+		if self.client_state.ki_number is None:
+			await self.disconnect_with_reason(base.NetError.vault_node_access_violation, "Attempted to send a vault node without an active avatar")
+		
+		try:
+			await self.server_state.send_vault_node(node_id, receiver_id, self.client_state.ki_number)
+		except state.VaultNodeNotFound:
+			# There's no way to report errors to the client here,
+			# so just silently log it...
+			logger_vault_write.error("Attempted to send a vault node to receiver %d who doesn't exist or has no inbox folder", receiver_id, exc_info=True)
+		except state.VaultNodeAlreadyExists:
+			# This happens during normal gameplay when the player sends a node multiple times to the same receiver,
+			# so logging the traceback isn't worth it here.
+			logger_vault_write.debug("Attempted to send vault node %d to receiver %d who already received that node", node_id, receiver_id)
 	
 	async def age_reply(self, trans_id: int, result: base.NetError, mcp_id: int, instance_uuid: uuid.UUID, age_node_id: int, server_ip: ipaddress.IPv4Address) -> None:
 		logger_age.debug("Sending age reply: transaction ID %d, result %r, MCP ID %d, instance UUID %s, Age node ID %d, server IP %s", trans_id, result, mcp_id, instance_uuid, age_node_id, server_ip)
