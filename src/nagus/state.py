@@ -1166,6 +1166,7 @@ class ServerState(object):
 			age_file_name="city",
 			instance_uuid=PUBLIC_AEGURA_UUID,
 			instance_name="Ae'gura",
+			public=True,
 			allow_existing=True,
 		)
 		logger_vault.debug("Public Ae'gura instance: Age %d, Age Info %d", aegura_id, aegura_info_id)
@@ -1176,6 +1177,7 @@ class ServerState(object):
 			# Calling this Bevin is okay lore-wise,
 			# because there's only a single instance!
 			instance_name="Bevin",
+			public=True,
 			allow_existing=True,
 		)
 		logger_vault.debug("Default neighborhood instance: Age %d, Age Info %d", bevin_id, bevin_info_id)
@@ -1402,6 +1404,7 @@ class ServerState(object):
 		sequence_number: int = 0,
 		language: int = -1,
 		*,
+		public: bool = False,
 		allow_existing: bool = False,
 	) -> typing.Tuple[int, int]:
 		try:
@@ -1422,6 +1425,7 @@ class ServerState(object):
 			creator_id=age_id,
 			node_type=VaultNodeType.age_info,
 			int32_1=sequence_number, # TODO Auto-increment sequence number where necessary?
+			int32_2=1 if public else None,
 			int32_3=language,
 			uint32_1=age_id,
 			uint32_2=0,
