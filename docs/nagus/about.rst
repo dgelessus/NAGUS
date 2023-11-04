@@ -86,6 +86,7 @@ Still to be implemented
   (though other servers don't really implement that either).
 * Sending clients the list of avatars in an age instance
   and avatar join/leave updates.
+* Reporting current population counts for public age instances.
 * Better SDL support.
   
   * Proper parsing of SDL blobs based on state descriptors
@@ -93,7 +94,8 @@ Still to be implemented
   * Updating SDL blobs to a newer version of the same state descriptor.
   * Global (shard-wide) age SDL settings.
 * The :ref:`GameMgr <game_manager>` to support marker games and some puzzles with OpenUru clients.
-* Public age management.
+* A general way to set up public global age instances
+  (similar to DIRTSAND's static_ages.ini).
 * Actual score server functionality instead of the current stub implementation.
 * H'uru extended :ref:`auth server <auth_server>` messages.
 * More console commands.

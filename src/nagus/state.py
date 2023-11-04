@@ -19,9 +19,9 @@
 
 
 import asyncio
+import collections
 import concurrent.futures
 import datetime
-import enum
 import io
 import logging
 import sqlite3
@@ -61,6 +61,7 @@ DEFAULT_NEIGHBORHOOD_UUID = uuid.UUID("366f9aa1-c4c9-4c4c-a23a-cbe6896cc3b9")
 
 VAULT_NODE_DATA_HEADER = struct.Struct("<Q")
 VAULT_NODE_REF = struct.Struct("<III?")
+PUBLIC_AGE_INSTANCE = struct.Struct("<16s128s128s128s2048siiII")
 
 
 class VaultNodeType(structs.IntEnum):
@@ -790,6 +791,97 @@ class VaultNodeFolderType(structs.IntEnum):
 	game_scores = 32
 
 
+class PublicAgeInstance(object):
+	instance_uuid: uuid.UUID
+	file_name: str
+	instance_name: str
+	user_defined_name: str
+	description: str
+	sequence_number: int
+	language: int
+	owner_count: int
+	current_population: int
+	
+	def __init__(
+		self,
+		instance_uuid: uuid.UUID,
+		file_name: str,
+		instance_name: str,
+		user_defined_name: str,
+		description: str,
+		sequence_number: int,
+		language: int,
+		owner_count: int,
+		current_population: int,
+	) -> None:
+		super().__init__()
+		
+		self.instance_uuid = instance_uuid
+		self.file_name = file_name
+		self.instance_name = instance_name
+		self.user_defined_name = user_defined_name
+		self.description = description
+		self.sequence_number = sequence_number
+		self.language = language
+		self.owner_count = owner_count
+		self.current_population = current_population
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = collections.OrderedDict()
+		fields["instance_uuid"] = str(self.instance_uuid)
+		fields["file_name"] = repr(self.file_name)
+		fields["instance_name"] = repr(self.instance_name)
+		fields["user_defined_name"] = repr(self.user_defined_name)
+		fields["description"] = repr(self.description)
+		fields["sequence_number"] = repr(self.sequence_number)
+		fields["language"] = repr(self.language)
+		fields["owner_count"] = repr(self.owner_count)
+		fields["current_population"] = repr(self.current_population)
+		return fields
+	
+	def __repr__(self) -> str:
+		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
+		return f"{type(self).__qualname__}({joined_fields})"
+	
+	@classmethod
+	def unpack(cls, data: bytes) -> "PublicAgeInstance":
+		(
+			instance_uuid,
+			file_name,
+			instance_name,
+			user_defined_name,
+			description,
+			sequence_number,
+			language,
+			owner_count,
+			current_population,
+		) = PUBLIC_AGE_INSTANCE.unpack(data)
+		return cls(
+			instance_uuid=uuid.UUID(bytes_le=instance_uuid),
+			file_name=structs.unpack_fixed_utf_16_string(file_name),
+			instance_name=structs.unpack_fixed_utf_16_string(instance_name),
+			user_defined_name=structs.unpack_fixed_utf_16_string(user_defined_name),
+			description=structs.unpack_fixed_utf_16_string(description),
+			sequence_number=sequence_number,
+			language=language,
+			owner_count=owner_count,
+			current_population=current_population,
+		)
+	
+	def pack(self) -> bytes:
+		return PUBLIC_AGE_INSTANCE.pack(
+			self.instance_uuid.bytes_le,
+			structs.pack_fixed_utf_16_string(self.file_name, 64),
+			structs.pack_fixed_utf_16_string(self.instance_name, 64),
+			structs.pack_fixed_utf_16_string(self.user_defined_name, 64),
+			structs.pack_fixed_utf_16_string(self.description, 1024),
+			self.sequence_number,
+			self.language,
+			self.owner_count,
+			self.current_population,
+		)
+
+
 class AvatarInfo(object):
 	player_node_id: int
 	name: str
@@ -1386,6 +1478,45 @@ class ServerState(object):
 		))
 		
 		return age_id, age_info_id
+	
+	async def find_public_age_instances(self, age_file_name: str) -> typing.AsyncIterable[PublicAgeInstance]:
+		async with await self.db.cursor() as cursor:
+			await cursor.execute(
+				"""
+				select
+					age.Uuid_1 as instance_uuid,
+					age.String64_3 as instance_name,
+					age.String64_4 as user_defined_name,
+					age.Text_1 as description,
+					age.Int32_1 as sequence_number,
+					age.Int32_3 as language,
+					(
+						select count(*)
+						from VaultNodeRefs age_children
+						join VaultNodes owners_folder on owners_folder.NodeId = age_children.ChildId and owners_folder.NodeType = ? and owners_folder.Int32_1 = ?
+						join VaultNodeRefs owners on owners.ParentId = owners_folder.NodeId
+						where age.NodeId = age_children.ParentId
+					) as owner_count
+				from VaultNodes age
+				where age.NodeType = ? and age.Int32_2 = 1 and age.Uuid_1 is not null and age.String64_2 = ?
+				order by age.ModifyTime desc
+				limit 50
+				""",
+				(VaultNodeType.player_info_list, VaultNodeFolderType.age_owners, VaultNodeType.age_info, age_file_name),
+			)
+			
+			async for instance_uuid, instance_name, user_defined_name, description, sequence_number, language, owner_count in cursor:
+				yield PublicAgeInstance(
+					instance_uuid=uuid.UUID(bytes_le=instance_uuid),
+					file_name=age_file_name,
+					instance_name=instance_name or "",
+					user_defined_name=user_defined_name or "",
+					description=description or "",
+					sequence_number=sequence_number or 0,
+					language=language if language is not None else -1,
+					owner_count=owner_count,
+					current_population=0, # TODO Get population from corresponding game server (if any)
+				)
 	
 	async def find_avatars(self, account_id: uuid.UUID) -> typing.AsyncIterable[AvatarInfo]:
 		async for player_id in self.find_vault_nodes(VaultNodeData(node_type=VaultNodeType.player, uuid_1=account_id)):

@@ -19,6 +19,8 @@ Version 0.1.0
   All new avatars are members of Bevin.
 * Implemented sending vault nodes
   (KI mail).
+* Implemented the public age interface.
+  This makes the city and neighborhood links visible in the Nexus.
 * Implemented handling of init age requests with a zero instance UUID,
   which is needed when linking to a child age for the first time.
 * Implemented experimental SDL blob parsing based on "guessing" the structure.

@@ -150,8 +150,8 @@ not even their structure.
   :header: #,Cli2Auth,Auth2Cli,#
   :widths: auto
   
-  41,GetPublicAgeList,PublicAgeList,40
-  42,SetAgePublic,,
+  41,:ref:`GetPublicAgeList <cli2auth_get_public_age_list>`,:ref:`PublicAgeList <auth2cli_public_age_list>`,40
+  42,:ref:`SetAgePublic <cli2auth_set_age_public>`,,
 
 .. csv-table:: Log messages
   :name: auth_messages_log_messages
@@ -2116,6 +2116,86 @@ but sent from the server to the client.
 Similarly unused in practice.
 All :cpp:class:`plNetMessage`\s are sent via the game server instead ---
 see :ref:`game2cli_propagate_buffer`.
+
+.. _cli2auth_get_public_age_list:
+
+Cli2Auth_GetPublicAgeList
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 41
+* **Transaction ID:** 4-byte unsigned int.
+* **Age file name:** :c:macro:`NET_MSG_FIELD_STRING`\(64).
+
+Request information about the public instances of an age.
+This is used by the Nexus to get the list of public neighborhoods
+and the current population counts for neighborhoods and single-instance public ages.
+
+.. _auth2cli_public_age_list:
+
+Auth2Cli_PublicAgeList
+^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 40
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Age instance count:** 4-byte unsigned int.
+  Element count for the following array of age instances.
+  May be at most 512,
+  but in practice,
+  all server implementations return at most 50 age instances.
+* **Age instances:** Variable-length array.
+  Information about all public instances of the requested age.
+  Unless indicated otherwise,
+  this information is taken from the :ref:`vault_node_age_info` vault nodes of the age instances in question.
+  The elements are sorted by the ``ModifyTime`` of their :ref:`vault_node_age_info` vault nodes,
+  with the most recently modified ones appearing first
+  (meaning that the age instances that were most recently set to public appear first in the list).
+  Each element has the following structure:
+  
+  * **Instance UUID:** 16-byte UUID.
+  * **File name:** 128-byte zero-terminated UTF-16 string.
+    Should always match the age file name sent in the :ref:`GetPublicAgeList <cli2auth_get_public_age_list>` message.
+  * **Instance name:** 128-byte zero-terminated UTF-16 string.
+  * **User-defined name:** 128-byte zero-terminated UTF-16 string.
+  * **Description:** 2048-byte zero-terminated UTF-16 string.
+  * **Sequence number:** 4-byte signed int.
+  * **Language:** 4-byte signed int.
+  * **Owner count:** 4-byte unsigned int.
+    How many owners this age instance has.
+    The open-sourced client code calls this the "population",
+    because in the case of neighborhoods,
+    this is the number of owners.
+  * **Current population:** 4-byte unsigned int.
+    How many avatars are currently in the age instance.
+
+Reply to a :ref:`GetPublicAgeList <cli2auth_get_public_age_list>` message.
+
+.. _cli2auth_set_age_public:
+
+Cli2Auth_SetAgePublic
+^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 42
+* **Age info node ID:** 4-byte unsigned int.
+  ID of the :ref:`vault_node_age_info` vault node of the age instance to be made public/private.
+* **Public:** 1-byte boolean.
+  True if the age instance should be set to public,
+  or false if it should be set to private.
+
+Make an age instance public or private.
+The client uses this only for neighborhoods ---
+there is no support for other player-managed public age instances.
+
+Internally,
+this sets the :ref:`vault_node_age_info` node's ``Int32_2`` (IsPublic) field
+and updates the node's ``ModifyTime``,
+the same way as a :ref:`VaultNodeSave <cli2auth_vault_node_save>` message.
+H'uru clients rely on the fact that a SetAgePublic message always updates the ``ModifyTime``,
+even if the public/private status is set to the same value as before.
+
+The server doesn't directly reply to this message,
+but the vault node change causes a :ref:`VaultNodeChanged <auth2cli_vault_node_changed>` message,
+which the client uses to detect that the age instance's public/private status actually changed.
 
 .. _cli2auth_log_python_traceback:
 

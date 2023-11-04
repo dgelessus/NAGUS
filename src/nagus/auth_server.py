@@ -95,6 +95,9 @@ VAULT_NODE_FIND_REPLY_HEADER = struct.Struct("<III")
 VAULT_SEND_NODE = struct.Struct("<II")
 AGE_REQUEST_HEADER = struct.Struct("<I")
 AGE_REPLY = struct.Struct("<III16sII")
+GET_PUBLIC_AGE_LIST_HEADER = struct.Struct("<I")
+PUBLIC_AGE_LIST_HEADER = struct.Struct("<III")
+SET_AGE_PUBLIC = struct.Struct("<I?")
 LOG_CLIENT_DEBUGGER_CONNECT = struct.Struct("<I")
 SCORE_CREATE_HEADER = struct.Struct("<II")
 SCORE_CREATE_FOOTER = struct.Struct("<Ii")
@@ -928,6 +931,43 @@ class AuthConnection(base.BaseMOULConnection):
 			if ip_addr is None:
 				ip_addr = self._get_own_ipv4_address()
 			await self.age_reply(trans_id, base.NetError.success, age_node_id, instance_uuid, age_node_id, ip_addr)
+	
+	async def public_age_list(self, trans_id: int, result: base.NetError, age_instances: typing.Sequence[state.PublicAgeInstance]) -> None:
+		logger_vault_read.debug("Sending public age list: transaction ID %d, result %r, %d instances: %r", trans_id, result, len(age_instances), age_instances)
+		
+		message = bytearray(PUBLIC_AGE_LIST_HEADER.pack(trans_id, result, len(age_instances)))
+		for instance in age_instances:
+			message.extend(instance.pack())
+		
+		await self.write_message(40, message)
+	
+	@base.message_handler(41)
+	async def get_public_age_list(self) -> None:
+		(trans_id,) = await self.read_unpack(GET_PUBLIC_AGE_LIST_HEADER)
+		age_file_name = await self.read_string_field(64)
+		logger_vault_read.debug("Get public age list: transaction ID %d, age file name %r", trans_id, age_file_name)
+		
+		try:
+			age_instances = []
+			async for age_instance in self.server_state.find_public_age_instances(age_file_name):
+				age_instances.append(age_instance)
+		except Exception:
+			logger_age.error("Unhandled exception while getting public age list", exc_info=True)
+			await self.public_age_list(trans_id, base.NetError.internal_error, [])
+		else:
+			await self.public_age_list(trans_id, base.NetError.success, age_instances)
+	
+	@base.message_handler(42)
+	async def set_age_public(self) -> None:
+		age_info_id, public = await self.read_unpack(SET_AGE_PUBLIC)
+		logger_age.info("Set age public: Age Info node ID %d, public? %r", age_info_id, public)
+		
+		try:
+			await self.server_state.update_vault_node(age_info_id, state.VaultNodeData(int32_2=int(public)), uuid.uuid4())
+		except state.VaultNodeNotFound:
+			# There's no way to report errors to the client here,
+			# so just silently log it...
+			logger_vault_write.error("Attempted to change public/private status of nonexistant Age Info node %d", age_info_id, exc_info=True)
 	
 	def get_client_error_quip(self) -> str:
 		if self.server_state.config.logging_enable_crash_lines:

@@ -95,6 +95,25 @@ def stream_unpack(stream: typing.BinaryIO, st: struct.Struct) -> tuple:
 	return st.unpack(read_exact(stream, st.size))
 
 
+def unpack_fixed_utf_16_string(data: bytes) -> str:
+	"""Decode a string from a fixed-length zero-terminated UTF-16 array."""
+	
+	return data.decode("utf-16-le").rstrip("\x00")
+
+
+def pack_fixed_utf_16_string(string: str, wchar_count: int) -> bytes:
+	"""Encode a string as a fixed-length zero-terminated UTF-16 array.
+	
+	The packed string is always zero-terminated.
+	If ``string`` encoded as UTF-16 is ``wchar_count`` or more code units long,
+	the last code unit in the array is set to U+0000
+	and all further code units are truncated.
+	"""
+	
+	dat = string.encode("utf-16-le")
+	return dat[:2*(wchar_count-1)].ljust(2*wchar_count, b"\x00")
+
+
 def _bit_flip(data: bytes) -> bytes:
 	return bytes(~b & 0xff for b in data)
 
