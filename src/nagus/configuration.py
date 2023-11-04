@@ -190,16 +190,18 @@ class Configuration(object):
 				"incremental": True,
 				"root": {"level": "DEBUG"},
 				"loggers": {
+					"asyncio": {"level": "INFO"},
 					"nagus.auth_server.connect": {"level": "INFO"},
 					"nagus.auth_server.login": {"level": "INFO"},
 					"nagus.auth_server.ping": {"level": "INFO"},
 					"nagus.auth_server.vault.read": {"level": "INFO"},
+					"nagus.auth_server.vault.notify": {"level": "INFO"},
 					"nagus.base": {"level": "INFO"},
 					"nagus.console": {"level": "INFO"},
 					"nagus.game_server.join": {"level": "INFO"},
 					"nagus.game_server.net_message": {"level": "INFO"},
 					"nagus.game_server.ping": {"level": "INFO"},
-					"nagus.game_server.sdl.change": {"level": "INFO"},
+					"nagus.game_server.sdl": {"level": "INFO"},
 				},
 			}
 		if not hasattr(self, "logging_enable_crash_lines"):
@@ -231,4 +233,4 @@ class Configuration(object):
 		if not hasattr(self, "server_game_address_for_client"):
 			self.server_game_address_for_client = self.server_address_for_client
 		if not hasattr(self, "server_game_parse_pl_messages"):
-			self.server_game_parse_pl_messages = ParsePlMessages.known
+			self.server_game_parse_pl_messages = ParsePlMessages.necessary
