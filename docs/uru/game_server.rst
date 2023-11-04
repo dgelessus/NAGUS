@@ -1592,7 +1592,7 @@ Assorted data types used by the message classes above.
       (unlike in OpenUru clients,
       where such values wrap around in two's complement fashion)
       and C octal and hexadecimal prefixes are understood
-      (this is probably not intentiona).
+      (this is probably not intentional).
       
       Converting to bool returns true if the string is ``true`` or a valid non-zero integer (see above),
       or false in all other cases.
