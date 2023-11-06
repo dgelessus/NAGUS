@@ -225,7 +225,7 @@ class SimpleVariableValueBase(VariableValueBase):
 		
 		(flags,) = structs.read_exact(stream, 1)
 		self.flags = SimpleVariableValueBase.Flags(flags)
-		if self.flags & ~VariableValueBase.Flags.supported:
+		if self.flags & ~SimpleVariableValueBase.Flags.supported:
 			raise ValueError(f"Simple SDL variable value has unsupported flags set: {self.flags!r}")
 		
 		if self.flags & SimpleVariableValueBase.Flags.has_timestamp:
