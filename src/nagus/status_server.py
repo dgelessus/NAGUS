@@ -160,9 +160,6 @@ async def run_status_server(server_state: state.ServerState) -> None:
 	The status server continues running until this coroutine is cancelled.
 	"""
 	
-	if not server_state.config.server_status_enable:
-		return
-	
 	# We can't use the usual functions like asyncio.to_thread or asyncio.AbstractEventLoop.run_in_executor,
 	# because the futures they return can't be cancelled properly
 	# (cancelling the future does nothing once the function has started executing).

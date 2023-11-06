@@ -223,9 +223,6 @@ async def run_line(server_state: state.ServerState, line: str) -> None:
 
 
 async def run_console(server_state: state.ServerState) -> None:
-	if not server_state.config.console_enable:
-		return
-	
 	while True:
 		line = await read_line("nagus> ")
 		await run_line(server_state, line)

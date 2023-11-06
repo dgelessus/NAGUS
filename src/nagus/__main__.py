@@ -40,7 +40,6 @@ from . import console
 from . import crash_lines
 from . import game_server
 from . import state
-from . import status_server
 
 
 logger = logging.getLogger(__name__)
@@ -139,10 +138,18 @@ async def async_main(config: configuration.Configuration) -> None:
 		server_state = state.ServerState(config, asyncio.get_event_loop(), db)
 		await server_state.setup_database()
 		try:
-			console_task = asyncio.create_task(console.run_console(server_state))
-			moul_task = asyncio.create_task(moul_server_main(server_state))
-			status_task = asyncio.create_task(status_server.run_status_server(server_state))
-			await asyncio.gather(console_task, moul_task, status_task)
+			tasks = [
+				asyncio.create_task(moul_server_main(server_state)),
+			]
+			
+			if config.console_enable:
+				tasks.append(asyncio.create_task(console.run_console(server_state)))
+			
+			if config.server_status_enable:
+				from . import status_server
+				tasks.append(asyncio.create_task(status_server.run_status_server(server_state)))
+			
+			await asyncio.gather(*tasks)
 		finally:
 			count = await server_state.set_all_avatars_offline()
 			if count != 0:
