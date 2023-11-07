@@ -1081,6 +1081,11 @@ class ServerState(object):
 	
 	async def setup_database(self) -> None:
 		async with self.db, await self.db.cursor() as cursor:
+			try:
+				await cursor.executescript(f"pragma journal_mode = {self.config.database_journal_mode};")
+			except sqlite3.Error as exc:
+				raise ValueError(f"Invalid SQLite journal mode: {self.config.database_journal_mode!r}: {exc}")
+			
 			await cursor.executescript("""
 			pragma foreign_keys = on;
 			

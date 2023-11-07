@@ -66,6 +66,7 @@ class ParsePlMessages(enum.Enum):
 
 class Configuration(object):
 	database_path: str
+	database_journal_mode: str
 	
 	logging_config: dict
 	logging_enable_crash_lines: bool
@@ -92,6 +93,8 @@ class Configuration(object):
 	def _set_option_internal(self, option: typing.Tuple[str, ...], value: str) -> None:
 		if option == ("database", "path"):
 			self.database_path = value
+		elif option == ("database", "journal_mode"):
+			self.database_journal_mode = value
 		elif option == ("logging", "config"):
 			try:
 				obj = ast.literal_eval(value)
@@ -184,6 +187,8 @@ class Configuration(object):
 		
 		if not hasattr(self, "database_path"):
 			self.database_path = "nagus.sqlite"
+		if not hasattr(self, "database_journal_mode"):
+			self.database_journal_mode = "wal"
 		if not hasattr(self, "logging_config"):
 			self.logging_config = {
 				"version": 1,
