@@ -1167,6 +1167,7 @@ class NetMessageTestAndSet(NetMessageSharedState):
 				logger_test_and_set.warning("Avatar %d tried to unlock %s even though it's not locked - ignoring", connection.client_state.ki_number, self.uoid)
 			else:
 				if lock_owner == connection.client_state.ki_number:
+					logger_test_and_set.debug("Avatar %d unlocking %s", connection.client_state.ki_number, self.uoid)
 					del connection.client_state.locks[self.uoid]
 				else:
 					logger_test_and_set.warning("Avatar %d tried to unlock %s even though it's locked by %d - ignoring", connection.client_state.ki_number, self.uoid, lock_owner)
