@@ -220,7 +220,7 @@ def can_split_sequence_number(sequence_number: int) -> bool:
 	# (the age prefix number comes out as 0,
 	# which is non-global and so should be encoded differently).
 	# Sequence number 0xffffffff is invalid.
-	return sequence_number in range(0x21, 0xffffffff) and not sequence_number in range(0xff000000, 0xff010001)
+	return sequence_number in range(0x21, 0xffffffff) and sequence_number not in range(0xff000000, 0xff010001)
 
 
 def split_sequence_number(sequence_number: int) -> typing.Tuple[int, int]:
