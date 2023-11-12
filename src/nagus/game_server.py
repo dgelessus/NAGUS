@@ -1186,7 +1186,7 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 			logger_sdl_change.info("Currently saved SDL blob header contains UOID: %s", current_header.uoid)
 		
 		if change_header != current_header:
-			raise ValueError(f"Mismatched state descriptors when applying change - current SDL blob has header {change_header}, but the change SDL blob has header {current_header})")
+			raise ValueError(f"Mismatched state descriptors when applying change - current SDL blob has header {current_header}, but the change SDL blob has header {change_header})")
 		
 		if logger_sdl_change.isEnabledFor(logging.DEBUG):
 			logger_sdl_change.debug("Parsed currently saved SDL blob:")
@@ -1210,7 +1210,7 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 	with io.BytesIO(changed_blob) as stream:
 		roundtripped_header, roundtripped_record = sdl.guess_parse_sdl_blob(stream)
 		if roundtripped_header != current_header:
-			raise ValueError(f"Re-parsed changed SDL blob header ({change_header}) doesn't match original header ({current_header})")
+			raise ValueError(f"Re-parsed changed SDL blob header ({roundtripped_header}) doesn't match original header ({current_header})")
 		
 		if roundtripped_record != changed_record:
 			if logger_sdl_change.isEnabledFor(logging.DEBUG):
