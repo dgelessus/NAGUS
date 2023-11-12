@@ -11,11 +11,16 @@ See the [implementation status](https://nagus.readthedocs.io/en/latest/nagus/abo
 For a proper MOULa server implementation,
 check out OpenUru's [MOSS](https://wiki.openuru.org/index.php/MOSS) and H'uru's [DIRTSAND](https://guildofwriters.org/wiki/DIRTSAND).
 
-I started writing this while trying to understand how MOULa's networking works.
-The code is still incomplete and not all that useful yet.
-[The docs](https://nagus.readthedocs.io/en/latest/) contain some assorted information about MOULa's internals,
-most of which isn't well-documented elsewhere
-(though I'm hoping to change that soon-ish).
+I started writing this server while trying to understand how MOULa's networking works.
+In [the docs](https://nagus.readthedocs.io/en/latest/),
+I've written a detailed (but still incomplete) reference for MOULa's network protocol and other internals,
+which haven't been properly documented elsewhere before.
+
+Please be aware that I'm writing all of this while still figuring out the details myself,
+so expect mistakes.
+If you find any errors,
+please tell me on the [issue tracker](https://github.com/dgelessus/NAGUS/issues)
+and I'll try to fix the code and/or docs.
 
 ## Requirements
 

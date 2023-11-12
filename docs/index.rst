@@ -3,25 +3,23 @@ NAGUS --- not a good Uru server
 
 .. Note: keep this in sync with README.md!
 
-NAGUS is an experimental work-in-progress Uru Live/Myst Online server written in pure Python.
+`NAGUS <https://github.com/dgelessus/NAGUS>`__ is an experimental work-in-progress Uru Live/Myst Online server written in pure Python.
 It is (currently) not very good.
 See the :ref:`implementation status <implementation_status>` for details on what works and what doesn't yet.
 
 If you're looking for a proper MOULa server implementation that you can actually play on,
 check out OpenUru's `MOSS <https://wiki.openuru.org/index.php/MOSS>`__ and H'uru's `DIRTSAND <https://guildofwriters.org/wiki/DIRTSAND>`__.
 
-I started writing this while trying to understand how MOULa's networking works.
-`The code <https://github.com/dgelessus/NAGUS>`__ is still incomplete and not all that useful yet.
-The docs below contain some assorted information about MOULa's internals,
-most of which isn't well-documented elsewhere
-(though I'm hoping to change that soon-ish).
+I started writing this server while trying to understand how MOULa's networking works.
+In the docs below,
+I've written a detailed (but still incomplete) reference for MOULa's network protocol and other internals,
+which haven't been properly documented elsewhere before.
 
-Please be aware that I actually don't know Uru's internals very well!
-Most of this is written while I'm still figuring it all out myself,
+Please be aware that I'm writing all of this while still figuring out the details myself,
 so expect mistakes.
-(If you find any errors,
-tell me on the `issue tracker <https://github.com/dgelessus/NAGUS/issues>`__
-and I'll try to fix the code and/or docs.)
+If you find any errors,
+please tell me on the `issue tracker <https://github.com/dgelessus/NAGUS/issues>`__
+and I'll try to fix the code and/or docs.
 
 .. seealso::
   

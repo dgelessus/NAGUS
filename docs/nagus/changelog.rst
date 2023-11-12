@@ -6,6 +6,11 @@ Version 0.1.0
 
 (not released yet)
 
+First version with somewhat working one-player gameplay.
+Many important gameplay features work
+and progress is saved persistently.
+There is still no support for multiplayer, encrypted connections, or serving files to clients.
+
 * Added the ability to set various configuration options
   (e. g. server ports)
   in a config file or on the command line.
@@ -48,9 +53,10 @@ Version 0.1.0
 Version 0.0.0
 -------------
 
-* First tagged version.
-  Minimum barely playable state,
-  assuming a single client with encryption disabled and ``/LocalData``.
+First tagged version.
+Minimum barely playable state,
+assuming a single client with encryption disabled and ``/LocalData``.
+
 * Placeholder login code that doesn't check username/password.
 * Creating and deleting avatars.
 * The vault mostly works and is saved persistently in a local SQLite database.
