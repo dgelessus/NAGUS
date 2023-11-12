@@ -21,4 +21,4 @@ See the submodules and the docs directory for documentation.
 """
 
 
-__version__ = "0.1.0.dev"
+__version__ = "0.1.0"

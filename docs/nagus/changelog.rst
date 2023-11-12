@@ -4,8 +4,6 @@ Changelog
 Version 0.1.0
 -------------
 
-(not released yet)
-
 First version with somewhat working one-player gameplay.
 Many important gameplay features work
 and progress is saved persistently.
