@@ -32,6 +32,7 @@ The normal version will be finished later.
 import collections
 import datetime
 import io
+import struct
 import typing
 
 from . import structs
@@ -245,6 +246,9 @@ class SimpleVariableValueBase(VariableValueBase):
 			assert self.timestamp is None
 
 
+MIN_REASONABLE_TIMESTAMP = datetime.datetime(2020, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
+
+
 class GuessedSimpleVariableValue(SimpleVariableValueBase):
 	"""A simple variable value whose size was guessed rather than known from a state descriptor.
 	
@@ -294,6 +298,16 @@ class GuessedSimpleVariableValue(SimpleVariableValueBase):
 						ok = False
 				
 				res = str(uoid) if ok else repr(self.data)
+			elif len(self.data) == 8:
+				# TIME
+				timestamp, micros = structs.UNIFIED_TIME.unpack(self.data)
+				if timestamp >= MIN_REASONABLE_TIMESTAMP and micros in range(1000000):
+					try:
+						res = structs.unpack_unified_time(self.data).isoformat()
+					except (struct.error, OverflowError):
+						res = repr(self.data)
+				else:
+					res = repr(self.data)
 			else:
 				res = repr(self.data)
 		
