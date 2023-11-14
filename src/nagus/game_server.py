@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 logger_join = logger.getChild("join")
 logger_net_message = logger.getChild("net_message")
 logger_net_message_unhandled = logger_net_message.getChild("unhandled")
+logger_paging = logger.getChild("paging")
 logger_ping = logger.getChild("ping")
 logger_pl_message = logger.getChild("pl_message")
 logger_sdl = logger.getChild("sdl")
@@ -938,6 +939,8 @@ class NetMessagePagingRoom(NetMessageRoomsList):
 		reset_list = 1 << 1
 		request_state = 1 << 2
 		final_room_in_age = 1 << 3
+		
+		all_expected = paging_out
 	
 	CLASS_INDEX = 0x0218
 	
@@ -956,6 +959,18 @@ class NetMessagePagingRoom(NetMessageRoomsList):
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
 		stream.write(bytes([self.page_flags]))
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		if logger_paging.isEnabledFor(logging.DEBUG):
+			rooms_reprs = [f"{loc} {name!r}" for loc, name in self.rooms]
+			logger_paging.debug("Avatar %d paging %s %s", self.ki_number, "out" if NetMessagePagingRoom.Flags.paging_out in self.page_flags else "in", ", ".join(rooms_reprs))
+		
+		if not self.rooms:
+			logger_paging.warning("Avatar %s sent paging message with empty list of rooms", self.ki_number)
+		
+		unexpected_flags = self.page_flags & ~NetMessagePagingRoom.Flags.all_expected
+		if unexpected_flags:
+			logger_paging.warning("Avatar %s sent paging message with unexpected flags: %r", self.ki_number, unexpected_flags)
 
 
 class NetMessageGameStateRequest(NetMessageRoomsList):

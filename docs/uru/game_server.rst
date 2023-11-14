@@ -456,12 +456,45 @@ and not supported by MOSS or DIRTSAND
   * **Flags:** 1-byte unsigned int.
     See :cpp:enum:`PageFlags` for details.
   
+  Sent by the client after loading and before unloading a page.
+  The rooms array
+  (from :cpp:class:`plNetMsgRoomsList`)
+  contains the pages that are being (un)loaded.
+  It should never be empty
+  and in practice always contains exactly one element.
+  
+  The open-sourced client code sends page-in messages only for pages loaded during the initial age loading process,
+  not for ones loaded later on demand ---
+  it's unclear if this is intentional.
+  Page-out messages are sent for all page unloads.
+  
+  The server can theoretically use these messages to track which clients have which pages loaded,
+  but because of the inconsistent page-in messages,
+  this would be unreliable in practice.
+  MOSS ignores this message type completely.
+  DIRTSAND only broadcasts it to other clients
+  (even though the client doesn't support receiving it)
+  and otherwise also ignores it.
+  Unclear if Cyan's server software does anything with it.
+  
   .. cpp:enum:: PageFlags
     
     .. cpp:enumerator:: kPagingOut = 1 << 0
+      
+      Set if the pages in question are being unloaded,
+      or unset if they are being loaded.
+    
     .. cpp:enumerator:: kResetList = 1 << 1
+      
+      Unused and always unset.
+    
     .. cpp:enumerator:: kRequestState = 1 << 2
+      
+      Unused and always unset.
+    
     .. cpp:enumerator:: kFinalRoomInAge = 1 << 3
+      
+      Unused and always unset.
 
 :cpp:class:`plNetMsgGameStateRequest`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
