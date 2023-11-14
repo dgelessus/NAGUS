@@ -1877,7 +1877,7 @@ class GameConnection(base.BaseMOULConnection):
 		account_uuid = uuid.UUID(bytes_le=account_uuid)
 		age_instance_uuid = uuid.UUID(bytes_le=age_instance_uuid)
 		if account_uuid != structs.ZERO_UUID or age_instance_uuid != structs.ZERO_UUID:
-			logger_join.warning("Client connected to game server with non-zero UUIDs: account UUID %s, age instance UUID %s", account_uuid, age_instance_uuid)
+			logger_join.debug("Client connected to game server with non-zero UUIDs: account UUID %s, age instance UUID %s", account_uuid, age_instance_uuid)
 	
 	@base.message_handler(0)
 	async def ping_request(self) -> None:
