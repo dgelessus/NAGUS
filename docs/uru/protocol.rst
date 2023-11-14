@@ -408,7 +408,7 @@ a H'uru client will never send any of these extended messages
 unless the server has indicated that it supports them.
 Unfortunately,
 to inform clients about its features,
-DIRTSAND sends a new message type (Auth2Cli_ServerCaps) to every client as soon as it connects to the auth server.
+DIRTSAND sends a new message type (:ref:`Auth2Cli_ServerCaps <auth2cli_server_caps>`) to every client as soon as it connects to the auth server.
 This makes current DIRTSAND versions (since 2018) incompatible with OpenUru clients (and old H'uru clients from before 2017),
 because they don't understand the new message type sent by the server.
 

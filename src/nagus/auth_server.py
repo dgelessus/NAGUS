@@ -20,6 +20,8 @@
 
 import asyncio
 import datetime
+import enum
+import io
 import ipaddress
 import logging
 import random
@@ -28,6 +30,7 @@ import typing
 import uuid
 
 from . import base
+from . import configuration
 from . import crash_lines
 from . import state
 from . import structs
@@ -118,6 +121,16 @@ SCORE_GET_RANKS_REPLY_HEADER = struct.Struct("<IIII")
 
 
 SYSTEM_RANDOM = random.SystemRandom()
+
+
+class ServerCapsFlags(enum.Flag):
+	score_leaderboards = 1 << 0
+	game_mgr_blue_spiral = 1 << 1
+	game_mgr_climbing_wall = 1 << 2
+	game_mgr_heek = 1 << 3
+	game_mgr_marker = 1 << 4
+	game_mgr_tic_tac_toe = 1 << 5
+	game_mgr_var_sync = 1 << 6
 
 
 class AccountFlags(structs.IntFlag):
@@ -380,6 +393,51 @@ class AuthConnection(base.BaseMOULConnection):
 		logger.debug("Sending new build notification: %d", foo)
 		await self.write_message(2, NOTIFY_NEW_BUILD.pack(foo))
 	
+	async def server_caps(self, caps: ServerCapsFlags) -> None:
+		logger_connect.debug("Sending server caps: %r", caps)
+		
+		with io.BytesIO() as stream:
+			structs.write_bit_vector(stream, caps.value)
+			packed_caps_vector = stream.getvalue()
+		
+		await self.write_message(0x1002, structs.UINT32.pack(len(packed_caps_vector)) + packed_caps_vector)
+	
+	async def server_caps_compatible(self, caps: ServerCapsFlags) -> None:
+		"""Send ServerCaps message for H'uru clients in a way that doesn't break OpenUru clients."""
+		
+		logger_connect.debug("Sending server caps (OpenUru-compatible): %r", caps)
+		
+		await self.write(
+			# ServerCaps message type number - recognized by H'uru, but ignored by OpenUru.
+			b"\x02\x10"
+			# ServerCaps message data for H'uru.
+			# OpenUru parses this as the start of a FileDownloadChunk message,
+			# which will be ignored,
+			# because no file download transaction is active.
+			# H'uru sees: 0x25 bytes of data, bit vector is 1 dword long, value is [caps]
+			# OpenUru sees: message type 0x25 (FileDownloadChunk), transaction ID 0x10000, error code 0x[caps]0000, file size 0x0000[caps] (continued below)
+			+ b"\x25\x00\x00\x00\x01\x00\x00\x00" + structs.UINT32.pack(caps.value)
+			# ServerCaps message extra data,
+			# which is ignored by H'uru,
+			# because the bit vector doesn't have this many dwords.
+			# OpenUru parses this as the rest of FileDownloadChunk message:
+			+ b"\x00\x00" # file size 0x0000???? (continued)
+			+ b"\x00\x00\x00\x00\x13\x00\x00\x00" # chunk offset 0, chunk size 0x13
+			+ b"[ServerCaps compat]" # 0x13 bytes of chunk data
+		)
+	
+	async def send_server_caps_if_enabled(self, caps: ServerCapsFlags) -> None:
+		send_mode = self.server_state.config.server_auth_send_server_caps
+		
+		if send_mode == configuration.SendServerCaps.always:
+			await self.server_caps(caps)
+		elif send_mode == configuration.SendServerCaps.compatible:
+			await self.server_caps_compatible(caps)
+		elif send_mode == configuration.SendServerCaps.never:
+			pass
+		else:
+			raise AssertionError(f"Unhandled server caps mode: {send_mode!r}")
+	
 	async def client_register_reply(self, server_challenge: int) -> None:
 		logger_connect.debug("Sending client register reply with server challenge: 0x%08x", server_challenge)
 		await self.write_message(3, CLIENT_REGISTER_REPLY.pack(server_challenge))
@@ -391,30 +449,8 @@ class AuthConnection(base.BaseMOULConnection):
 		if build_id != self.build_id:
 			await self.disconnect_with_reason(base.NetError.invalid_parameter, f"Client register request build ID ({build_id}) differs from connect packet ({self.build_id})")
 		
-		# Send ServerCaps message for H'uru clients in a way that doesn't break OpenUru clients.
-		# This is barely tested and does some wacky stuff,
-		# so I'm commenting it out for now.
-		# H'uru clients generally work fine without the ServerCaps message.
-		r"""
-		await self.write(
-			# ServerCaps message type number - recognized by H'uru, but ignored by OpenUru.
-			b"\x02\x10"
-			# ServerCaps message data for H'uru.
-			# OpenUru parses this as the start of a FileDownloadChunk message,
-			# which will be ignored,
-			# because no file download transaction is active.
-			# H'uru sees: 0x25 bytes of data, bit vector is 1 dword long, value is 0
-			# OpenUru sees: message type 0x25 (FileDownloadChunk), transaction ID 0x10000, error code 0, file size 0 (continued below)
-			b"\x25\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00"
-			# ServerCaps message extra data,
-			# which is ignored by H'uru,
-			# because the bit vector doesn't have this many dwords.
-			# OpenUru parses this as the rest of FileDownloadChunk message:
-			b"\x00\x00" # file size 0 (continued)
-			b"\x00\x00\x00\x00\x13\x00\x00\x00" # chunk offset 0, chunk size 0x13
-			b"[ServerCaps compat]" # 0x13 bytes of chunk data
-		)
-		#"""
+		# TODO Adjust this once we support any extended features
+		await self.send_server_caps_if_enabled(ServerCapsFlags(0))
 		
 		# Reply to client register request
 		if hasattr(self, "server_challenge"):

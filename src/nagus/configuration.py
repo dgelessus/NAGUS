@@ -59,6 +59,12 @@ def parse_ipv4_address(s: str) -> ipaddress.IPv4Address:
 		raise ConfigError(f"Invalid IPv4 address: {exc!s}")
 
 
+class SendServerCaps(enum.Enum):
+	always = "always"
+	compatible = "compatible"
+	never = "never"
+
+
 class ParsePlMessages(enum.Enum):
 	necessary = "necessary"
 	known = "known"
@@ -83,6 +89,7 @@ class Configuration(object):
 	server_status_message: str
 	server_status_add_version_info: bool
 	
+	server_auth_send_server_caps: SendServerCaps
 	server_auth_send_server_address: bool
 	server_auth_address_for_client: typing.Optional[ipaddress.IPv4Address]
 	server_auth_disconnected_client_timeout: int
@@ -124,6 +131,11 @@ class Configuration(object):
 			self.server_status_message = value
 		elif option == ("server", "status", "add_version_info"):
 			self.server_status_add_version_info = parse_bool(value)
+		elif option == ("server", "auth", "send_server_caps"):
+			try:
+				self.server_auth_send_server_caps = SendServerCaps(value)
+			except ValueError as exc:
+				raise ConfigError(f"Invalid value for option: {exc}")
 		elif option == ("server", "auth", "send_server_address"):
 			self.server_auth_send_server_address = parse_bool(value)
 		elif option == ("server", "auth", "address_for_client"):
@@ -229,6 +241,8 @@ class Configuration(object):
 			self.server_status_message = "Welcome to URU"
 		if not hasattr(self, "server_status_add_version_info"):
 			self.server_status_add_version_info = True
+		if not hasattr(self, "server_auth_send_server_caps"):
+			self.server_auth_send_server_caps = SendServerCaps.compatible
 		if not hasattr(self, "server_auth_send_server_address"):
 			self.server_auth_send_server_address = True
 		if not hasattr(self, "server_auth_address_for_client"):

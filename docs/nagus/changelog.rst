@@ -6,6 +6,9 @@ Version 0.1.1
 
 (not released yet)
 
+* Implemented sending the Auth2Cli_ServerCaps message to clients.
+  This makes H'uru clients not use the game manager
+  (which this server doesn't support yet).
 * Fixed OpenUru clients displaying the hood membership in the KI as "Member of (null) Bevin".
 
 Version 0.1.0

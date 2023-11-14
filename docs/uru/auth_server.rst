@@ -182,7 +182,7 @@ not even their structure.
   
   0x1000,AgeRequestEx,AgeReplyEx,0x1000
   0x1001,ScoreGetHighScores,ScoreGetHighScoresReply,0x1001
-  ,,ServerCaps,0x1002
+  ,,:ref:`ServerCaps <auth2cli_server_caps>`,0x1002
 
 .. _cli2auth_ping_request:
 
@@ -2579,3 +2579,58 @@ Auth2Cli_ScoreGetRanksReply
 
 Reply to a :ref:`ScoreGetRanks <auth2cli_score_get_ranks_reply>` message
 and similarly unused in practice.
+
+.. _auth2cli_server_caps:
+
+Auth2Cli_ServerCaps
+^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 0x1002
+* **Capabilities byte count:** 4-byte unsigned int.
+  Byte length of the following capabilities field.
+* **Capabilities:** Variable-length byte array containing a :cpp:class:`hsBitVector`.
+  A set of bit flags describing whether the server does or doesn't support certain features.
+  Clients should ignore any capability flags that they don't understand.
+  The following features have capability flags defined:
+  
+  * **Score leaderboards** = 1 << 0: The ScoreGetHighScores message.
+    Only supported by DIRTSAND.
+    Assumed unsupported by default.
+  * **Game manager blue spiral** = 1 << 1: :ref:`Game manager <game_manager>` support for the door puzzle in the neighborhood garden ages
+    (Eder Delin and Eder Tsogahl).
+    Supported by Cyan's server software and MOSS.
+    Assumed supported by default.
+  * **Game manager climbing wall** = 1 << 2: :ref:`Game manager <game_manager>` support for the Gahreesen wall
+    (not used in the current implementation of the wall).
+    Not supported by MOSS or DIRTSAND.
+    Unclear if Cyan's server software supports it.
+    Assumed unsupported by default.
+  * **Game manager Heek** = 1 << 3: :ref:`Game manager <game_manager>` support for Ayoheek.
+    Supported by Cyan's server software and MOSS.
+    Assumed supported by default.
+  * **Game manager marker** = 1 << 4: :ref:`Game manager <game_manager>` support for marker games.
+    Supported by Cyan's server software and MOSS.
+    Assumed supported by default.
+  * **Game manager Tic-Tac-Toe** = 1 << 5: :ref:`Game manager <game_manager>` support for Tic-Tac-Toe
+    (apparently a test game,
+    only used by console commands in OpenUru clients).
+    Only supported by Cyan's server software.
+    Assumed supported by default.
+  * **Game manager VarSync** = 1 << 6: :ref:`Game manager <game_manager>` support for VarSync
+    (used for the Ahnonay detector puzzles).
+    Supported by Cyan's server software and MOSS.
+    Assumed supported by default.
+
+May be sent by the server in response to a :ref:`ClientRegisterRequest <cli2auth_client_register_request>`
+(along with the main :ref:`ClientRegisterReply <auth2cli_client_register_reply>` message)
+to inform the client about the server's supported feature set.
+If the client doesn't receive this message,
+it assumes a default feature set that matches Cyan's server software
+(see the capabilities field above for a list of these defaults).
+
+This message is a H'uru extension.
+It's only sent by DIRTSAND versions since 2018
+and only recognized by H'uru clients since 2017.
+Cyan's server software and MOSS never send this message.
+OpenUru clients and older H'uru clients don't support this message
+and will fail to connect to a server that sends it.
