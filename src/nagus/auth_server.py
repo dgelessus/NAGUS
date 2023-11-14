@@ -421,7 +421,7 @@ class AuthConnection(base.BaseMOULConnection):
 			# which is ignored by H'uru,
 			# because the bit vector doesn't have this many dwords.
 			# OpenUru parses this as the rest of FileDownloadChunk message:
-			+ b"\x00\x00" # file size 0x0000???? (continued)
+			+ b"\x00\x00" # file size 0x0000[caps] (continued)
 			+ b"\x00\x00\x00\x00\x13\x00\x00\x00" # chunk offset 0, chunk size 0x13
 			+ b"[ServerCaps compat]" # 0x13 bytes of chunk data
 		)
