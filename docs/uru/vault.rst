@@ -175,7 +175,7 @@ or to set unexpected fields on supported node types.
 Introducing new node types or adding fields to existing types requires updating the server and extending the database schema.
 
 This is a problem e. g. when using H'uru clients on MOSS,
-as H'uru has introduced a new format for marker games that no longer relies on the :ref:`GameMgr <game_server>`,
+as H'uru has introduced a new format for marker games that no longer relies on the :ref:`game manager <game_manager>`,
 using a previously unused fields on marker game nodes.
 This new marker game format isn't handled correctly by MOSS unless the database is updated accordingly
 (MOSS ships with a script ``postgresql/UpdateForHuruGames.sql`` for this purpose).
@@ -822,18 +822,18 @@ There are two incompatible internal representations of marker games,
 both of which use this node type.
 The original open-sourced client code,
 as well as current OpenUru clients,
-rely mainly on the :ref:`GameMgr <game_server>` to work with marker games
+rely mainly on the :ref:`game manager <game_manager>` to work with marker games
 and store almost no information about marker games in the vault.
-H'uru introduced a different implementation of marker games that isn't based on the GameMgr
+H'uru introduced a different implementation of marker games that isn't based on the game manager
 and as a result stores the entire marker game in its vault node.
 Currently,
-OpenUru clients only support GameMgr-based marker games
+OpenUru clients only support game manager-based marker games
 and H'uru clients only support vault-based ones,
-but work is ongoing to re-add GameMgr marker game support to H'uru.
+but work is ongoing to re-add game manager marker game support to H'uru.
 
 * ``NodeType`` = 35
 * ``Uuid_1`` = **GameGuid:**
-  Internal identifier for this marker game in the :ref:`GameMgr <game_server>`.
+  Internal identifier for this marker game in the :ref:`game manager <game_manager>`.
   Unset for H'uru vault-based marker games.
 * ``Text_1`` = **GameName:**
   Name of the marker game,
