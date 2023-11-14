@@ -1182,6 +1182,11 @@ class ServerState(object):
 			# Calling this Bevin is okay lore-wise,
 			# because there's only a single instance!
 			instance_name="Bevin",
+			# We don't want a user-defined name here
+			# (because there's only a single Bevin instance).
+			# The empty string is a workaround for OpenUru clients,
+			# which display "Member of (null) Bevin" in the KI if the user-defined name is left unset.
+			user_defined_name="",
 			public=True,
 			allow_existing=True,
 		)

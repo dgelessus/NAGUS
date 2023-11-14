@@ -6,6 +6,8 @@ Version 0.1.1
 
 (not released yet)
 
+* Fixed OpenUru clients displaying the hood membership in the KI as "Member of (null) Bevin".
+
 Version 0.1.0
 -------------
 
