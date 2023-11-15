@@ -1284,11 +1284,14 @@ class NetMessageSDLState(NetMessageStreamedObject):
 		if self.is_initial_state:
 			logger_sdl.warning("SDL state message from client has initial state flag set")
 		
-		if self.persist_on_server:
+		do_persist = self.persist_on_server
+		if do_persist:
 			if self.is_avatar_state:
-				logger_sdl.warning("Avatar state message has persist on server flag set - it will be saved, but will probably be unusable on future link-ins!")
+				logger_sdl.info("State message for an avatar state has persist on server flag set - will treat it as non-persistent instead")
+				do_persist = False
 			if self.uoid.clone_ids is not None:
-				logger_sdl.warning("Clone object state message has persist on server flag set - it will be saved, but will probably be unusable on future link-ins!")
+				logger_sdl.info("State message for a clone object has persist on server flag set - will treat it as non-persistent instead")
+				do_persist = False
 		
 		if NetMessageFlags.echo_back_to_sender in self.flags:
 			await connection.send_propagate_buffer(self)
@@ -1361,7 +1364,7 @@ class NetMessageSDLState(NetMessageStreamedObject):
 				changed_blob = blob_data
 			
 			await connection.server_state.update_vault_node(age_sdl_node_id, state.VaultNodeData(blob_1=changed_blob), uuid.uuid4())
-		elif self.persist_on_server:
+		elif do_persist:
 			# Handle all other persistent object states.
 			# These currently go directly to the database.
 			# TODO Cache parsed object SDL states in memory for easier updating?

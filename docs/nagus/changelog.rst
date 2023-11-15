@@ -9,6 +9,10 @@ Version 0.1.1
 * Implemented sending the Auth2Cli_ServerCaps message to clients.
   This makes H'uru clients not use the game manager
   (which this server doesn't support yet).
+* Changed SDL state handling to not persist states for avatar and/or clone objects,
+  which become unusable once the age instance is unloaded.
+  This should have no effect on gameplay,
+  but fixes some warnings on the client side.
 * Fixed OpenUru clients displaying the hood membership in the KI as "Member of (null) Bevin".
 
 Version 0.1.0
