@@ -1787,6 +1787,32 @@ class NetMessageRelevanceRegions(NetMessage):
 		super().write(stream)
 		structs.write_bit_vector(stream, self.regions_i_care_about)
 		structs.write_bit_vector(stream, self.regions_im_in)
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		if logger_paging.isEnabledFor(logging.DEBUG):
+			region_reprs = []
+			care = self.regions_i_care_about
+			im_in = self.regions_im_in
+			while care != 0 or im_in != 0:
+				if care & 1:
+					rep = "i" if im_in & 1 else "c"
+				else:
+					rep = "I" if im_in & 1 else "."
+				region_reprs.append(rep)
+				care >>= 1
+				im_in >>= 1
+			
+			logger_paging.debug("Avatar %d updated its relevance regions: %s", self.ki_number, "".join(region_reprs))
+		
+		if not self.regions_i_care_about & 1:
+			logger_paging.warning("Avatar %d doesn't care about region 0")
+		
+		if self.regions_im_in == 0:
+			logger_paging.warning("Avatar %d says that it's not in any relevance region")
+		
+		diff = self.regions_im_in & ~self.regions_i_care_about
+		if diff != 0:
+			logger_paging.warning("Avatar %d is in regions that it doesn't care about: %s", bin(diff))
 
 
 class NetMessagePlayerPage(NetMessage):

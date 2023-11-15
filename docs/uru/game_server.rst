@@ -1151,7 +1151,36 @@ and not supported by MOSS or DIRTSAND
   
   * **Header:** :cpp:class:`plNetMessage`.
   * **Regions I care about:** :cpp:class:`hsBitVector`.
+    Bit mask of regions for which the client wants to receive messages.
+    The least significant bit (region 0) and all bits from the "regions I'm in" field should always be set.
   * **Regions I'm in:** :cpp:class:`hsBitVector`.
+    Bit mask of regions in which the client's avatar is currently located.
+    At least one bit should always be set ---
+    if the avatar isn't in any region,
+    it's considered to be in region 0,
+    so the least significant bit should be set in that case.
+  
+  Sent by the client when its avatar enters or leaves a relevance region.
+  
+  Only a few ages define relevance regions,
+  namely Ae'gura (city) and Minkata.
+  The regions themselves are defined using ``plRelevanceRegion`` objects in the .prp files.
+  The "care about" relationships between regions are defined in a separate .csv file for the age.
+  
+  There is always an implicit relevance region 0,
+  which represents everything not contained in any explicit relevance region.
+  All avatars implicitly care about region 0
+  and avatars in region 0 care about all regions.
+  For ages with no relevance regions defined,
+  region 0 is the only region and contains everything.
+  
+  Based on this information,
+  the server can theoretically reduce network traffic
+  by delivering broadcast messages only to clients for which they are currently relevant ---
+  see the :cpp:enumerator:`~plMessage::plBCastFlags::kNetUseRelevanceRegions` flag.
+  MOSS and DIRTSAND ignore this message though
+  and deliver all broadcast messages to all clients.
+  Unclear if Cyan's server software uses this message or respects the :cpp:enumerator:`~plMessage::plBCastFlags::kNetUseRelevanceRegions` in any way.
 
 :cpp:class:`plNetMsgPlayerPage`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
