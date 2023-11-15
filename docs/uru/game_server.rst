@@ -1191,7 +1191,27 @@ and not supported by MOSS or DIRTSAND
   
   * **Header:** :cpp:class:`plNetMessage`.
   * **Unload:** 1-byte boolean.
+    True if the avatar object was unloaded
+    or false if it was loaded.
+    Always false in practice.
   * **UOID:** :cpp:class:`plUoid`.
+    Identifies the avatar object that was un-/loaded.
+  
+  Sent by the client after it has loaded its own avatar object.
+  
+  This message is only sent when an avatar is loaded for the first time,
+  i. e. on the first link-in after selecting an avatar on the avatar selection screen,
+  or when changing to another avatar via the console.
+  When an already loaded avatar links to another age instance,
+  this message is *not* sent again to the new game server.
+  Although this message could also be sent when the avatar is unloaded again,
+  the open-sourced client code never does this.
+  
+  MOSS broadcasts this message to other clients
+  (even though the client doesn't support receiving it),
+  but otherwise ignores it.
+  DIRTSAND ignores it completely.
+  Unclear if Cyan's server software does anything with it.
 
 .. _pl_messages:
 

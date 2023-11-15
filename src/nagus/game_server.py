@@ -1838,6 +1838,9 @@ class NetMessagePlayerPage(NetMessage):
 		super().write(stream)
 		stream.write(bytes([self.unload]))
 		self.uoid.write(stream)
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		logger_paging.debug("Avatar %d %s its avatar object: %s", self.ki_number, "unloaded" if self.unload else "loaded", self.uoid)
 
 
 class GameClientState(object):
