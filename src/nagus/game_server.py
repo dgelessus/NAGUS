@@ -87,10 +87,10 @@ class GroupId(object):
 	location: structs.Location
 	flags: "GroupId.Flags"
 	
-	def __init__(self, id: structs.Location, flags: "GroupId.Flags") -> None:
+	def __init__(self, location: structs.Location, flags: "GroupId.Flags") -> None:
 		super().__init__()
 		
-		self.location = id
+		self.location = location
 		self.flags = flags
 	
 	def __eq__(self, other: object) -> bool:
