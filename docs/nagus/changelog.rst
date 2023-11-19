@@ -9,6 +9,9 @@ Version 0.1.1
 * Implemented sending the Auth2Cli_ServerCaps message to clients.
   This makes H'uru clients not use the game manager
   (which this server doesn't support yet).
+* Implemented all remaining game server messages.
+  This has no effect on gameplay,
+  but fixes multiple warning/error messages on the server side.
 * Changed SDL state handling to not persist states for avatar and/or clone objects,
   which become unusable once the age instance is unloaded.
   This should have no effect on gameplay,
