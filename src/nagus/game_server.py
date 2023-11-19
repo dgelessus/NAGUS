@@ -1663,6 +1663,13 @@ class NetMessageMembersListRequest(NetMessage):
 	def __init__(self) -> None:
 		super().__init__()
 		self.flags |= NetMessageFlags.is_system_message
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		logger_join.debug("Avatar %d requesting members list", self.ki_number)
+		
+		members_list = NetMessageMembersList()
+		members_list.members = []
+		await connection.send_propagate_buffer(members_list)
 
 
 class NetMessageServerToClient(NetMessage):
