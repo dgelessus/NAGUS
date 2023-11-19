@@ -47,6 +47,7 @@ logger_pl_message = logger.getChild("pl_message")
 logger_sdl = logger.getChild("sdl")
 logger_sdl_change = logger_sdl.getChild("change")
 logger_test_and_set = logger.getChild("test_and_set")
+logger_voice = logger.getChild("voice")
 
 
 CONNECT_DATA = struct.Struct("<I16s16s")
@@ -67,6 +68,7 @@ NET_MESSAGE_TIME_SENT = struct.Struct("<II")
 NET_MESSAGE_STREAMED_OBJECT_HEADER = struct.Struct("<IBI")
 NET_MESSAGE_SDL_STATE = struct.Struct("<???")
 NET_MESSAGE_LOAD_CLONE_BOOLS = struct.Struct("<???")
+NET_MESSAGE_VOICE_HEADER = struct.Struct("<BBH")
 
 COMPRESSION_THRESHOLD = 256
 
@@ -1657,6 +1659,58 @@ class NetMessageLoadClone(NetMessageGameMessage):
 		await super().handle(connection)
 
 
+class NetMessageVoice(NetMessage):
+	class Flags(enum.IntFlag):
+		encoded = 1 << 0
+		encoded_speex = 1 << 1
+		encoded_opus = 1 << 2
+	
+	CLASS_INDEX = 0x0279
+	
+	voice_flags: "NetMessageVoice.Flags"
+	frame_count: int
+	voice_data: bytes
+	receivers: typing.List[int]
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.voice_flags:
+			fields["voice_flags"] = repr(self.voice_flags)
+		fields["frame_count"] = repr(self.frame_count)
+		fields["voice_data"] = repr(self.voice_data)
+		fields["receivers"] = repr(self.receivers)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		
+		voice_flags, self.frame_count, voice_data_length = structs.stream_unpack(stream, NET_MESSAGE_VOICE_HEADER)
+		self.voice_flags = NetMessageVoice.Flags(voice_flags)
+		self.voice_data = structs.read_exact(stream, voice_data_length)
+		(receiver_count,) = structs.read_exact(stream, 1)
+		self.receivers = []
+		for _ in range(receiver_count):
+			(receiver,) = structs.stream_unpack(stream, structs.UINT32)
+			self.receivers.append(receiver)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		
+		stream.write(NET_MESSAGE_VOICE_HEADER.pack(self.voice_flags, self.frame_count, len(self.voice_data)))
+		stream.write(self.voice_data)
+		stream.write(bytes([len(self.receivers)]))
+		for receiver in self.receivers:
+			stream.write(structs.UINT32.pack(receiver))
+	
+	async def handle(self, connection: "GameConnection") -> None:
+		logger_voice.debug("Avatar %d voice-chatting to %r: flags %r, %d frames, %d bytes", self.ki_number, self.receivers, self.voice_flags, self.frame_count, len(self.voice_data))
+		
+		# TODO Forward to other clients
+		
+		if NetMessageFlags.echo_back_to_sender in self.flags:
+			await connection.send_propagate_buffer(self)
+
+
 class NetMessageMembersListRequest(NetMessage):
 	CLASS_INDEX = 0x02ad
 	
@@ -2073,8 +2127,8 @@ class GameConnection(base.BaseMOULConnection):
 			logger_net_message.warning("PropagateBuffer message %s has flags set that we can't handle yet: %r", message.class_description, unsupported_flags)
 		if NetMessageFlags.has_game_message_receivers in message.flags and not isinstance(message, NetMessageGameMessage):
 			logger_net_message.warning("PropagateBuffer message %s has has_game_message_receivers flag set even though it's not a game message", message.class_description)
-		if NetMessageFlags.echo_back_to_sender in message.flags and not isinstance(message, (NetMessageGameMessage, NetMessageSDLState)):
-			logger_net_message.warning("PropagateBuffer message %s has echo_back_to_sender flag set even though it's not a game message or SDL state", message.class_description)
+		if NetMessageFlags.echo_back_to_sender in message.flags and not isinstance(message, (NetMessageGameMessage, NetMessageSDLState, NetMessageVoice)):
+			logger_net_message.warning("PropagateBuffer message %s has echo_back_to_sender flag set even though it's not a game message, SDL state, or voice", message.class_description)
 		if NetMessageFlags.new_sdl_state in message.flags and not isinstance(message, NetMessageSDLState):
 			logger_net_message.warning("PropagateBuffer message %s has new_sdl_state flag set even though it's not an SDL state message", message.class_description)
 		if NetMessageFlags.initial_age_state_request in message.flags and not isinstance(message, NetMessageGameStateRequest):

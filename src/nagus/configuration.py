@@ -222,6 +222,7 @@ class Configuration(object):
 					"nagus.game_server.pl_message": {"level": "INFO"},
 					"nagus.game_server.sdl": {"level": "INFO"},
 					"nagus.game_server.test_and_set": {"level": "INFO"},
+					"nagus.game_server.voice": {"level": "INFO"},
 				},
 			}
 		if not hasattr(self, "logging_enable_crash_lines"):

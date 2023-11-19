@@ -985,6 +985,17 @@ and not supported by MOSS or DIRTSAND
     and assume that all messages with :cpp:enumerator:`kEncoded`/``VOICE_ENCODED`` set use Speex.
     For compatibility,
     H'uru clients also assume Speex compression if only :cpp:enumerator:`kEncoded` and no other codec flags are set.
+    
+    The voice data has the following format:
+    
+    * **Frames:** Variable-length array.
+      The number of elements is stored in the message's frame count field.
+      Each element has the following structure:
+      
+      * **Byte count:** 1-byte unsigned int.
+        Byte count for the following data field.
+      * **Data:** Variable-length byte array.
+        A single Speex frame.
   
   .. cpp:enumerator:: kEncodedOpus = 1 << 2
     
@@ -996,6 +1007,15 @@ and not supported by MOSS or DIRTSAND
     OpenUru defines this flag as the macro ``VOICE_ENH``,
     but ignores it and never sets it ---
     OpenUru clients don't support Opus compression.
+    
+    The voice data has the following format:
+    
+    * **Ignored:** 4-byte unsigned int.
+      Set to 0 when writing and ignored when reading.
+      This is a compatibility measure for clients that assume that all encoded/compressed voice data is Speex-encoded.
+    * **Data:** Variable-length byte array
+      (the entire remaining data).
+      A single Opus packet.
 
 .. cpp:class:: plNetMsgVoice : public plNetMessage
   
@@ -1003,15 +1023,29 @@ and not supported by MOSS or DIRTSAND
   
   * **Header:** :cpp:class:`plNetMessage`.
   * **Flags:** 1-byte unsigned int.
+    Describes the format/codec of the voice data.
     See :cpp:enum:`plVoiceFlags` for details.
   * **Frame count:** 1-byte unsigned int.
+    Number of compressed audio frames in the voice data.
+    For OpenUru clients,
+    this seems to be always set to 10.
+    For H'uru clients,
+    it's usually very low
+    (1 or 2 frames),
+    regardless of whether Opus or Speex is used.
+    Set to 0 for uncompressed voice data.
   * **Voice data length:** 2-byte unsigned int.
     Byte count for the following voice data.
   * **Voice data:** Variable-length byte array.
+    The actual voice data.
+    The format depends on the flags ---
+    see :cpp:enum:`plVoiceFlags` for details.
   * **Receiver count:** 1-byte unsigned int.
     Element count for the following receiver array.
   * **Receivers:** Variable-length array of 4-byte unsigned ints,
-    each a KI number of an avatar that should receive this message.
+    each a KI number of an avatar that should receive this voice chat.
+    Contains the sender's KI number iff the message has the :cpp:enumerator:`~plNetMessage::BitVectorFlags::kEchoBackToSender` flag set.
+    Left empty if no avatars are in voice range of the sender and echo is disabled.
 
 :cpp:class:`plNetMsgObjectUpdateFilter`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
