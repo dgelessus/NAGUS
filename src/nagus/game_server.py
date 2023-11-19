@@ -267,7 +267,7 @@ class ClientInfo(object):
 			flags |= ClientInfo.Flags.reserved
 		if self.client_key is not None:
 			flags |= ClientInfo.Flags.client_key
-		stream.write(structs.UINT16.pack(flags))
+		stream.write(structs.UINT16.pack(flags.value))
 		
 		if self.account_uuid is not None:
 			stream.write(self.account_uuid.bytes_le)
@@ -1724,6 +1724,9 @@ class NetMessageMembersList(NetMessageServerToClient):
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
+		stream.write(structs.INT16.pack(len(self.members)))
+		for member in self.members:
+			member.write(stream)
 
 
 class NetMessageMemberUpdate(NetMessageServerToClient):
