@@ -38,6 +38,9 @@ UINT16 = struct.Struct("<H")
 UINT32 = struct.Struct("<I")
 UINT64 = struct.Struct("<Q")
 
+FLOAT32 = struct.Struct("<f")
+FLOAT64 = struct.Struct("<d")
+
 UNIFIED_TIME = struct.Struct("<II")
 
 LOCATION = struct.Struct("<IH")

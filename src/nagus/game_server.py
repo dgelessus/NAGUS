@@ -18,6 +18,7 @@
 """Implements the :ref:`game server <game_server>`."""
 
 
+import abc
 import asyncio
 import collections
 import datetime
@@ -60,6 +61,13 @@ PROPAGATE_BUFFER_HEADER = struct.Struct("<II")
 
 PLASMA_MESSAGE_HEADER_END = struct.Struct("<dI")
 LOAD_CLONE_MESSAGE_MID = struct.Struct("<II??")
+PICKED_EVENT_FOOTER = struct.Struct("<?3f")
+FACING_EVENT_FOOTER = struct.Struct("<f?")
+ACTIVATE_EVENT = struct.Struct("<??")
+MULTI_STAGE_EVENT_HEADER = struct.Struct("<ii")
+COOP_EVENT = struct.Struct("<IH")
+OFFER_LINKING_BOOK_EVENT_FOOTER = struct.Struct("<iI")
+NOTIFY_MESSAGE_HEADER = struct.Struct("<ifiI")
 PARTICLE_KILL_MESSAGE = struct.Struct("<ffB")
 
 NET_MESSAGE_HEADER = struct.Struct("<HI")
@@ -625,6 +633,527 @@ class ServerReplyMessage(PlasmaMessage):
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
 		stream.write(structs.INT32.pack(self.type))
+
+
+class NotifyEvent(abc.ABC):
+	TYPE: typing.ClassVar[int]
+	
+	@abc.abstractmethod
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		return collections.OrderedDict()
+	
+	def __repr__(self) -> str:
+		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
+		return f"{type(self).__name__}({joined_fields})"
+	
+	@classmethod
+	@abc.abstractmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "NotifyEvent":
+		raise NotImplementedError()
+	
+	@classmethod
+	def from_stream_with_type(cls, stream: typing.BinaryIO) -> "NotifyEvent":
+		(typenum,) = structs.stream_unpack(stream, structs.INT32)
+		if typenum == CollisionEvent.TYPE:
+			return CollisionEvent.from_stream(stream)
+		elif typenum == PickedEvent.TYPE:
+			return PickedEvent.from_stream(stream)
+		elif typenum == VariableEvent.TYPE:
+			return VariableEvent.from_stream(stream)
+		elif typenum == FacingEvent.TYPE:
+			return FacingEvent.from_stream(stream)
+		elif typenum == ContainedEvent.TYPE:
+			return ContainedEvent.from_stream(stream)
+		elif typenum == ActivateEvent.TYPE:
+			return ActivateEvent.from_stream(stream)
+		elif typenum == ResponderStateEvent.TYPE:
+			return ResponderStateEvent.from_stream(stream)
+		elif typenum == MultiStageEvent.TYPE:
+			return MultiStageEvent.from_stream(stream)
+		elif typenum == SpawnedEvent.TYPE:
+			return SpawnedEvent.from_stream(stream)
+		elif typenum == CoopEvent.TYPE:
+			return CoopEvent.from_stream(stream)
+		elif typenum == OfferLinkingBookEvent.TYPE:
+			return OfferLinkingBookEvent.from_stream(typenum)
+		else:
+			raise NotImplementedError(f"Unsupported proEventData type: {typenum}")
+	
+	@abc.abstractmethod
+	def write(self, stream: typing.BinaryIO) -> None:
+		raise NotImplementedError()
+	
+	def write_with_type(self, stream: typing.BinaryIO) -> None:
+		stream.write(structs.INT32.pack(type(self).TYPE))
+		self.write(stream)
+
+
+class CollisionEvent(NotifyEvent):
+	TYPE = 1
+	
+	enter: bool
+	hitter: typing.Optional[structs.Uoid]
+	hittee: typing.Optional[structs.Uoid]
+	
+	def __init__(self, enter: bool, hitter: typing.Optional[structs.Uoid], hittee: typing.Optional[structs.Uoid]) -> None:
+		super().__init__()
+		
+		self.enter = enter
+		self.hitter = hitter
+		self.hittee = hittee
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["enter"] = repr(self.enter)
+		if self.hitter is not None:
+			fields["hitter"] = str(self.hitter)
+		if self.hittee is not None:
+			fields["hittee"] = str(self.hittee)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "CollisionEvent":
+		(enter,) = structs.read_exact(stream, 1)
+		hitter = structs.Uoid.key_from_stream(stream)
+		hittee = structs.Uoid.key_from_stream(stream)
+		return cls(bool(enter), hitter, hittee)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		stream.write(bytes([self.enter]))
+		structs.Uoid.key_to_stream(self.hitter, stream)
+		structs.Uoid.key_to_stream(self.hittee, stream)
+
+
+class PickedEvent(NotifyEvent):
+	TYPE = 2
+	
+	picker: typing.Optional[structs.Uoid]
+	picked: typing.Optional[structs.Uoid]
+	enabled: bool
+	hit_point: typing.Tuple[float, float, float]
+	
+	def __init__(self, picker: typing.Optional[structs.Uoid], picked: typing.Optional[structs.Uoid], enabled: bool, hit_point: typing.Tuple[float, float, float]) -> None:
+		super().__init__()
+		
+		self.picker = picker
+		self.picked = picked
+		self.enabled = enabled
+		self.hit_point = hit_point
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.picker is not None:
+			fields["picker"] = str(self.picker)
+		if self.picked is not None:
+			fields["picked"] = str(self.picked)
+		fields["enabled"] = repr(self.enabled)
+		if any(self.hit_point):
+			fields["hit_point"] = repr(self.hit_point)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "PickedEvent":
+		picker = structs.Uoid.key_from_stream(stream)
+		picked = structs.Uoid.key_from_stream(stream)
+		enabled, hit_x, hit_y, hit_z = structs.stream_unpack(stream, PICKED_EVENT_FOOTER)
+		return cls(picker, picked, bool(enabled), (hit_x, hit_y, hit_z))
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		structs.Uoid.key_to_stream(self.picker, stream)
+		structs.Uoid.key_to_stream(self.picked, stream)
+		stream.write(PICKED_EVENT_FOOTER.pack(self.enabled, *self.hit_point))
+
+
+class VariableEvent(NotifyEvent):
+	class DataType(enum.Enum):
+		float = 1
+		key = 2
+		int = 3
+		null = 4
+	
+	TYPE = 4
+	
+	name: bytes
+	data_type: "VariableEvent.DataType"
+	value: typing.Union[int, float, structs.Uoid, None]
+	key: typing.Optional[structs.Uoid]
+	
+	def __init__(self, name: bytes, data_type: "VariableEvent.DataType", value: typing.Union[int, float, structs.Uoid, None]) -> None:
+		super().__init__()
+		
+		self.name = name
+		self.data_type = data_type
+		self.value = value
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["name"] = repr(self.name)
+		fields["data_type"] = repr(self.data_type)
+		fields["value"] = str(self.value)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "VariableEvent":
+		name = structs.read_safe_string(stream)
+		(data_type_int,) = structs.stream_unpack(stream, structs.INT32)
+		data_type = VariableEvent.DataType(data_type_int)
+		(number,) = structs.stream_unpack(
+			stream,
+			structs.FLOAT32 if data_type == VariableEvent.DataType.float else structs.INT32,
+		)
+		key = structs.Uoid.key_from_stream(stream)
+		
+		if data_type not in {VariableEvent.DataType.float, VariableEvent.DataType.int} and number != 0:
+			raise ValueError(f"proVariableEventData has non-number type {data_type.name}, but its number value isn't zero: {number}")
+		elif data_type != VariableEvent.DataType.key and key is not None:
+			raise ValueError(f"proVariableEventData has non-key type {data_type.name}, but its key isn't nullptr: {key}")
+		
+		value: typing.Union[int, float, structs.Uoid, None]
+		if data_type in {VariableEvent.DataType.float, VariableEvent.DataType.int}:
+			value = number
+		elif data_type == VariableEvent.DataType.key:
+			value = key
+		elif data_type == VariableEvent.DataType.null:
+			value = None
+		else:
+			raise AssertionError(f"Unhandled proVariableEventData type: {data_type.name}")
+		
+		return cls(name, data_type, value)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		structs.write_safe_string(stream, self.name)
+		stream.write(structs.INT32.pack(self.data_type.value))
+		
+		if self.data_type == VariableEvent.DataType.float:
+			if not isinstance(self.value, (int, float)):
+				raise ValueError(f"VariableEvent has type float, but its value isn't a number: {self.value}")
+			stream.write(structs.FLOAT32.pack(self.value))
+		elif self.data_type == VariableEvent.DataType.int:
+			if not isinstance(self.value, int):
+				raise ValueError(f"VariableEvent has type int, but its value isn't an int: {self.value}")
+			stream.write(structs.INT32.pack(self.value))
+		else:
+			if isinstance(self.value, (int, float)):
+				raise ValueError(f"VariableEvent has non-number type {self.data_type.name}, but its value is a number: {self.value}")
+			stream.write(b"\x00\x00\x00\x00")
+		
+		key: typing.Optional[structs.Uoid]
+		if self.data_type == VariableEvent.DataType.key:
+			if self.value is not None and not isinstance(self.value, structs.Uoid):
+				raise ValueError(f"VariableEvent has type key, but its value isn't a key or None: {self.value}")
+			key = self.value
+		else:
+			if isinstance(self.value, structs.Uoid):
+				raise ValueError(f"VariableEvent has non-key type {self.data_type.name}, but its value is an UOID: {self.value}")
+			key = None
+		structs.Uoid.key_to_stream(self.key, stream)
+
+
+class FacingEvent(NotifyEvent):
+	TYPE = 5
+	
+	facer: typing.Optional[structs.Uoid]
+	facee: typing.Optional[structs.Uoid]
+	dot_product: float
+	enabled: bool
+	
+	def __init__(self, facer: typing.Optional[structs.Uoid], facee: typing.Optional[structs.Uoid], dot_product: float, enabled: bool) -> None:
+		super().__init__()
+		
+		self.facer = facer
+		self.facee = facee
+		self.dot_product = dot_product
+		self.enabled = enabled
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.facer is not None:
+			fields["facer"] = str(self.facer)
+		if self.facee is not None:
+			fields["facee"] = str(self.facee)
+		fields["dot_product"] = repr(self.dot_product)
+		fields["enabled"] = repr(self.enabled)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "FacingEvent":
+		facer = structs.Uoid.key_from_stream(stream)
+		facee = structs.Uoid.key_from_stream(stream)
+		dot_product, enabled = structs.stream_unpack(stream, FACING_EVENT_FOOTER)
+		return cls(facer, facee, dot_product, enabled)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		structs.Uoid.key_to_stream(self.facer, stream)
+		structs.Uoid.key_to_stream(self.facee, stream)
+		stream.write(FACING_EVENT_FOOTER.pack(self.dot_product, self.enabled))
+
+
+class ContainedEvent(NotifyEvent):
+	TYPE = 6
+	
+	contained: typing.Optional[structs.Uoid]
+	container: typing.Optional[structs.Uoid]
+	entering: bool
+	
+	def __init__(self, contained: typing.Optional[structs.Uoid], container: typing.Optional[structs.Uoid], entering: bool) -> None:
+		super().__init__()
+		
+		self.contained = contained
+		self.container = container
+		self.entering = entering
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.contained is not None:
+			fields["contained"] = str(self.contained)
+		if self.container is not None:
+			fields["container"] = str(self.container)
+		fields["entering"] = repr(self.entering)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "ContainedEvent":
+		contained = structs.Uoid.key_from_stream(stream)
+		container = structs.Uoid.key_from_stream(stream)
+		(entering,) = structs.read_exact(stream, 1)
+		return cls(contained, container, bool(entering))
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		structs.Uoid.key_to_stream(self.contained, stream)
+		structs.Uoid.key_to_stream(self.container, stream)
+		stream.write(bytes([self.entering]))
+
+
+class ActivateEvent(NotifyEvent):
+	TYPE = 7
+	
+	activate: bool
+	
+	def __init__(self, activate: bool) -> None:
+		super().__init__()
+		
+		self.activate = activate
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["activate"] = repr(self.activate)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "ActivateEvent":
+		active, activate = structs.stream_unpack(stream, ACTIVATE_EVENT)
+		if not active:
+			raise ValueError(f"proActivateEventData has its active field set to false")
+		return cls(activate)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		stream.write(ACTIVATE_EVENT.pack(True, self.activate))
+
+
+class ResponderStateEvent(NotifyEvent):
+	TYPE = 9
+	
+	state: int
+	
+	def __init__(self, state: int) -> None:
+		super().__init__()
+		
+		self.state = state
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["state"] = repr(self.state)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "ResponderStateEvent":
+		(responder_state,) = structs.stream_unpack(stream, structs.INT32)
+		return cls(responder_state)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		stream.write(structs.INT32.pack(self.state))
+
+
+class MultiStageEvent(NotifyEvent):
+	class Event(enum.IntEnum):
+		enter_stage = 1
+		beginning_of_loop = 2
+		advance_next_stage = 3
+		regress_previous_stage = 4
+	
+	TYPE = 10
+	
+	stage: int
+	event: "MultiStageEvent.Event"
+	avatar: typing.Optional[structs.Uoid]
+	
+	def __init__(self, stage: int, event: "MultiStageEvent.Event", avatar: typing.Optional[structs.Uoid]) -> None:
+		super().__init__()
+		
+		self.stage = stage
+		self.event = event
+		self.avatar = avatar
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["stage"] = repr(self.stage)
+		fields["event"] = repr(self.event)
+		if self.avatar is not None:
+			fields["avatar"] = str(self.avatar)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "MultiStageEvent":
+		stage, event = structs.stream_unpack(stream, MULTI_STAGE_EVENT_HEADER)
+		avatar = structs.Uoid.key_from_stream(stream)
+		return cls(stage, MultiStageEvent.Event(event), avatar)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		stream.write(MULTI_STAGE_EVENT_HEADER.pack(self.stage, self.event))
+		structs.Uoid.key_to_stream(self.avatar, stream)
+
+
+class SpawnedEvent(NotifyEvent):
+	TYPE = 11
+	
+	spawner: typing.Optional[structs.Uoid]
+	spawnee: typing.Optional[structs.Uoid]
+	
+	def __init__(self, spawner: typing.Optional[structs.Uoid], spawnee: typing.Optional[structs.Uoid]) -> None:
+		super().__init__()
+		
+		self.spawner = spawner
+		self.spawnee = spawnee
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.spawner is not None:
+			fields["spawner"] = str(self.spawner)
+		if self.spawnee is not None:
+			fields["spawnee"] = str(self.spawnee)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "SpawnedEvent":
+		spawner = structs.Uoid.key_from_stream(stream)
+		spawnee = structs.Uoid.key_from_stream(stream)
+		return cls(spawner, spawnee)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		structs.Uoid.key_to_stream(self.spawner, stream)
+		structs.Uoid.key_to_stream(self.spawnee, stream)
+
+
+class CoopEvent(NotifyEvent):
+	TYPE = 13
+	
+	initiator_ki_number: int
+	serial_number: int
+	
+	def __init__(self, initiator_ki_number: int, serial_number: int) -> None:
+		super().__init__()
+		
+		self.initiator_ki_number = initiator_ki_number
+		self.serial_number = serial_number
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["initiator_ki_number"] = repr(self.initiator_ki_number)
+		fields["serial_number"] = repr(self.serial_number)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "CoopEvent":
+		initiator_ki_number, serial_number = structs.stream_unpack(stream, COOP_EVENT)
+		return cls(initiator_ki_number, serial_number)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		stream.write(COOP_EVENT.pack(self.initiator_ki_number, self.serial_number))
+
+
+class OfferLinkingBookEvent(NotifyEvent):
+	class Event(enum.IntEnum):
+		finish = 0
+		offer = 999
+		rescind = -999
+	
+	TYPE = 14
+	
+	offerer: typing.Optional[structs.Uoid]
+	event: "OfferLinkingBookEvent.Event"
+	offeree_ki_number: int
+	
+	def __init__(self, offerer: typing.Optional[structs.Uoid], event: "OfferLinkingBookEvent.Event", offeree_ki_number: int) -> None:
+		super().__init__()
+		
+		self.offerer = offerer
+		self.event = event
+		self.offeree_ki_number = offeree_ki_number
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.offerer is not None:
+			fields["offerer"] = str(self.offerer)
+		fields["event"] = repr(self.event)
+		fields["offeree_ki_number"] = repr(self.offeree_ki_number)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "OfferLinkingBookEvent":
+		offerer = structs.Uoid.key_from_stream(stream)
+		event, offeree_ki_number = structs.stream_unpack(stream, OFFER_LINKING_BOOK_EVENT_FOOTER)
+		return cls(offerer, OfferLinkingBookEvent.Event(event), offeree_ki_number)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		structs.Uoid.key_to_stream(self.offerer, stream)
+		stream.write(OFFER_LINKING_BOOK_EVENT_FOOTER.pack(self.event, self.offeree_ki_number))
+
+
+class NotifyMessage(PlasmaMessage):
+	class Type(structs.IntEnum):
+		activator = 0
+		var_notification = 1
+		notify_self = 2
+		responder_fast_forward = 3
+		responder_change_state = 4
+	
+	CLASS_INDEX = 0x02ed
+	
+	type: "NotifyMessage.Type"
+	state: float
+	id: int
+	events: typing.List[NotifyEvent]
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.type != NotifyMessage.Type.activator:
+			fields["type"] = repr(self.type)
+		fields["state"] = repr(self.state)
+		if self.id != 0:
+			fields["id"] = repr(self.id)
+		if self.events:
+			fields["events"] = repr(self.events)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		
+		notification_type, notify_state, notify_id, event_count = structs.stream_unpack(stream, NOTIFY_MESSAGE_HEADER)
+		self.type = NotifyMessage.Type(notification_type)
+		self.state = notify_state
+		self.id = notify_id
+		
+		self.events = []
+		for _ in range(event_count):
+			self.events.append(NotifyEvent.from_stream_with_type(stream))
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		
+		stream.write(NOTIFY_MESSAGE_HEADER.pack(self.type, self.state, self.id, len(self.events)))
+		
+		for event in self.events:
+			event.write_with_type(stream)
 
 
 class ParticleTransferMessage(PlasmaMessage):

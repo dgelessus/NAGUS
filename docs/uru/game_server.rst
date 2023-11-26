@@ -914,7 +914,7 @@ and not supported by MOSS or DIRTSAND
   Behaves like its superclass :cpp:class:`plNetMsgGameMessage`,
   except that the server only forwards it to the specified list of receivers,
   not all avatars in the age instance.
-  The wrapped :cpp:class:`plMessage` should be an instance of ``pfKIMsg``, ``plCCRCommunicationMsg``, ``plAvatarInputStateMsg``, ``plInputIfaceMgrMsg``, or ``plNotifyMsg``.
+  The wrapped :cpp:class:`plMessage` should be an instance of ``pfKIMsg``, ``plCCRCommunicationMsg``, ``plAvatarInputStateMsg``, ``plInputIfaceMgrMsg``, or :cpp:class:`plNotifyMsg`.
   
   By default,
   the message is only forwarded to receivers that are in the same age instance as the sender.
@@ -1292,6 +1292,7 @@ only of one of their non-abstract subclasses.
     
     * :cpp:class:`plLoadAvatarMsg` = 0x03b1 = 945
   * :cpp:class:`plServerReplyMsg` = 0x026f = 623
+  * :cpp:class:`plNotifyMsg` = 0x02ed = 749
   * :cpp:class:`plParticleTransferMsg` = 0x0333 = 819
   * :cpp:class:`plParticleKillMsg` = 0x0334 = 820
 
@@ -1613,6 +1614,357 @@ only of one of their non-abstract subclasses.
   
   Reply to a :cpp:class:`plNetMsgTestAndSet`.
 
+:cpp:class:`plNotifyMsg`
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cpp:class:: proEventData
+  
+  A single event inside a :cpp:class:`plNotifyMsg`.
+  
+  All events have the following common header structure,
+  with any event type-specific data directly after the header.
+  
+  * **Type:** 4-byte signed int.
+    Identifies the event type and the structure of the following event data.
+    One of the following:
+    
+    * :cpp:class:`proCollisionEventData` = 1
+    * :cpp:class:`proPickedEventData` = 2
+    * :cpp:class:`proControlKeyEventData` = 3 (unused)
+    * :cpp:class:`proVariableEventData` = 4
+    * :cpp:class:`proFacingEventData` = 5
+    * :cpp:class:`proContainedEventData` = 6
+    * :cpp:class:`proActivateEventData` = 7
+    * :cpp:class:`proCallbackEventData` = 8 (unused)
+    * :cpp:class:`proResponderStateEventData` = 9
+    * :cpp:class:`proMultiStageEventData` = 10
+    * :cpp:class:`proSpawnedEventData` = 11
+    * ``proClickDragEventData`` = 12 (unused, cannot be sent over the network)
+    * :cpp:class:`proCoopEventData` = 13
+    * :cpp:class:`proOfferLinkingBookEventData` = 14
+    * :cpp:class:`proBookEventData` = 15 (unused over the network)
+    * :cpp:class:`proClimbingBlockerHitEventData` = 16 (unused)
+
+.. cpp:class:: proCollisionEventData : public proEventData
+  
+  *Type = 1*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Enter:** 1-byte boolean.
+    True if the hitter entered the hittee
+    or false if it exited.
+  * **Hitter:** :cpp:class:`plKey`.
+    The object that collided with the hittee.
+  * **Hittee:** :cpp:class:`plKey`.
+    The object that the hitter collided with.
+  
+  One object collided (or stopped colliding) with another.
+  Used mainly by ``plActivatorConditionalObject`` (in combination with ``plCollisionDetector``) and ``plVolumeSensorConditionalObject``.
+
+.. cpp:class:: proPickedEventData : public proEventData
+  
+  *Type = 2*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Picker:** :cpp:class:`plKey`.
+    The object that did the "picking".
+    This should always be the ``plSceneObject`` clone for the avatar of the player who clicked on the object.
+  * **Picked:** :cpp:class:`plKey`.
+    The object that was "picked" (clicked on) by the picker.
+  * **Enabled:** 1-byte boolean.
+    True if the object is now "picked" (mouse click began)
+    or false if it's no longer "picked" (mouse click ended).
+  * **Hit point:** 12-byte :cpp:class:`hsPoint3`.
+    The absolute 3D coordinates where the mouse "hit" the object.
+    Set to all zeroes if the enabled field is false
+    or the picked event wasn't caused by a normal mouse click.
+  
+  An object was clicked on by the player.
+  Used mainly by ``plActivatorConditionalObject`` (in combination with ``plPickingDetector``).
+
+.. cpp:class:: proControlKeyEventData : public proEventData
+  
+  *Type = 3*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Control key:** 4-byte signed int.
+  * **Down:** 1-byte boolean.
+  
+  Implemented in the open-sourced client code,
+  but never used in the code
+  and also seems to be never used in any .prp files.
+  Should never be sent over the network.
+
+.. cpp:class:: proVariableEventData : public proEventData
+  
+  *Type = 4*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Variable name:** :ref:`SafeString <safe_string>`.
+    Has no pre-defined meaning.
+    Usually an identifier chosen by the sender so the receivers can distinguish multiple different types of notifications/events.
+    Some code also uses the name field to encode additional values (in string form) if the one provided value field isn't enough.
+  * **Data type:** 4-byte signed int.
+    Indicates which of the value fields (if any) are used and what data type is stored in them.
+    May be one of:
+    
+    * Float = 1
+    * Key = 2
+    * Int = 3
+    * Null = 4
+  * **Number value:** 4-byte value.
+    The value of a numeric variable.
+    Has no pre-defined meaning.
+    If the data type is float,
+    this is a 4-byte floating-point value.
+    If the data type is int,
+    this is a 4-byte signed int.
+    For all other data types,
+    this field is ignored when reading
+    and set to all zero bytes when writing.
+  * **Key value:** :cpp:class:`plKey`.
+    The value of a key variable.
+    Has no pre-defined meaning.
+    If the data type isn't key,
+    this field should be ``nullptr``.
+  
+  Free-form event containing a named variable whose value is a single number or an UOID.
+  Used mainly by game scripts to send notifications that don't fit any of the other pre-defined event types,
+  but still need more data than the basic :cpp:class:`plNotifyMsg` fields.
+
+.. cpp:class:: proFacingEventData : public proEventData
+  
+  *Type = 5*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Facer:** :cpp:class:`plKey`.
+    The object that is facing the facee.
+    This should always be an avatar ``plSceneObject`` clone.
+  * **Facee:** :cpp:class:`plKey`.
+    The object that the facer is facing.
+  * **Dot product:** 4-byte floating-point number.
+    The dot product of the view vectors of the facer and facee.
+    This indicates how closely the objects are facing each other.
+  * **Enabled:** 1-byte boolean.
+    True if the facer is now facing the facee
+    or false if this is no longer the case.
+  
+  One object is facing (or stopped facing) another.
+  Used mainly by ``plFacingConditionalObject``.
+
+.. cpp:class:: proContainedEventData : public proEventData
+  
+  *Type = 6*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Contained:** :cpp:class:`plKey`.
+    The object located in the container.
+  * **Container:** :cpp:class:`plKey`.
+    The object in which the contained object is located.
+  * **Entering:** 1-byte boolean.
+    True if the contained object has entered the container
+    or false if the contained object has left the container.
+  
+  One object is located within (or stopped being located within) another.
+  Used mainly by ``plObjectInBoxConditionalObject``.
+
+.. cpp:class:: proActivateEventData : public proEventData
+  
+  *Type = 7*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Active:** 1-byte boolean.
+    Always set to true.
+    Not used by the open-sourced client code.
+  * **Activate:** 1-byte boolean.
+    True if the sender was activated
+    or false if it's no longer activated.
+    Should always match the state field of the containing :cpp:class:`plNotifyMsg`.
+  
+  The sender of the :cpp:class:`plNotifyMsg` was activated
+  (or is no longer activated).
+  ``plLogicModifier`` inserts this as the last event in every :cpp:class:`plNotifyMsg` that it sends.
+
+.. cpp:class:: proCallbackEventData : public proEventData
+  
+  *Type = 8*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Callback event type:** 4-byte signed int.
+  
+  Implemented in the open-sourced client code,
+  but never used in the code
+  and also seems to be never used in any .prp files.
+  Should never be sent over the network.
+
+.. cpp:class:: proResponderStateEventData : public proEventData
+  
+  *Type = 9*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **State:** 4-byte signed int.
+    The responder state to switch to.
+  
+  Tells the receiving ``plResponderModifier`` to ignore its current state and instead switch to the given state and run that.
+  The :cpp:class:`plNotifyMsg` type field still controls if and how the state's commands are run
+  (normally, fast-forward, or not at all).
+
+.. cpp:class:: proMultiStageEventData : public proEventData
+  
+  *Type = 10*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Stage:** 4-byte signed int.
+    The stage that was entered or finished.
+  * **Event:** 4-byte signed int.
+    One of the following:
+    
+    * Enter stage = 1: The stage in question has been entered.
+    * Beginning of loop = 2: Unused.
+    * Advance next stage = 3: The stage in question has finished
+      and the behavior will advance to the next stage.
+    * Regress previous stage = 3: The stage in question has finished
+      and the behavior will return to the previous stage.
+  * **Avatar:** :cpp:class:`plKey`.
+    The avatar ``plSceneObject`` clone that is doing the multi-stage behavior in question.
+  
+  A multi-stage behavior entered or finished a stage.
+  Used by ``plAnimStage``.
+
+.. cpp:class:: proSpawnedEventData : public proEventData
+  
+  *Type = 11*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Spawner:** :cpp:class:`plKey`.
+    The ``plNPCSpawnMod`` that spawned the NPC avatar.
+  * **Spawnee:** :cpp:class:`plKey`.
+    The ``plSceneObject`` clone for the newly spawned NPC avatar.
+  
+  An NPC avatar was spawned.
+  Used by ``plNPCSpawnMod``.
+
+.. cpp:class:: proCoopEventData : public proEventData
+  
+  *Type = 13*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Initiator KI number:** 4-byte unsigned int.
+    KI number of the avatar that initiated the cooperative action.
+  * **Serial number:** 2-byte unsigned int.
+    Identifies the cooperative action.
+    This number is chosen by the initiating client from a local counter,
+    so it's only unique in combination with the initiator KI number.
+  
+  Included along with a :cpp:class:`proMultiStageEventData` to indicate that the multi-stage behavior is part of a cooperative action between multiple avatars.
+  Used by ``plAvBrainCoop``.
+
+.. cpp:class:: proOfferLinkingBookEventData : public proEventData
+  
+  *Type = 14*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Offerer:** :cpp:class:`plKey`.
+    The ``plSceneObject`` clone for the avatar that is sharing the book.
+  * **Event:** 4-byte signed int.
+    Indicates which step of the book sharing process is taking place.
+    (The open-sourced client code calls this field ``targetAge`` in some places,
+    but this seems to be an outdated name and doesn't match its actual usage.)
+    May be one of the following:
+    
+    * Finish = 0: Only used locally and should never be sent over the network.
+    * Offer = 999: The offerer has begun offering a book to the offeree.
+    * Rescind = -999: The offerer has rescinded a previous offer to the offeree.
+  * **Offeree KI number:** 4-byte unsigned int.
+    KI number of the avatar with whom the offerer is sharing the book.
+  
+  An avatar is offering (or stopped offering) to share a linking book with another avatar.
+  Used by ``plSceneInputInterface``.
+
+.. cpp:class:: proBookEventData : public proEventData
+  
+  *Type = 15*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Event:** 4-byte unsigned int.
+  * **Link ID:** 4-byte unsigned int.
+  
+  Only used locally.
+  Should never be sent over the network.
+
+.. cpp:class:: proClimbingBlockerHitEventData : public proEventData
+  
+  *Type = 16*
+  
+  * **Header:** :cpp:class:`proEventData`.
+  * **Blocker:** :cpp:class:`plKey`.
+  
+  Implemented in the open-sourced client code,
+  but never used in the code
+  and also seems to be never used in any .prp files.
+  Should never be sent over the network.
+
+.. cpp:class:: plNotifyMsg : public plMessage
+  
+  *Class index = 0x02ed = 749*
+  
+  * **Header:** :cpp:class:`plMessage`.
+  * **Notification type:** 4-byte signed int.
+    Often set to 0 and not used.
+    Seems to be only relevant for messages sent to a ``plResponderModifier``,
+    where a few of the defined types have a special meaning.
+    All other types behave the same.
+    The following types are defined:
+    
+    * Activator = 0: Default type used by most :cpp:class:`plNotifyMsg`\s.
+    * Variable notification = 1: Seems to be unused.
+    * Notify self = 2: Seems to be unused.
+    * Responder fast-forward = 3: When received by a ``plResponderModifier``,
+      the responder state is run in "fast-forward" mode,
+      where its commands are skipped as much as possible.
+      For example,
+      animations and sounds immediately switch to their finished state without being played in real time.
+      All commands are run at once,
+      ignoring any "wait on" fields,
+      and then the responder switches directly to the next state.
+    * Responder change state = 4: When received by a ``plResponderModifier``,
+      the responder state won't run at all.
+      This is only useful in combination with a :cpp:class:`proResponderStateEventData`,
+      to make the responder switch directly to a different state without any other actions.
+  * **State:** 4-byte floating-point number.
+    Has no pre-defined meaning.
+    Despite the type,
+    this field normally only has one of two values:
+    0.0 (false) or 1.0 (true).
+  * **ID:** 4-byte signed int.
+    Has no pre-defined meaning.
+    Almost always unused and set to 0.
+    Seems to be only relevant for ``plAvLadderMod``.
+  * **Event count:** 4-byte unsigned int.
+    Element count for the following events array.
+  * **Events:** Variable-length array of :cpp:class:`proEventData` values.
+    Contains additional info regarding what exactly the notification is about.
+    For example,
+    for :cpp:class:`plNotifyMsg`\s sent by a ``plLogicModifier``,
+    this contains info about all the conditions that had to be met for the modifier to trigger.
+    May be empty for some simple notifications,
+    for example some :cpp:class:`plNotifyMsg`\s sent to a ``plResponderModifier``.
+  
+  General-purpose notification sent for many kinds of gameplay events.
+  Primarily used by ``plLogicModifier`` and ``plResponderModifier``,
+  but also by other engine code and many scripts for their own purposes.
+  
+  A ``plLogicModifier`` object will only send a :cpp:class:`plNotifyMsg` while holding a server-side lock on itself using :cpp:class:`plNetMsgTestAndSet`.
+  Other users of :cpp:class:`plNotifyMsg` don't use any locking like this.
+  
+  :cpp:class:`plNotifyMsg`\s are not only created by the engine code and scripts,
+  but can also be read from .prp files,
+  usually as part of a ``plLogicModifier`` or other modifier.
+  Often,
+  a :cpp:class:`plNotifyMsg` is read from the .prp file
+  and then adjusted by the engine code before being sent.
+  This makes it difficult to say in general how :cpp:class:`plNotifyMsg`\s can/should be structured.
+
 :cpp:class:`plParticleTransferMsg`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1654,6 +2006,18 @@ Assorted data types used by the message classes above.
 .. seealso::
   
   :ref:`common_data_types` under :doc:`protocol`.
+
+.. cpp:class:: hsPoint3
+  
+  * **X:** 4-byte floating-point number.
+  * **Y:** 4-byte floating-point number.
+  * **Z:** 4-byte floating-point number.
+
+.. cpp:class:: hsVector3
+  
+  * **X:** 4-byte floating-point number.
+  * **Y:** 4-byte floating-point number.
+  * **Z:** 4-byte floating-point number.
 
 .. cpp:class:: plGenericType
   
