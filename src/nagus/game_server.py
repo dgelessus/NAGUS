@@ -421,7 +421,11 @@ class PlasmaMessage(object):
 			fields["sender"] = str(self.sender)
 		
 		if self.receivers:
-			receivers_rep = str(self.receivers[0])
+			if self.sender is not None and self.receivers[0] == self.sender:
+				receivers_rep = "<sender>"
+			else:
+				receivers_rep = str(self.receivers[0])
+			
 			# For some reason,
 			# the receivers list often contains multiple identical UOIDs,
 			# so collapse those for readability.
@@ -434,7 +438,11 @@ class PlasmaMessage(object):
 					if count > 1:
 						receivers_rep += f"*{count}"
 					
-					receivers_rep += f", {receiver}"
+					if self.sender is not None and self.receivers[0] == self.sender:
+						receivers_rep += ", <sender>"
+					else:
+						receivers_rep += f", {receiver}"
+					
 					last_receiver = receiver
 					count = 1
 			
