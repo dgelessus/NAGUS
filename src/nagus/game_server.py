@@ -674,6 +674,8 @@ class NotifyEvent(abc.ABC):
 			return ContainedEvent.from_stream(stream)
 		elif typenum == ActivateEvent.TYPE:
 			return ActivateEvent.from_stream(stream)
+		elif typenum == CallbackEvent.TYPE:
+			return CallbackEvent.from_stream(stream)
 		elif typenum == ResponderStateEvent.TYPE:
 			return ResponderStateEvent.from_stream(stream)
 		elif typenum == MultiStageEvent.TYPE:
@@ -956,6 +958,30 @@ class ActivateEvent(NotifyEvent):
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		stream.write(ACTIVATE_EVENT.pack(True, self.activate))
+
+
+class CallbackEvent(NotifyEvent):
+	TYPE = 8
+	
+	callback_type: int
+	
+	def __init__(self, callback_type: int) -> None:
+		super().__init__()
+		
+		self.callback_type = callback_type
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["callback_type"] = repr(self.callback_type)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "CallbackEvent":
+		(callback_type,) = structs.stream_unpack(stream, structs.INT32)
+		return cls(callback_type)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		stream.write(structs.INT32.pack(self.callback_type))
 
 
 class ResponderStateEvent(NotifyEvent):

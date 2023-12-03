@@ -1791,11 +1791,15 @@ only of one of their non-abstract subclasses.
   
   * **Header:** :cpp:class:`proEventData`.
   * **Callback event type:** 4-byte signed int.
+    The few uses all set this field to 1.
   
+  Seems to be a legacy leftover that's almost,
+  but not completely,
+  unused.
   Implemented in the open-sourced client code,
-  but never used in the code
-  and also seems to be never used in any .prp files.
-  Should never be sent over the network.
+  but never used anywhere in the engine or scripts.
+  Only found in the .prp files for Ahnonay and Er'cana,
+  as part of the ``plResponderModifier``\s for shell cloths.
 
 .. cpp:class:: proResponderStateEventData : public proEventData
   
