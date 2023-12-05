@@ -31,7 +31,7 @@ Contents
 --------
 
 .. toctree::
-  :maxdepth: 1
+  :titlesonly:
   :caption: MOUL internals
   
   uru/names
@@ -46,7 +46,7 @@ Contents
   uru/game_server
 
 .. toctree::
-  :maxdepth: 1
+  :titlesonly:
   :caption: NAGUS
   
   nagus/about
