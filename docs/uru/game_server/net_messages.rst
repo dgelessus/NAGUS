@@ -1,5 +1,5 @@
-:cpp:class:`plNetMessage`\s
-===========================
+Game network messages
+=====================
 
 Most communication with the :ref:`game server <game_server>`
 (and, indirectly, with other clients)

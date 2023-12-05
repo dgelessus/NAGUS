@@ -1,5 +1,5 @@
-:cpp:class:`plMessage`\s
-========================
+Plasma messages
+===============
 
 :cpp:class:`plNetMsgGameMessage` and its subclasses contain another kind of message,
 :cpp:class:`plMessage`.
