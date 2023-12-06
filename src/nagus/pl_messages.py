@@ -32,6 +32,7 @@ from . import structs
 
 PLASMA_MESSAGE_HEADER_END = struct.Struct("<dI")
 LOAD_CLONE_MESSAGE_MID = struct.Struct("<II??")
+ANIM_COMMAND_MESSAGE_MID = struct.Struct("<fffffff")
 PICKED_EVENT_FOOTER = struct.Struct("<?3f")
 FACING_EVENT_FOOTER = struct.Struct("<f?")
 ACTIVATE_EVENT = struct.Struct("<??")
@@ -337,6 +338,128 @@ class ServerReplyMessage(Message):
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
 		stream.write(structs.INT32.pack(self.type))
+
+
+class MessageWithCallbacks(Message):
+	CLASS_INDEX = 0x0283
+	
+	callbacks: typing.List[typing.Optional[Message]]
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.callbacks:
+			fields["callbacks"] = repr(self.callbacks)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		(callback_count,) = structs.stream_unpack(stream, structs.UINT32)
+		self.callbacks = []
+		for _ in range(callback_count):
+			self.callbacks.append(Message.creatable_from_stream(stream))
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(structs.UINT32.pack(len(self.callbacks)))
+		for callback in self.callbacks:
+			Message.creatable_to_stream(callback, stream)
+
+
+class AnimationCommandMessage(MessageWithCallbacks):
+	class Commands(enum.IntFlag):
+		continue_ = 1 << 0
+		stop = 1 << 1
+		set_looping = 1 << 2
+		unset_looping = 1 << 3
+		set_begin = 1 << 4
+		set_end = 1 << 5
+		set_loop_end = 1 << 6
+		set_loop_begin = 1 << 7
+		set_speed = 1 << 8
+		go_to_time = 1 << 9
+		set_backwards = 1 << 10
+		set_forwards = 1 << 11
+		toggle_state = 1 << 12
+		add_callbacks = 1 << 13
+		remove_callbacks = 1 << 14
+		go_to_begin = 1 << 15
+		go_to_end = 1 << 16
+		go_to_loop_begin = 1 << 17
+		go_to_loop_end = 1 << 18
+		increment_forward = 1 << 19
+		increment_backward = 1 << 20
+		run_forward = 1 << 21
+		run_backward = 1 << 22
+		play_to_time = 1 << 23
+		play_to_percentage = 1 << 24
+		fast_forward = 1 << 25
+		go_to_percent = 1 << 26
+	
+	CLASS_INDEX = 0x0206
+	
+	commands: "AnimationCommandMessage.Commands"
+	begin: float
+	end: float
+	loop_begin: float
+	loop_end: float
+	speed: float
+	speed_change_rate: float
+	time: float
+	animation_name: bytes
+	loop_name: bytes
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["commands"] = repr(self.commands)
+		if self.begin != 0.0:
+			fields["begin"] = repr(self.begin)
+		if self.end != 0.0:
+			fields["end"] = repr(self.end)
+		if self.loop_begin != 0.0:
+			fields["loop_begin"] = repr(self.loop_begin)
+		if self.loop_end != 0.0:
+			fields["loop_end"] = repr(self.loop_end)
+		if self.speed != 0.0:
+			fields["speed"] = repr(self.speed)
+		if self.speed_change_rate != 0.0:
+			fields["speed_change_rate"] = repr(self.speed_change_rate)
+		if self.time != 0.0:
+			fields["time"] = repr(self.time)
+		if self.animation_name:
+			fields["animation_name"] = repr(self.animation_name)
+		if self.loop_name:
+			fields["loop_name"] = repr(self.loop_name)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		self.commands = AnimationCommandMessage.Commands(structs.read_bit_vector(stream))
+		(
+			self.begin,
+			self.end,
+			self.loop_begin,
+			self.loop_end,
+			self.speed,
+			self.speed_change_rate,
+			self.time,
+		) = structs.stream_unpack(stream, ANIM_COMMAND_MESSAGE_MID)
+		self.animation_name = structs.read_safe_string(stream)
+		self.loop_name = structs.read_safe_string(stream)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		structs.write_bit_vector(stream, self.commands)
+		stream.write(ANIM_COMMAND_MESSAGE_MID.pack(
+			self.begin,
+			self.end,
+			self.loop_begin,
+			self.loop_end,
+			self.speed,
+			self.speed_change_rate,
+			self.time,
+		))
+		structs.write_safe_string(stream, self.animation_name)
+		structs.write_safe_string(stream, self.loop_name)
 
 
 class NotifyEvent(abc.ABC):

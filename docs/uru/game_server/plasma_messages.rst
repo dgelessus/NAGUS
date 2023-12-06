@@ -41,6 +41,9 @@ only of one of their non-abstract subclasses.
     
     * :cpp:class:`plLoadAvatarMsg` = 0x03b1 = 945
   * :cpp:class:`plServerReplyMsg` = 0x026f = 623
+  * :cpp:class:`plMessageWithCallbacks` = 0x0283 = 643 (abstract)
+    
+    * :cpp:class:`plAnimCmdMsg` = 0x0206 = 518
   * :cpp:class:`plNotifyMsg` = 0x02ed = 749
   * :cpp:class:`plLinkEffectsTriggerMsg` = 0x0300 = 768
   * :cpp:class:`plParticleTransferMsg` = 0x0333 = 819
@@ -385,6 +388,67 @@ Assorted data types used by the message classes below.
     * Affirm = 1
   
   Reply to a :cpp:class:`plNetMsgTestAndSet`.
+
+:cpp:class:`plMessageWithCallbacks`
+-----------------------------------
+
+.. cpp:class:: plMessageWithCallbacks : public plMessage
+  
+  *Class index = 0x0283 = 643*
+  
+  * **Header:** :cpp:class:`plMessage`.
+  * **Callback count:** 4-byte unsigned int.
+    Element count for the following callback array.
+  * **Callbacks:** Variable-length array of serialized :cpp:class:`plCreatable`\s with header.
+    Each element must be a subclass of :cpp:class:`plMessage`.
+
+:cpp:class:`plAnimCmdMsg`
+-------------------------
+
+.. cpp:class:: plAnimCmdMsg : public plMessageWithCallbacks
+  
+  *Class index = 0x0206 = 518*
+  
+  * **Header:** :cpp:class:`plMessageWithCallbacks`.
+  * **Commands:** :cpp:class:`hsBitVector`.
+    The following flags are currently defined:
+    
+    * **Continue** = 1 << 0
+    * **Stop** = 1 << 1
+    * **Set looping** = 1 << 2
+    * **Unset looping** = 1 << 3
+    * **Set begin** = 1 << 4
+    * **Set end** = 1 << 5
+    * **Set loop end** = 1 << 6
+    * **Set loop begin** = 1 << 7
+    * **Set speed** = 1 << 8
+    * **Go to time** = 1 << 9
+    * **Set backwards** = 1 << 10
+    * **Set forwards** = 1 << 11
+    * **Toggle state** = 1 << 12
+    * **Add callbacks** = 1 << 13
+    * **Remove callbacks** = 1 << 14
+    * **Go to begin** = 1 << 15
+    * **Go to end** = 1 << 16
+    * **Go to loop begin** = 1 << 17
+    * **Go to loop end** = 1 << 18
+    * **Increment forward** = 1 << 19
+    * **Increment backward** = 1 << 20
+    * **Run forward** = 1 << 21
+    * **Run backward** = 1 << 22
+    * **Play to time** = 1 << 23
+    * **Play to percentage** = 1 << 24
+    * **Fast-forward** = 1 << 25
+    * **Go to percent** = 1 << 26
+  * **Begin:** 4-byte floating-point number.
+  * **End:** 4-byte floating-point number.
+  * **Loop begin:** 4-byte floating-point number.
+  * **Loop end:** 4-byte floating-point number.
+  * **Speed:** 4-byte floating-point number.
+  * **Speed change rate:** 4-byte floating-point number.
+  * **Time:** 4-byte floating-point number.
+  * **Animation name:** :ref:`SafeString <safe_string>`.
+  * **Loop name:** :ref:`SafeString <safe_string>`.
 
 :cpp:class:`plNotifyMsg`
 ------------------------
