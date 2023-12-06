@@ -39,6 +39,7 @@ MULTI_STAGE_EVENT_HEADER = struct.Struct("<ii")
 COOP_EVENT = struct.Struct("<IH")
 OFFER_LINKING_BOOK_EVENT_FOOTER = struct.Struct("<iI")
 NOTIFY_MESSAGE_HEADER = struct.Struct("<ifiI")
+LINK_EFFECTS_TRIGGER_MESSAGE_HEADER = struct.Struct("<i?")
 PARTICLE_KILL_MESSAGE = struct.Struct("<ffB")
 
 
@@ -883,6 +884,47 @@ class NotifyMessage(Message):
 		
 		for event in self.events:
 			event.write_with_type(stream)
+
+
+class LinkEffectsTriggerMessage(Message):
+	class Flags(structs.IntFlag):
+		mute_link_sfx = 1 << 0
+	
+	CLASS_INDEX = 0x0300
+	
+	ccr_level: int
+	linking_out: bool
+	linker: typing.Optional[structs.Uoid]
+	link_effects_flags: "LinkEffectsTriggerMessage.Flags"
+	link_in_animation: typing.Optional[structs.Uoid]
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.ccr_level != 0:
+			fields["ccr_level"] = repr(self.ccr_level)
+		fields["linking_out"] = repr(self.linking_out)
+		if self.linker is not None:
+			fields["linker"] = str(self.linker)
+		if self.link_effects_flags:
+			fields["link_effects_flags"] = repr(self.link_effects_flags)
+		if self.link_in_animation is not None:
+			fields["link_in_animation"] = str(self.link_in_animation)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		self.ccr_level, self.linking_out = structs.stream_unpack(stream, LINK_EFFECTS_TRIGGER_MESSAGE_HEADER)
+		self.linker = structs.Uoid.key_from_stream(stream)
+		(link_effects_flags,) = structs.stream_unpack(stream, structs.UINT32)
+		self.link_effects_flags = LinkEffectsTriggerMessage.Flags(link_effects_flags)
+		self.link_in_animation = structs.Uoid.key_from_stream(stream)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(LINK_EFFECTS_TRIGGER_MESSAGE_HEADER.pack(self.ccr_level, self.linking_out))
+		structs.Uoid.key_to_stream(self.linker, stream)
+		stream.write(structs.UINT32.pack(self.link_effects_flags))
+		structs.Uoid.key_to_stream(self.link_in_animation, stream)
 
 
 class ParticleTransferMessage(Message):

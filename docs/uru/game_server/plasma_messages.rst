@@ -42,6 +42,7 @@ only of one of their non-abstract subclasses.
     * :cpp:class:`plLoadAvatarMsg` = 0x03b1 = 945
   * :cpp:class:`plServerReplyMsg` = 0x026f = 623
   * :cpp:class:`plNotifyMsg` = 0x02ed = 749
+  * :cpp:class:`plLinkEffectsTriggerMsg` = 0x0300 = 768
   * :cpp:class:`plParticleTransferMsg` = 0x0333 = 819
   * :cpp:class:`plParticleKillMsg` = 0x0334 = 820
   * :cpp:class:`plAvatarInputStateMsg` = 0x0347 = 839
@@ -739,6 +740,33 @@ Assorted data types used by the message classes below.
   a :cpp:class:`plNotifyMsg` is read from the .prp file
   and then adjusted by the engine code before being sent.
   This makes it difficult to say in general how :cpp:class:`plNotifyMsg`\s can/should be structured.
+
+:cpp:class:`plLinkEffectsTriggerMsg`
+------------------------------------
+
+.. cpp:class:: plLinkEffectsTriggerMsg : public plMessage
+  
+  *Class index = 0x0300 = 768*
+  
+  * **Header:** :cpp:class:`plMessage`.
+  * **CCR level:** 4-byte signed int.
+    :ref:`CCR level <ccr_level>` of the linking avatar.
+  * **Linking out:** True if the avatar is linking out,
+    or false if it's linking in.
+  * **Linker:** :cpp:class:`plKey`.
+    The ``plSceneObject`` clone for the avatar that's linking in/out.
+    Should never be ``nullptr``.
+  * **Flags:** 4-byte unsigned int.
+    Only one flag is currently defined:
+    
+    * **Mute link sound effect** = 1 << 0: If set,
+      the link sound isn't played as the avatar links.
+  * **Link-in animation:** :cpp:class:`plKey`.
+    The ``plATCAnim`` for an avatar animation to play once the avatar has linked in ---
+    usually to make the avatar visually return from its linking pose to a normal standing pose.
+    May be ``nullptr`` if the avatar should link in in a standing pose with no animation.
+    If the linking out field is true,
+    this field should be ``nullptr``.
 
 :cpp:class:`plParticleTransferMsg`
 ----------------------------------
