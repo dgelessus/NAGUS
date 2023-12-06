@@ -42,6 +42,7 @@ OFFER_LINKING_BOOK_EVENT_FOOTER = struct.Struct("<iI")
 NOTIFY_MESSAGE_HEADER = struct.Struct("<ifiI")
 LINK_EFFECTS_TRIGGER_MESSAGE_HEADER = struct.Struct("<i?")
 PARTICLE_KILL_MESSAGE = struct.Struct("<ffB")
+INPUT_INTERFACE_MANAGER_MESSAGE_HEADER = struct.Struct("<BI")
 
 
 class UnknownClassIndexError(Exception):
@@ -1134,3 +1135,62 @@ class AvatarInputStateMessage(Message):
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
 		stream.write(structs.UINT16.pack(self.state))
+
+
+class InputInterfaceManagerMessage(Message):
+	class Command(structs.IntEnum):
+		add_interface = 0
+		remove_interface = 1
+		enable_clickables = 2
+		disable_clickables = 3
+		set_offer_book_mode = 4
+		clear_offer_book_mode = 5
+		notify_offer_accepted = 6
+		notify_offer_rejected = 7
+		notify_offer_completed = 8
+		disable_avatar_clickable = 9
+		enable_avatar_clickable = 10
+		gui_disable_avatar_clickable = 11
+		gui_enable_avatar_clickable = 12
+		set_share_spawn_point = 13
+		set_share_age_instance_guid = 14
+	
+	CLASS_INDEX = 0x0363
+	
+	command: "InputInterfaceManagerMessage.Command"
+	offeree_ki_number: int
+	age_name: bytes
+	age_file_name: bytes
+	spawn_point: bytes
+	avatar: typing.Optional[structs.Uoid]
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["command"] = repr(self.command)
+		fields["offeree_ki_number"] = repr(self.offeree_ki_number)
+		if self.age_name:
+			fields["age_name"] = repr(self.age_name)
+		if self.age_file_name:
+			fields["age_file_name"] = repr(self.age_file_name)
+		if self.spawn_point:
+			fields["spawn_point"] = repr(self.spawn_point)
+		if self.avatar is not None:
+			fields["avatar"] = str(self.avatar)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		command, self.offeree_ki_number = structs.stream_unpack(stream, INPUT_INTERFACE_MANAGER_MESSAGE_HEADER)
+		self.command = InputInterfaceManagerMessage.Command(command)
+		self.age_name = structs.read_safe_string(stream)
+		self.age_file_name = structs.read_safe_string(stream)
+		self.spawn_point = structs.read_safe_string(stream)
+		self.avatar = structs.Uoid.key_from_stream(stream)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(INPUT_INTERFACE_MANAGER_MESSAGE_HEADER.pack(self.command, self.offeree_ki_number))
+		structs.write_safe_string(stream, self.age_name)
+		structs.write_safe_string(stream, self.age_file_name)
+		structs.write_safe_string(stream, self.spawn_point)
+		structs.Uoid.key_to_stream(self.avatar, stream)

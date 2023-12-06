@@ -49,6 +49,7 @@ only of one of their non-abstract subclasses.
   * :cpp:class:`plParticleTransferMsg` = 0x0333 = 819
   * :cpp:class:`plParticleKillMsg` = 0x0334 = 820
   * :cpp:class:`plAvatarInputStateMsg` = 0x0347 = 839
+  * :cpp:class:`plInputIfaceMgrMsg` = 0x0363 = 867
 
 Common data types
 -----------------
@@ -888,3 +889,39 @@ Assorted data types used by the message classes below.
     * **Run modifier** = 1 << 9
     * **Strafe modifier** = 1 << 10
     * **Ladder inverted** = 1 << 11
+
+:cpp:class:`plInputIfaceMgrMsg`
+-------------------------------
+
+.. cpp:class:: plInputIfaceMgrMsg : public plMessage
+  
+  *Class index = 0x0363 = 867*
+  
+  * **Header:** :cpp:class:`plMessage`.
+  * **Command:** 1-byte unsigned int.
+    The following commands are currently defined:
+    
+    * Add interface = 0
+    * Remove interface = 1
+    * Enable clickables = 2
+    * Disable clickables = 3
+    * Set offer book mode = 4
+    * Clear offer book mode = 5
+    * Notify offer accepted = 6
+    * Notify offer rejected = 7
+    * Notify offer completed = 8
+    * Disable avatar clickable = 9
+    * Enable avatar clickable = 10
+    * GUI disable avatar clickable = 11
+    * GUI enable avatar clickable = 12
+    * Set share spawn point = 13
+    * Set share age instance GUID = 14
+  * **Offeree KI number:** 4-byte unsigned int.
+    Only used if the command is "notify offer completed".
+    Otherwise,
+    the open-sourced client code leaves this field uninitialized
+    and usually sends unpredictable junk data.
+  * **Age name:** :ref:`SafeString <safe_string>`.
+  * **Age file name:** :ref:`SafeString <safe_string>`.
+  * **Spawn point:** :ref:`SafeString <safe_string>`.
+  * **Avatar:** :cpp:class:`plKey`.
