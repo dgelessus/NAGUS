@@ -991,7 +991,7 @@ Assorted data types used by the message classes below.
   Behaves like its superclass :cpp:class:`plNetMsgGameMessage`,
   except that the server only forwards it to the specified list of receivers,
   not all avatars in the age instance.
-  The wrapped :cpp:class:`plMessage` should be an instance of ``pfKIMsg``, ``plCCRCommunicationMsg``, ``plAvatarInputStateMsg``, ``plInputIfaceMgrMsg``, or :cpp:class:`plNotifyMsg`.
+  The wrapped :cpp:class:`plMessage` should be an instance of ``pfKIMsg``, ``plCCRCommunicationMsg``, :cpp:class:`plAvatarInputStateMsg`, ``plInputIfaceMgrMsg``, or :cpp:class:`plNotifyMsg`.
   
   By default,
   the message is only forwarded to receivers that are in the same age instance as the sender.

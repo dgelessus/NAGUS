@@ -935,3 +935,37 @@ class ParticleKillMessage(Message):
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
 		stream.write(PARTICLE_KILL_MESSAGE.pack(self.amount, self.time_left, self.kill_flags))
+
+
+class AvatarInputStateMessage(Message):
+	class State(structs.IntFlag):
+		forward = 1 << 0
+		backward = 1 << 1
+		rotate_left = 1 << 2
+		rotate_right = 1 << 3
+		strafe_left = 1 << 4
+		strafe_right = 1 << 5
+		always_run = 1 << 6
+		jump = 1 << 7
+		consumable_jump = 1 << 8
+		modifier_run = 1 << 9
+		modifier_strafe = 1 << 10
+		ladder_inverted = 1 << 11
+	
+	CLASS_INDEX = 0x0347
+	
+	state: "AvatarInputStateMessage.State"
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["state"] = repr(self.state)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		(state,) = structs.stream_unpack(stream, structs.UINT16)
+		self.state = AvatarInputStateMessage.State(state)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(structs.UINT16.pack(self.state))

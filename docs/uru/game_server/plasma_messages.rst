@@ -44,6 +44,7 @@ only of one of their non-abstract subclasses.
   * :cpp:class:`plNotifyMsg` = 0x02ed = 749
   * :cpp:class:`plParticleTransferMsg` = 0x0333 = 819
   * :cpp:class:`plParticleKillMsg` = 0x0334 = 820
+  * :cpp:class:`plAvatarInputStateMsg` = 0x0347 = 839
 
 Common data types
 -----------------
@@ -211,7 +212,7 @@ Assorted data types used by the message classes below.
     .. cpp:enumerator:: kNetUseRelevanceRegions = 1 << 8
       
       Should only be set if :cpp:enumerator:`kNetPropagate` is also set.
-      Only used with ``plAvatarInputStateMsg`` and ``plControlEventMsg``.
+      Only used with :cpp:class:`plAvatarInputStateMsg` and ``plControlEventMsg``.
       
       This corresponds to the :cpp:class:`plNetMsgGameMessage` flag :cpp:enumerator:`~plNetMessage::BitVectorFlags::kUseRelevanceRegions`.
       See that documentation for details.
@@ -771,3 +772,27 @@ Assorted data types used by the message classes below.
     
     * **Immortal only** = 1 << 0
     * **Percentage** = 1 << 1: Whether the amount to kill is a fractional amount or an absolute number.
+
+:cpp:class:`plAvatarInputStateMsg`
+----------------------------------
+
+.. cpp:class:: plAvatarInputStateMsg : public plMessage
+  
+  *Class index = 0x0347 = 839*
+  
+  * **Header:** :cpp:class:`plMessage`.
+  * **State:** 2-byte unsigned int.
+    The following flags are defined:
+    
+    * **Forward** = 1 << 0
+    * **Backward** = 1 << 1
+    * **Rotate left** = 1 << 2
+    * **Rotate right** = 1 << 3
+    * **Strafe left** = 1 << 4
+    * **Strafe right** = 1 << 5
+    * **Always run** = 1 << 6
+    * **Jump** = 1 << 7
+    * **Consumable jump** = 1 << 8
+    * **Run modifier** = 1 << 9
+    * **Strafe modifier** = 1 << 10
+    * **Ladder inverted** = 1 << 11
