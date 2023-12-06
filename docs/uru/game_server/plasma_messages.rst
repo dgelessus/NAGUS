@@ -44,6 +44,9 @@ only of one of their non-abstract subclasses.
   * :cpp:class:`plMessageWithCallbacks` = 0x0283 = 643 (abstract)
     
     * :cpp:class:`plAnimCmdMsg` = 0x0206 = 518
+  * :cpp:class:`plAvatarMsg` = 0x0297 = 663 (abstract)
+    
+    * :cpp:class:`plAvBrainGenericMsg` = 0x038f = 911
   * :cpp:class:`plNotifyMsg` = 0x02ed = 749
   * :cpp:class:`plLinkEffectsTriggerMsg` = 0x0300 = 768
   * :cpp:class:`plParticleTransferMsg` = 0x0333 = 819
@@ -450,6 +453,40 @@ Assorted data types used by the message classes below.
   * **Time:** 4-byte floating-point number.
   * **Animation name:** :ref:`SafeString <safe_string>`.
   * **Loop name:** :ref:`SafeString <safe_string>`.
+
+:cpp:class:`plAvatarMsg`
+------------------------
+
+.. cpp:class:: plAvatarMsg : public plMessage
+  
+  *Class index = 0x0297 = 663*
+  
+  Identical structure to its superclass :cpp:class:`plMessage`.
+
+:cpp:class:`plAvBrainGenericMsg`
+--------------------------------
+
+.. cpp:class:: plAvBrainGenericMsg : public plAvatarMsg
+  
+  *Class index = 0x038f = 911*
+  
+  * **Header:** :cpp:class:`plAvatarMsg`.
+  * **Type:** 4-byte unsigned int.
+    The following types are currently defined:
+    
+    * Next stage = 0
+    * Previous stage = 1
+    * Go to stage = 2
+    * Set loop count = 3
+  * **Stage:** 4-byte signed int.
+    The stage to switch to,
+    or -1 to exit the current multi-stage behavior.
+    Only used if the type is "go to stage".
+  * **Set time:** 1-byte boolean.
+  * **Time:** 4-byte floating-point number.
+  * **Set direction:** 1-byte boolean.
+  * **Direction:** 1-byte boolean.
+  * **Transition time:** 4-byte floating-point number.
 
 :cpp:class:`plNotifyMsg`
 ------------------------

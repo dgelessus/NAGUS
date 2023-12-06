@@ -33,6 +33,7 @@ from . import structs
 PLASMA_MESSAGE_HEADER_END = struct.Struct("<dI")
 LOAD_CLONE_MESSAGE_MID = struct.Struct("<II??")
 ANIM_COMMAND_MESSAGE_MID = struct.Struct("<fffffff")
+AVATAR_BRAIN_GENERIC_MESSAGE = struct.Struct("<Ii?f??f")
 PICKED_EVENT_FOOTER = struct.Struct("<?3f")
 FACING_EVENT_FOOTER = struct.Struct("<f?")
 ACTIVATE_EVENT = struct.Struct("<??")
@@ -461,6 +462,64 @@ class AnimationCommandMessage(MessageWithCallbacks):
 		))
 		structs.write_safe_string(stream, self.animation_name)
 		structs.write_safe_string(stream, self.loop_name)
+
+
+class AvatarMessage(Message):
+	CLASS_INDEX = 0x0297
+
+
+class AvatarBrainGenericMessage(AvatarMessage):
+	class Type(enum.IntEnum):
+		next_stage = 0
+		previous_stage = 1
+		go_to_stage = 2
+		set_loop_count = 3
+	
+	CLASS_INDEX = 0x038f
+	
+	type: "AvatarBrainGenericMessage.Type"
+	stage: int
+	set_time: bool
+	time: float
+	set_direction: bool
+	direction: bool
+	transition_time: float
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["type"] = repr(self.type)
+		fields["stage"] = repr(self.stage)
+		fields["set_time"] = repr(self.set_time)
+		fields["time"] = repr(self.time)
+		fields["set_direction"] = repr(self.set_direction)
+		fields["direction"] = repr(self.direction)
+		fields["transition_time"] = repr(self.transition_time)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		(
+			message_type,
+			self.stage,
+			self.set_time,
+			self.time,
+			self.set_direction,
+			self.direction,
+			self.transition_time,
+		) = structs.stream_unpack(stream, AVATAR_BRAIN_GENERIC_MESSAGE)
+		self.type = AvatarBrainGenericMessage.Type(message_type)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(AVATAR_BRAIN_GENERIC_MESSAGE.pack(
+			self.type,
+			self.stage,
+			self.set_time,
+			self.time,
+			self.set_direction,
+			self.direction,
+			self.transition_time,
+		))
 
 
 class NotifyEvent(abc.ABC):
