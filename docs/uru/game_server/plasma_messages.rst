@@ -47,6 +47,9 @@ only of one of their non-abstract subclasses.
     * :cpp:class:`plAnimCmdMsg` = 0x0206 = 518
   * :cpp:class:`plAvatarMsg` = 0x0297 = 663 (abstract)
     
+    * :cpp:class:`plAvTaskMsg` = 0x0298 = 664
+      
+      * :cpp:class:`plAvSeekMsg` = 0x0299 = 665
     * :cpp:class:`plAvBrainGenericMsg` = 0x038f = 911
   * :cpp:class:`plNotifyMsg` = 0x02ed = 749
   * :cpp:class:`plLinkEffectsTriggerMsg` = 0x0300 = 768
@@ -508,6 +511,57 @@ Assorted data types used by the message classes below.
   *Class index = 0x0297 = 663*
   
   Identical structure to its superclass :cpp:class:`plMessage`.
+
+:cpp:class:`plAvTaskMsg`
+------------------------
+
+.. cpp:class:: plAvTaskMsg : public plAvatarMsg
+  
+  *Class index = 0x0298 = 664*
+  
+  * **Header:** :cpp:class:`plAvatarMsg`.
+  * **Task present:** 1-byte boolean.
+    Whether the following initial task field is present.
+  * **Task:** Serialized :cpp:class:`plCreatable` with header.
+    Must be an instance of a ``plAvTask`` subclass.
+    Only present if the preceding boolean field is true,
+    in which case the :cpp:class:`plCreatable` should not be ``nullptr``.
+    If the preceding boolean field is false,
+    this field is not present and defaults to ``nullptr``.
+
+:cpp:class:`plAvSeekMsg`
+------------------------
+
+.. cpp:class:: plAvSeekMsg : public plAvTaskMsg
+  
+  *Class index = 0x0299 = 665*
+  
+  * **Header:** :cpp:class:`plAvTaskMsg`.
+  * **Seek point:** :cpp:class:`plKey`.
+  * **Target position:** 12-byte :cpp:class:`hsPoint3`.
+    Only present if the seek point is ``nullptr``.
+  * **Target look at:** 12-byte :cpp:class:`hsPoint3`.
+    Only present if the seek point is ``nullptr``.
+  * **Duration:** 4-byte floating-point number.
+  * **Smart seek:** 1-byte boolean.
+  * **Animation name:** :ref:`SafeString <safe_string>`.
+  * **Alignment type:** 2-byte unsigned int.
+    The following types are defined:
+    
+    * Align handle with seek point = 0
+    * Align handle with seek point at animation end = 1
+    * Align handle with world origin = 2: Unimplemented.
+    * Align bone with seek point = 3: Unimplemented.
+    * Align bone with seek point at animation end = 4: Unimplemented.
+  * **No seek:** 1-byte boolean.
+  * **Flags:** 1-byte unsigned int.
+    The following flags are defined:
+    
+    * **Un-force third person on finish** = 1 << 0
+    * **Force third person on start** = 1 << 1
+    * **No warp on timeout** = 1 << 2
+    * **Rotation only** = 1 << 3
+  * **Finish key:** :cpp:class:`plKey`.
 
 :cpp:class:`plAvBrainGenericMsg`
 --------------------------------

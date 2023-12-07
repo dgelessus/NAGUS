@@ -30,9 +30,15 @@ import typing
 from . import structs
 
 
+Point3 = typing.Tuple[float, float, float]
+
+
 PLASMA_MESSAGE_HEADER_END = struct.Struct("<dI")
 LOAD_CLONE_MESSAGE_MID = struct.Struct("<II??")
 ANIM_COMMAND_MESSAGE_MID = struct.Struct("<fffffff")
+AVATAR_SEEK_MESSAGE_TARGET = struct.Struct("<3f3f")
+AVATAR_SEEK_MESSAGE_MID_1 = struct.Struct("<f?")
+AVATAR_SEEK_MESSAGE_MID_2 = struct.Struct("<H?B")
 AVATAR_BRAIN_GENERIC_MESSAGE = struct.Struct("<Ii?f??f")
 PICKED_EVENT_FOOTER = struct.Struct("<?3f")
 FACING_EVENT_FOOTER = struct.Struct("<f?")
@@ -501,6 +507,109 @@ class AvatarMessage(Message):
 	CLASS_INDEX = 0x0297
 
 
+class AvatarTaskMessage(AvatarMessage):
+	CLASS_INDEX = 0x0298
+	
+	task: typing.Any # TODO
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.task is not None:
+			fields["task"] = repr(self.task)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		(task_present,) = stream.read(1)
+		if task_present:
+			raise NotImplementedError("Cannot parse plAvTask yet") # TODO
+		else:
+			self.task = None
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		if self.task is None:
+			stream.write(b"\x00")
+		else:
+			stream.write(b"\x01")
+			raise NotImplementedError("Cannot write plAvTask yet") # TODO
+
+
+class AvatarSeekMessage(AvatarTaskMessage):
+	class AlignmentType(structs.IntEnum):
+		handle = 0
+		handle_at_animation_end = 1
+		handle_with_world_origin = 2
+		bone = 3
+		bone_at_animation_end = 4
+	
+	class SeekFlags(structs.IntFlag):
+		unforce_3rd_person_on_finish = 1 << 0
+		force_3rd_person_on_start = 1 << 1
+		no_warp_on_timeout = 1 << 2
+		rotation_only = 1 << 3
+	
+	CLASS_INDEX = 0x0299
+	
+	seek_point: typing.Union[structs.Uoid, typing.Tuple[Point3, Point3]]
+	duration: float
+	smart_seek: bool
+	animation_name: bytes
+	alignment_type: "AvatarSeekMessage.AlignmentType"
+	no_seek: bool
+	seek_flags: "AvatarSeekMessage.SeekFlags"
+	finish_key: typing.Optional[structs.Uoid]
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["seek_point"] = str(self.seek_point)
+		fields["duration"] = repr(self.duration)
+		fields["smart_seek"] = repr(self.smart_seek)
+		if self.animation_name:
+			fields["animation_name"] = repr(self.animation_name)
+		if self.alignment_type != AvatarSeekMessage.AlignmentType.handle:
+			fields["alignment_type"] = repr(self.alignment_type)
+		if self.no_seek:
+			fields["no_seek"] = repr(self.no_seek)
+		if self.seek_flags:
+			fields["seek_flags"] = repr(self.seek_flags)
+		if self.finish_key is not None:
+			fields["finish_key"] = str(self.finish_key)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		
+		seek_point = structs.Uoid.key_from_stream(stream)
+		if seek_point is None:
+			pos_x, pos_y, pos_z, look_x, look_y, look_z = structs.stream_unpack(stream, AVATAR_SEEK_MESSAGE_TARGET)
+			self.seek_point = (pos_x, pos_y, pos_z), (look_x, look_y, look_z)
+		else:
+			self.seek_point = seek_point
+		
+		self.duration, self.smart_seek = structs.stream_unpack(stream, AVATAR_SEEK_MESSAGE_MID_1)
+		self.animation_name = structs.read_safe_string(stream)
+		alignment_type, self.no_seek, seek_flags = structs.stream_unpack(stream, AVATAR_SEEK_MESSAGE_MID_2)
+		self.alignment_type = AvatarSeekMessage.AlignmentType(alignment_type)
+		self.seek_flags = AvatarSeekMessage.SeekFlags(seek_flags)
+		self.finish_key = structs.Uoid.key_from_stream(stream)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		
+		if isinstance(self.seek_point, structs.Uoid):
+			structs.Uoid.key_to_stream(self.seek_point, stream)
+		else:
+			pos, look = self.seek_point
+			structs.Uoid.key_to_stream(None, stream)
+			stream.write(AVATAR_SEEK_MESSAGE_TARGET.pack(*pos, *look))
+		
+		stream.write(AVATAR_SEEK_MESSAGE_MID_1.pack(self.duration, self.smart_seek))
+		structs.write_safe_string(stream, self.animation_name)
+		stream.write(AVATAR_SEEK_MESSAGE_MID_2.pack(self.alignment_type, self.no_seek, self.seek_flags))
+		structs.Uoid.key_to_stream(self.finish_key, stream)
+
+
 class AvatarBrainGenericMessage(AvatarMessage):
 	class Type(enum.IntEnum):
 		next_stage = 0
@@ -652,9 +761,9 @@ class PickedEvent(NotifyEvent):
 	picker: typing.Optional[structs.Uoid]
 	picked: typing.Optional[structs.Uoid]
 	enabled: bool
-	hit_point: typing.Tuple[float, float, float]
+	hit_point: Point3
 	
-	def __init__(self, picker: typing.Optional[structs.Uoid], picked: typing.Optional[structs.Uoid], enabled: bool, hit_point: typing.Tuple[float, float, float]) -> None:
+	def __init__(self, picker: typing.Optional[structs.Uoid], picked: typing.Optional[structs.Uoid], enabled: bool, hit_point: Point3) -> None:
 		super().__init__()
 		
 		self.picker = picker
