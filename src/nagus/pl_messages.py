@@ -317,6 +317,39 @@ class LoadAvatarMessage(LoadCloneMessage):
 		structs.write_safe_string(stream, self.user_string)
 
 
+class EnableMessage(Message):
+	class Commands(enum.IntFlag):
+		disable = 1 << 0
+		enable = 1 << 1
+		drawable = 1 << 2
+		physical = 1 << 3
+		audible = 1 << 4
+		all = 1 << 5
+		by_type = 1 << 6
+	
+	CLASS_INDEX = 0x0254
+	
+	commands: "EnableMessage.Commands"
+	types: int
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["commands"] = repr(self.commands)
+		if self.types:
+			fields["types"] = "{" + ", ".join(f"0x{x:>04x}" for x in structs.bit_numbers_from_int(self.types)) + "}"
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		self.commands = EnableMessage.Commands(structs.read_bit_vector(stream))
+		self.types = structs.read_bit_vector(stream)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		structs.write_bit_vector(stream, self.commands)
+		structs.write_bit_vector(stream, self.types)
+
+
 class ServerReplyMessage(Message):
 	class Type(structs.IntEnum):
 		uninitialized = -1

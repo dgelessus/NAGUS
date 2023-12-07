@@ -183,6 +183,18 @@ def write_bit_vector(stream: typing.BinaryIO, bits: int) -> None:
 		bits >>= 32
 
 
+def bit_numbers_from_int(bits: int) -> typing.Iterable[int]:
+	if bits < 0:
+		raise ValueError("Cannot convert negative integer to bit set")
+	
+	i = 0
+	while bits:
+		if bits & 1:
+			yield i
+		bits >>= 1
+		i += 1
+
+
 def unpack_unified_time(data: bytes) -> datetime.datetime:
 	timestamp, micros = UNIFIED_TIME.unpack(data)
 	return datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc) + datetime.timedelta(microseconds=micros)

@@ -40,6 +40,7 @@ only of one of their non-abstract subclasses.
   * :cpp:class:`plLoadCloneMsg` = 0x0253 = 595
     
     * :cpp:class:`plLoadAvatarMsg` = 0x03b1 = 945
+  * :cpp:class:`plEnableMsg` = 0x0254 = 596
   * :cpp:class:`plServerReplyMsg` = 0x026f = 623
   * :cpp:class:`plMessageWithCallbacks` = 0x0283 = 643 (abstract)
     
@@ -375,6 +376,51 @@ Assorted data types used by the message classes below.
     but sometimes set to a short description
     (e. g. for quabs).
     Ignored by the client and all fan servers.
+
+:cpp:class:`plEnableMsg`
+------------------------
+
+.. cpp:class:: plEnableMsg : public plMessage
+  
+  *Class index = 0x0254 = 596*
+  
+  * **Header:** :cpp:class:`plMessage`.
+  * **Commands:** :cpp:class:`hsBitVector`.
+    The following flags are currently defined:
+    
+    * **Disable** = 1 << 0: Disable the receiver.
+    * **Enable** = 1 << 1: Enable the receiver.
+    * **Drawable** = 1 << 2: When received by a ``plSceneObject``,
+      forwards the message to its ``plDrawInterface`` (if any) and ``plLightInfo`` (if any).
+    * **Physical** = 1 << 3: When received by a ``plSceneObject``,
+      forwards the message to its ``plSimulationInterface`` if it has one,
+      otherwise to all of its modifiers.
+    * **Audible** = 1 << 4: When received by a ``plSceneObject``,
+      forwards the message to its ``plAudioInterface``.
+    * **All** = 1 << 5: When received by a ``plSceneObject``,
+      forwards the message to all interfaces and modifiers listed above
+      and to all of its ``plObjInterface``\s.
+    * **By type** = 1 << 6: When received by a ``plSceneObject``,
+      forwards the message to all of its ``plObjInterface``\s whose class index
+      (or that of one of their superclasses)
+      appears in the types field.
+  * **Types:** :cpp:class:`hsBitVector`.
+    Each bit represents a class index
+    (the least significant bit is class index 0).
+    Controls which interfaces receive this message
+    if it's sent to a ``plSceneObject``
+    and the commands field has the "by type" flag set.
+    
+    The following flag also has a secondary meaning,
+    probably by accident:
+    
+    * **Drawable** = 1 << 2: When received by a ``plArmatureMod``,
+      disable or enable drawing for the receiver,
+      depending on the disable and enable flags in the commands field.
+      (Note that if the "by type" flag is set in the commands field,
+      this flag is also interpreted as the class index for ``hsKeyedObject``!
+      To avoid ambiguities/conflicts,
+      this flag should never be set at the same time as the "by type" command.)
 
 :cpp:class:`plServerReplyMsg`
 -----------------------------
