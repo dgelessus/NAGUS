@@ -324,7 +324,7 @@ class LoadAvatarMessage(LoadCloneMessage):
 
 
 class EnableMessage(Message):
-	class Commands(enum.IntFlag):
+	class Commands(structs.IntFlag):
 		disable = 1 << 0
 		enable = 1 << 1
 		drawable = 1 << 2
@@ -407,7 +407,7 @@ class MessageWithCallbacks(Message):
 
 
 class AnimationCommandMessage(MessageWithCallbacks):
-	class Commands(enum.IntFlag):
+	class Commands(structs.IntFlag):
 		continue_ = 1 << 0
 		stop = 1 << 1
 		set_looping = 1 << 2
@@ -611,7 +611,7 @@ class AvatarSeekMessage(AvatarTaskMessage):
 
 
 class AvatarBrainGenericMessage(AvatarMessage):
-	class Type(enum.IntEnum):
+	class Type(structs.IntEnum):
 		next_stage = 0
 		previous_stage = 1
 		go_to_stage = 2
@@ -1030,7 +1030,7 @@ class ResponderStateEvent(NotifyEvent):
 
 
 class MultiStageEvent(NotifyEvent):
-	class Event(enum.IntEnum):
+	class Event(structs.IntEnum):
 		enter_stage = 1
 		beginning_of_loop = 2
 		advance_next_stage = 3
@@ -1127,7 +1127,7 @@ class CoopEvent(NotifyEvent):
 
 
 class OfferLinkingBookEvent(NotifyEvent):
-	class Event(enum.IntEnum):
+	class Event(structs.IntEnum):
 		finish = 0
 		offer = 999
 		rescind = -999
