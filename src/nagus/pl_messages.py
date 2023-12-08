@@ -33,6 +33,7 @@ from . import structs
 Point3 = typing.Tuple[float, float, float]
 
 
+AVATAR_ANIMATION_TASK_FOOTER = struct.Struct("<ffff???")
 PLASMA_MESSAGE_HEADER_END = struct.Struct("<dI")
 LOAD_CLONE_MESSAGE_MID = struct.Struct("<II??")
 ANIM_COMMAND_MESSAGE_MID = struct.Struct("<fffffff")
@@ -54,6 +55,126 @@ INPUT_INTERFACE_MANAGER_MESSAGE_HEADER = struct.Struct("<BI")
 
 class UnknownClassIndexError(Exception):
 	pass
+
+
+class AvatarTask(abc.ABC):
+	CLASS_INDEX: typing.ClassVar[int]
+	
+	@abc.abstractmethod
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		return collections.OrderedDict()
+	
+	def __repr__(self) -> str:
+		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
+		return f"{type(self).__name__}({joined_fields})"
+	
+	@classmethod
+	@abc.abstractmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "AvatarTask":
+		raise NotImplementedError()
+	
+	@classmethod
+	def creatable_from_stream(cls, stream: typing.BinaryIO) -> "AvatarTask":
+		(class_index,) = structs.stream_unpack(stream, structs.CLASS_INDEX)
+		if class_index == AvatarAnimationTask.CLASS_INDEX:
+			return AvatarAnimationTask.from_stream(stream)
+		else:
+			raise UnknownClassIndexError(f"Unsupported plAvTask subclass: 0x{class_index:>04x}")
+	
+	@abc.abstractmethod
+	def write(self, stream: typing.BinaryIO) -> None:
+		raise NotImplementedError()
+	
+	def write_creatable(self, stream: typing.BinaryIO) -> None:
+		stream.write(structs.CLASS_INDEX.pack(type(self).CLASS_INDEX))
+		self.write(stream)
+
+
+class AvatarAnimationTask(AvatarTask):
+	CLASS_INDEX = 0x036b
+	
+	animation_name: bytes
+	initial_blend: float
+	target_blend: float
+	fade_speed: float
+	time: float
+	start: bool
+	loop: bool
+	attach: bool
+	
+	def __init__(
+		self,
+		animation_name: bytes,
+		initial_blend: float,
+		target_blend: float,
+		fade_speed: float,
+		time: float,
+		start: bool,
+		loop: bool,
+		attach: bool,
+	) -> None:
+		super().__init__()
+		
+		self.animation_name = animation_name
+		self.initial_blend = initial_blend
+		self.target_blend = target_blend
+		self.fade_speed = fade_speed
+		self.time = time
+		self.start = start
+		self.loop = loop
+		self.attach = attach
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["animation_name"] = repr(self.animation_name)
+		if self.initial_blend != 0.0:
+			fields["initial_blend"] = repr(self.initial_blend)
+		if self.target_blend != 0.0:
+			fields["target_blend"] = repr(self.target_blend)
+		fields["fade_speed"] = repr(self.fade_speed)
+		if self.time != 0.0:
+			fields["time"] = repr(self.time)
+		fields["start"] = repr(self.start)
+		if self.loop:
+			fields["loop"] = repr(self.loop)
+		if self.attach:
+			fields["attach"] = repr(self.attach)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "AvatarAnimationTask":
+		animation_name = structs.read_safe_string(stream)
+		(
+			initial_blend,
+			target_blend,
+			fade_speed,
+			time,
+			start,
+			loop,
+			attach,
+		) = structs.stream_unpack(stream, AVATAR_ANIMATION_TASK_FOOTER)
+		return cls(
+			animation_name,
+			initial_blend,
+			target_blend,
+			fade_speed,
+			time,
+			start,
+			loop,
+			attach,
+		)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		structs.write_safe_string(stream, self.animation_name)
+		stream.write(AVATAR_ANIMATION_TASK_FOOTER.pack(
+			self.initial_blend,
+			self.target_blend,
+			self.fade_speed,
+			self.time,
+			self.start,
+			self.loop,
+			self.attach,
+		))
 
 
 class MessageFlags(structs.IntFlag):
@@ -283,7 +404,7 @@ class LoadAvatarMessage(LoadCloneMessage):
 	
 	is_player: bool
 	spawn_point: typing.Optional[structs.Uoid]
-	initial_task: typing.Any # TODO
+	initial_task: typing.Optional[AvatarTask]
 	user_string: bytes
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
@@ -305,7 +426,7 @@ class LoadAvatarMessage(LoadCloneMessage):
 		self.spawn_point = structs.Uoid.key_from_stream(stream)
 		(initial_task_present,) = stream.read(1)
 		if initial_task_present:
-			raise NotImplementedError("Cannot parse plAvTask yet") # TODO
+			self.initial_task = AvatarTask.creatable_from_stream(stream)
 		else:
 			self.initial_task = None
 		self.user_string = structs.read_safe_string(stream)
@@ -319,7 +440,7 @@ class LoadAvatarMessage(LoadCloneMessage):
 			stream.write(b"\x00")
 		else:
 			stream.write(b"\x01")
-			raise NotImplementedError("Cannot write plAvTask yet") # TODO
+			self.initial_task.write_creatable(stream)
 		structs.write_safe_string(stream, self.user_string)
 
 
@@ -510,7 +631,7 @@ class AvatarMessage(Message):
 class AvatarTaskMessage(AvatarMessage):
 	CLASS_INDEX = 0x0298
 	
-	task: typing.Any # TODO
+	task: typing.Optional[AvatarTask]
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
@@ -522,7 +643,7 @@ class AvatarTaskMessage(AvatarMessage):
 		super().read(stream)
 		(task_present,) = stream.read(1)
 		if task_present:
-			raise NotImplementedError("Cannot parse plAvTask yet") # TODO
+			self.task = AvatarTask.creatable_from_stream(stream)
 		else:
 			self.task = None
 	
@@ -532,7 +653,7 @@ class AvatarTaskMessage(AvatarMessage):
 			stream.write(b"\x00")
 		else:
 			stream.write(b"\x01")
-			raise NotImplementedError("Cannot write plAvTask yet") # TODO
+			self.task.write_creatable(stream)
 
 
 class AvatarSeekMessage(AvatarTaskMessage):

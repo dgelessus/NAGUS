@@ -79,6 +79,37 @@ Assorted data types used by the message classes below.
   * **Y:** 4-byte floating-point number.
   * **Z:** 4-byte floating-point number.
 
+Avatar tasks
+^^^^^^^^^^^^
+
+* :cpp:class:`plAvTask` = 0x036a = 874 (abstract)
+  
+  * :cpp:class:`plAvAnimTask` = 0x036b = 875
+
+.. cpp:class:: plAvTask : public plCreatable
+  
+  *Class index = 0x036a = 874*
+  
+  * **Header:** :cpp:class:`plCreatable` class index header.
+    (Strictly speaking,
+    this isn't part of the serialized :cpp:class:`plAvTask` itself,
+    but in practice,
+    :cpp:class:`plAvTask`\s are always serialized with a header.)
+
+.. cpp:class:: plAvAnimTask : public plAvTask
+  
+  *Class index = 0x036b = 875*
+  
+  * **Header:** :cpp:class:`plAvTask`.
+  * **Animation name:** :ref:`SafeString <safe_string>`.
+  * **Initial blend:** 4-byte floating-point number.
+  * **Target blend:** 4-byte floating-point number.
+  * **Fade speed:** 4-byte floating-point number.
+  * **Time:** 4-byte floating-point number.
+  * **Start:** 1-byte boolean.
+  * **Loop:** 1-byte boolean.
+  * **Attach:** 1-byte boolean.
+
 :cpp:class:`plMessage`
 ----------------------
 
@@ -369,7 +400,7 @@ Assorted data types used by the message classes below.
   * **Initial task present:** 1-byte boolean.
     Whether the following initial task field is present.
   * **Initial task:** Serialized :cpp:class:`plCreatable` with header.
-    Must be an instance of a ``plAvTask`` subclass.
+    Must be an instance of a :cpp:class:`plAvTask` subclass.
     Only present if the preceding boolean field is true,
     in which case the :cpp:class:`plCreatable` should not be ``nullptr``.
     If the preceding boolean field is false,
@@ -523,7 +554,7 @@ Assorted data types used by the message classes below.
   * **Task present:** 1-byte boolean.
     Whether the following initial task field is present.
   * **Task:** Serialized :cpp:class:`plCreatable` with header.
-    Must be an instance of a ``plAvTask`` subclass.
+    Must be an instance of a :cpp:class:`plAvTask` subclass.
     Only present if the preceding boolean field is true,
     in which case the :cpp:class:`plCreatable` should not be ``nullptr``.
     If the preceding boolean field is false,
