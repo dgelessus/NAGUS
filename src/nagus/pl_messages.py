@@ -36,7 +36,7 @@ Point3 = typing.Tuple[float, float, float]
 AVATAR_ANIMATION_TASK_FOOTER = struct.Struct("<ffff???")
 PLASMA_MESSAGE_HEADER_END = struct.Struct("<dI")
 LOAD_CLONE_MESSAGE_MID = struct.Struct("<II??")
-ANIM_COMMAND_MESSAGE_MID = struct.Struct("<fffffff")
+ANIMATION_COMMAND_MESSAGE_MID = struct.Struct("<fffffff")
 AVATAR_SEEK_MESSAGE_TARGET = struct.Struct("<3f3f")
 AVATAR_SEEK_MESSAGE_MID_1 = struct.Struct("<f?")
 AVATAR_SEEK_MESSAGE_MID_2 = struct.Struct("<H?B")
@@ -604,14 +604,14 @@ class AnimationCommandMessage(MessageWithCallbacks):
 			self.speed,
 			self.speed_change_rate,
 			self.time,
-		) = structs.stream_unpack(stream, ANIM_COMMAND_MESSAGE_MID)
+		) = structs.stream_unpack(stream, ANIMATION_COMMAND_MESSAGE_MID)
 		self.animation_name = structs.read_safe_string(stream)
 		self.loop_name = structs.read_safe_string(stream)
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		super().write(stream)
 		structs.write_bit_vector(stream, self.commands)
-		stream.write(ANIM_COMMAND_MESSAGE_MID.pack(
+		stream.write(ANIMATION_COMMAND_MESSAGE_MID.pack(
 			self.begin,
 			self.end,
 			self.loop_begin,
