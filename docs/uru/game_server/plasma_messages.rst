@@ -85,6 +85,9 @@ Avatar tasks
 * :cpp:class:`plAvTask` = 0x036a = 874 (abstract)
   
   * :cpp:class:`plAvAnimTask` = 0x036b = 875
+  * :cpp:class:`plAvOneShotTask` = 0x036e = 878 (cannot be sent over the network)
+    
+    * :cpp:class:`plAvOneShotLinkTask` = 0x0488 = 1160
 
 .. cpp:class:: plAvTask : public plCreatable
   
@@ -109,6 +112,23 @@ Avatar tasks
   * **Start:** 1-byte boolean.
   * **Loop:** 1-byte boolean.
   * **Attach:** 1-byte boolean.
+
+.. cpp:class:: plAvOneShotTask : public plAvTask
+  
+  *Class index = 0x036e = 878*
+  
+  Identical structure to its superclass :cpp:class:`plAvTask`
+  (i. e. contains no data of its own).
+  This message itself should never be sent over the network,
+  but its subclass :cpp:class:`plAvOneShotLinkTask` can be.
+
+.. cpp:class:: plAvOneShotLinkTask : public plAvOneShotTask
+  
+  *Class index = 0x0488 = 1160*
+  
+  * **Header:** :cpp:class:`plAvOneShotTask`.
+  * **Animation name:** :ref:`SafeString <safe_string>`.
+  * **Marker name:** :ref:`SafeString <safe_string>`.
 
 :cpp:class:`plMessage`
 ----------------------

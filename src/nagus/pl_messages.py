@@ -78,6 +78,8 @@ class AvatarTask(abc.ABC):
 		(class_index,) = structs.stream_unpack(stream, structs.CLASS_INDEX)
 		if class_index == AvatarAnimationTask.CLASS_INDEX:
 			return AvatarAnimationTask.from_stream(stream)
+		elif class_index == AvatarOneShotLinkTask.CLASS_INDEX:
+			return AvatarOneShotLinkTask.from_stream(stream)
 		else:
 			raise UnknownClassIndexError(f"Unsupported plAvTask subclass: 0x{class_index:>04x}")
 	
@@ -175,6 +177,38 @@ class AvatarAnimationTask(AvatarTask):
 			self.loop,
 			self.attach,
 		))
+
+
+# Technically a subclass of plAvOneShotTask,
+# but that doesn't add any data to the serialized format,
+# so we don't care.
+class AvatarOneShotLinkTask(AvatarTask):
+	CLASS_INDEX = 0x0488
+	
+	animation_name: bytes
+	marker_name: bytes
+	
+	def __init__(self, animation_name: bytes, marker_name: bytes) -> None:
+		super().__init__()
+		
+		self.animation_name = animation_name
+		self.marker_name = marker_name
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["animation_name"] = repr(self.animation_name)
+		fields["marker_name"] = repr(self.marker_name)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "AvatarOneShotLinkTask":
+		animation_name = structs.read_safe_string(stream)
+		marker_name = structs.read_safe_string(stream)
+		return cls(animation_name, marker_name)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		structs.write_safe_string(stream, self.animation_name)
+		structs.write_safe_string(stream, self.marker_name)
 
 
 class MessageFlags(structs.IntFlag):
