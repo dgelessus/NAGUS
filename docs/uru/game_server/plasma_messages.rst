@@ -79,6 +79,142 @@ Assorted data types used by the message classes below.
   * **Y:** 4-byte floating-point number.
   * **Z:** 4-byte floating-point number.
 
+Avatar brains
+^^^^^^^^^^^^^
+
+* :cpp:class:`plArmatureBrain` = 0x035b = 859
+  
+  * :cpp:class:`plAvBrainGeneric` = 0x0360 = 864
+
+.. cpp:class:: plArmatureBrain : public plCreatable
+  
+  *Class index = 0x035b = 859*
+  
+  * **Header:** :cpp:class:`plCreatable` class index header.
+    (Strictly speaking,
+    this isn't part of the serialized :cpp:class:`plArmatureBrain` itself,
+    but in practice,
+    :cpp:class:`plArmatureBrain`\s are always serialized with a header.)
+  * **Reserved:** 21 bytes.
+    Set to 0 when writing and ignored when reading.
+    For backwards compatibility with old Plasma versions.
+
+.. cpp:class:: plAnimStage : public plCreatable
+  
+  *Class index = 0x0371 = 881*
+  
+  * **Header:** :cpp:class:`plCreatable` class index header.
+    (Strictly speaking,
+    this isn't part of the serialized :cpp:class:`plAnimStage` itself,
+    but in practice,
+    :cpp:class:`plAnimStage`\s are always serialized with a header.)
+  * **Animation name:** :ref:`SafeString <safe_string>`.
+  * **Notify flags:** 1-byte unsigned int.
+    The following flags are defined:
+    
+    * **Enter** = 1 << 0
+    * **Loop** = 1 << 1
+    * **Advance** = 1 << 2
+    * **Regress** = 1 << 3
+  * **Forward type:** 4-byte unsigned int.
+    The following types are defined:
+    
+    * None = 0
+    * On key = 1
+    * Automatic = 2
+  * **Backward type:** 4-byte unsigned int.
+    Supports the same values as the forward type field.
+  * **Advance type:** 4-byte unsigned int.
+    The following types are defined:
+    
+    * None = 0
+    * On move = 1
+    * Automatic = 2
+    * On any key = 3
+  * **Regress type:** 4-byte unsigned int.
+    Supports the same values as the advance type field.
+  * **Loop count:** 4-byte signed int.
+  * **Do advance to:** 1-byte boolean.
+  * **Advance to:** 4-byte unsigned int.
+  * **Do regress to:** 1-byte boolean.
+  * **Regress to:** 4-byte unsigned int.
+
+.. cpp:class:: plAvBrainGeneric : public plArmatureBrain
+  
+  *Class index = 0x0360 = 864*
+  
+  * **Header:** :cpp:class:`plArmatureBrain`.
+  * **Stage count:** 4-byte signed int.
+    Element count for the following stage array.
+  * **Stages:** Variable-length array.
+    Each element has the following structure:
+    
+    * **Stage:** Serialized :cpp:class:`plCreatable` with header.
+      Must be an instance of a :cpp:class:`plAnimStage` subclass.
+    * **Local time:** 4-byte floating-point number.
+    * **Length:** 4-byte floating-point number.
+    * **Current loop:** 4-byte signed int.
+    * **Attached:** 1-byte boolean.
+  * **Current stage:** 4-byte signed int.
+  * **Brain type:** 4-byte unsigned int.
+    The following types are defined:
+    
+    * Generic = 0
+    * Ladder = 1
+    * Sit = 2
+    * Sit on ground = 3
+    * Emote = 4
+    * AFK = 5
+  * **Exit flags:** 4-byte unsigned int.
+    The following flags are defined:
+    
+    * **Any task** = 1 << 0
+    * **New brain** = 1 << 1
+    * **Any input** = 1 << 2
+  * **Mode:** 1-byte unsigned int.
+    The following modes are defined:
+    
+    * Entering = 1
+    * Normal = 2
+    * Fading in = 3
+    * Fading out = 4
+    * Exit = 5
+    * Abort = 6
+  * **Forward:** 1-byte boolean.
+  * **Start message present:** 1-byte boolean.
+    Whether the following start message field is present.
+  * **Start message:** Serialized :cpp:class:`plCreatable` with header.
+    Must be an instance of a :cpp:class:`plMessage` subclass.
+    Only present if the preceding boolean field is true,
+    in which case the :cpp:class:`plCreatable` should not be ``nullptr``.
+    If the preceding boolean field is false,
+    this field is not present and defaults to ``nullptr``.
+  * **End message present:** 1-byte boolean.
+    Whether the following end message field is present.
+  * **End message:** Serialized :cpp:class:`plCreatable` with header.
+    Must be an instance of a :cpp:class:`plMessage` subclass.
+    Only present if the preceding boolean field is true,
+    in which case the :cpp:class:`plCreatable` should not be ``nullptr``.
+    If the preceding boolean field is false,
+    this field is not present and defaults to ``nullptr``.
+  * **Fade in:** 4-byte floating-point number.
+  * **Fade out:** 4-byte floating-point number.
+  * **Move mode:** 1-byte unsigned int.
+    The following modes are defined:
+    
+    * Absolute = 0
+    * Relative = 1
+    * Normal = 2
+    * Standstill = 3
+  * **Body usage:** 1-byte unsigned int.
+    The following values are defined:
+    
+    * Unknown = 0
+    * Upper = 1
+    * Full = 2
+    * Lower = 3
+  * **Recipient:** :cpp:class:`plKey`.
+
 Avatar tasks
 ^^^^^^^^^^^^
 
@@ -88,6 +224,7 @@ Avatar tasks
   * :cpp:class:`plAvOneShotTask` = 0x036e = 878 (cannot be sent over the network)
     
     * :cpp:class:`plAvOneShotLinkTask` = 0x0488 = 1160
+  * :cpp:class:`plAvTaskBrain` = 0x0370 = 880
 
 .. cpp:class:: plAvTask : public plCreatable
   
@@ -129,6 +266,14 @@ Avatar tasks
   * **Header:** :cpp:class:`plAvOneShotTask`.
   * **Animation name:** :ref:`SafeString <safe_string>`.
   * **Marker name:** :ref:`SafeString <safe_string>`.
+
+.. cpp:class:: plAvTaskBrain : public plAvTask
+  
+  *Class index = 0x0370 = 880*
+  
+  * **Header:** :cpp:class:`plAvOneShotTask`.
+  * **Brain:** Serialized :cpp:class:`plCreatable` with header.
+    Must be an instance of a :cpp:class:`plArmatureBrain` subclass.
 
 :cpp:class:`plMessage`
 ----------------------

@@ -33,6 +33,10 @@ from . import structs
 Point3 = typing.Tuple[float, float, float]
 
 
+ANIMATION_STAGE_FOOTER = struct.Struct("<BIIIIi?I?I")
+ANIMATION_STAGE_FOOTER_AUX = struct.Struct("<ffi?")
+AVATAR_BRAIN_GENERIC_MID_1 = struct.Struct("<iIIB?")
+AVATAR_BRAIN_GENERIC_MID_2 = struct.Struct("<ffBB")
 AVATAR_ANIMATION_TASK_FOOTER = struct.Struct("<ffff???")
 PLASMA_MESSAGE_HEADER_END = struct.Struct("<dI")
 LOAD_CLONE_MESSAGE_MID = struct.Struct("<II??")
@@ -55,6 +59,366 @@ INPUT_INTERFACE_MANAGER_MESSAGE_HEADER = struct.Struct("<BI")
 
 class UnknownClassIndexError(Exception):
 	pass
+
+
+class AnimationStage(object):
+	class NotifyFlags(structs.IntFlag):
+		enter = 1 << 0
+		loop = 1 << 1
+		advance = 1 << 2
+		regress = 1 << 3
+	
+	class ForwardBackwardType(structs.IntEnum):
+		none = 0
+		on_key = 1
+		automatic = 2
+	
+	class AdvanceRegressType(structs.IntEnum):
+		none = 0
+		on_move = 1
+		automatic = 2
+		on_any_key = 3
+	
+	CLASS_INDEX = 0x0371
+	
+	animation_name: bytes
+	notify_flags: "AnimationStage.NotifyFlags"
+	forward_type: "AnimationStage.ForwardBackwardType"
+	backward_type: "AnimationStage.ForwardBackwardType"
+	advance_type: "AnimationStage.AdvanceRegressType"
+	regress_type: "AnimationStage.AdvanceRegressType"
+	loop_count: int
+	do_advance_to: bool
+	advance_to: float
+	do_regress_to: bool
+	regress_to: float
+	# "Aux" fields - technically not part of the default plAnimStage serialized format
+	local_time: float
+	length: float
+	current_loop: int
+	attached: bool
+	
+	def __init__(
+		self,
+		animation_name: bytes,
+		notify_flags: "AnimationStage.NotifyFlags",
+		forward_type: "AnimationStage.ForwardBackwardType",
+		backward_type: "AnimationStage.ForwardBackwardType",
+		advance_type: "AnimationStage.AdvanceRegressType",
+		regress_type: "AnimationStage.AdvanceRegressType",
+		loop_count: int,
+		do_advance_to: bool,
+		advance_to: float,
+		do_regress_to: bool,
+		regress_to: float,
+		local_time: float,
+		length: float,
+		current_loop: int,
+		attached: bool,
+	) -> None:
+		super().__init__()
+		
+		self.animation_name = animation_name
+		self.notify_flags = notify_flags
+		self.forward_type = forward_type
+		self.backward_type = backward_type
+		self.advance_type = advance_type
+		self.regress_type = regress_type
+		self.loop_count = loop_count
+		self.do_advance_to = do_advance_to
+		self.advance_to = advance_to
+		self.do_regress_to = do_regress_to
+		self.regress_to = regress_to
+		self.local_time = local_time
+		self.length = length
+		self.current_loop = current_loop
+		self.attached = attached
+	
+	@abc.abstractmethod
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = collections.OrderedDict()
+		
+		fields["animation_name"] = repr(self.animation_name)
+		if self.notify_flags:
+			fields["notify_flags"] = repr(self.notify_flags)
+		if self.forward_type != AnimationStage.ForwardBackwardType.none:
+			fields["forward_type"] = repr(self.forward_type)
+		if self.backward_type != AnimationStage.ForwardBackwardType.none:
+			fields["backward_type"] = repr(self.backward_type)
+		if self.advance_type != AnimationStage.AdvanceRegressType.none:
+			fields["advance_type"] = repr(self.advance_type)
+		if self.regress_type != AnimationStage.AdvanceRegressType.none:
+			fields["regress_type"] = repr(self.regress_type)
+		if self.loop_count != 0:
+			fields["loop_count"] = repr(self.loop_count)
+		if self.do_advance_to or self.advance_to != 0.0:
+			fields["do_advance_to"] = repr(self.do_advance_to)
+			fields["advance_to"] = repr(self.advance_to)
+		if self.do_regress_to or self.regress_to != 0.0:
+			fields["do_regress_to"] = repr(self.do_regress_to)
+			fields["regress_to"] = repr(self.regress_to)
+		
+		if self.local_time != 0.0:
+			fields["local_time"] = repr(self.local_time)
+		if self.length != 0.0:
+			fields["length"] = repr(self.length)
+		if self.current_loop != 0:
+			fields["current_loop"] = repr(self.current_loop)
+		if self.attached:
+			fields["attached"] = repr(self.attached)
+		
+		return fields
+	
+	def __repr__(self) -> str:
+		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
+		return f"{type(self).__name__}({joined_fields})"
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "AnimationStage":
+		animation_name = structs.read_safe_string(stream)
+		(
+			notify_flags,
+			forward_type,
+			backward_type,
+			advance_type,
+			regress_type,
+			loop_count,
+			do_advance_to,
+			advance_to,
+			do_regress_to,
+			regress_to,
+		) = structs.stream_unpack(stream, ANIMATION_STAGE_FOOTER)
+		local_time, length, current_loop, attached = structs.stream_unpack(stream, ANIMATION_STAGE_FOOTER_AUX)
+		return cls(
+			animation_name,
+			AnimationStage.NotifyFlags(notify_flags),
+			AnimationStage.ForwardBackwardType(forward_type),
+			AnimationStage.ForwardBackwardType(backward_type),
+			AnimationStage.AdvanceRegressType(advance_type),
+			AnimationStage.AdvanceRegressType(regress_type),
+			loop_count,
+			do_advance_to,
+			advance_to,
+			do_regress_to,
+			regress_to,
+			local_time,
+			length,
+			current_loop,
+			attached,
+		)
+	
+	@classmethod
+	def creatable_from_stream(cls, stream: typing.BinaryIO) -> "AnimationStage":
+		(class_index,) = structs.stream_unpack(stream, structs.CLASS_INDEX)
+		if class_index == AnimationStage.CLASS_INDEX:
+			return AnimationStage.from_stream(stream)
+		else:
+			raise UnknownClassIndexError(f"Invalid class index for plAnimStage: 0x{class_index:>04x}")
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		structs.write_safe_string(stream, self.animation_name)
+		stream.write(ANIMATION_STAGE_FOOTER.pack(
+			self.notify_flags,
+			self.forward_type,
+			self.backward_type,
+			self.advance_type,
+			self.regress_type,
+			self.loop_count,
+			self.do_advance_to,
+			self.advance_to,
+			self.do_regress_to,
+			self.regress_to,
+		))
+		stream.write(ANIMATION_STAGE_FOOTER_AUX.pack(
+			self.local_time,
+			self.length,
+			self.current_loop,
+			self.attached,
+		))
+	
+	def write_creatable(self, stream: typing.BinaryIO) -> None:
+		stream.write(structs.CLASS_INDEX.pack(type(self).CLASS_INDEX))
+		self.write(stream)
+
+
+class ArmatureBrain(abc.ABC):
+	CLASS_INDEX: typing.ClassVar[int]
+	
+	@abc.abstractmethod
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		return collections.OrderedDict()
+	
+	def __repr__(self) -> str:
+		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
+		return f"{type(self).__name__}({joined_fields})"
+	
+	@classmethod
+	def from_class_index(cls, class_index: int) -> "ArmatureBrain":
+		if class_index == AvatarBrainGeneric.CLASS_INDEX:
+			return AvatarBrainGeneric()
+		else:
+			raise UnknownClassIndexError(f"Unsupported plArmatureBrain subclass: 0x{class_index:>04x}")
+	
+	@abc.abstractmethod
+	def read(self, stream: typing.BinaryIO) -> None:
+		structs.read_exact(stream, 21) # Reserved
+	
+	@classmethod
+	def creatable_from_stream(cls, stream: typing.BinaryIO) -> "ArmatureBrain":
+		(class_index,) = structs.stream_unpack(stream, structs.CLASS_INDEX)
+		self = cls.from_class_index(class_index)
+		
+		if self is not None:
+			self.read(stream)
+		
+		return self
+	
+	@abc.abstractmethod
+	def write(self, stream: typing.BinaryIO) -> None:
+		stream.write(bytes(21)) # Reserved
+	
+	def write_creatable(self, stream: typing.BinaryIO) -> None:
+		stream.write(structs.CLASS_INDEX.pack(type(self).CLASS_INDEX))
+		self.write(stream)
+
+
+class AvatarBrainGeneric(ArmatureBrain):
+	class Type(structs.IntEnum):
+		generic = 0
+		ladder = 1
+		sit = 2
+		sit_on_ground = 3
+		emote = 4
+		afk = 5
+	
+	class ExitFlags(structs.IntFlag):
+		any_task = 1 << 0
+		new_brain = 1 << 1
+		any_input = 1 << 2
+	
+	class Mode(structs.IntEnum):
+		entering = 1
+		normal = 2
+		fading_in = 3
+		fading_out = 4
+		exit = 5
+		abort = 6
+	
+	class MoveMode(structs.IntEnum):
+		absolute = 0
+		relative = 1
+		normal = 2
+		standstill = 3
+	
+	class BodyUsage(structs.IntEnum):
+		unknown = 0
+		upper = 1
+		full = 2
+		lower = 3
+	
+	CLASS_INDEX = 0x0360
+	
+	stages: typing.List[AnimationStage]
+	current_stage: int
+	type: "AvatarBrainGeneric.Type"
+	exit_flags: "AvatarBrainGeneric.ExitFlags"
+	mode: "AvatarBrainGeneric.Mode"
+	forward: bool
+	start_message: "typing.Optional[Message]"
+	end_message: "typing.Optional[Message]"
+	fade_in: float
+	fade_out: float
+	move_mode: "AvatarBrainGeneric.MoveMode"
+	body_usage: "AvatarBrainGeneric.BodyUsage"
+	recipient: typing.Optional[structs.Uoid]
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["stages"] = repr(self.stages)
+		if self.current_stage != 0:
+			fields["current_stage"] = repr(self.current_stage)
+		if self.type != AvatarBrainGeneric.Type.generic:
+			fields["type"] = repr(self.type)
+		if self.exit_flags:
+			fields["exit_flags"] = repr(self.exit_flags)
+		if self.mode != AvatarBrainGeneric.Mode.entering:
+			fields["mode"] = repr(self.mode)
+		if not self.forward:
+			fields["forward"] = repr(self.forward)
+		if self.start_message is not None:
+			fields["start_message"] = repr(self.start_message)
+		if self.end_message is not None:
+			fields["end_message"] = repr(self.end_message)
+		if self.fade_in != 0.0:
+			fields["fade_in"] = repr(self.fade_in)
+		if self.fade_out != 0.0:
+			fields["fade_out"] = repr(self.fade_out)
+		fields["move_mode"] = repr(self.move_mode)
+		if self.body_usage != AvatarBrainGeneric.BodyUsage.unknown:
+			fields["body_usage"] = repr(self.body_usage)
+		if self.recipient is not None:
+			fields["recipient"] = str(self.recipient)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		
+		(stage_count,) = structs.stream_unpack(stream, structs.UINT32)
+		self.stages = []
+		for _ in range(stage_count):
+			self.stages.append(AnimationStage.creatable_from_stream(stream))
+		
+		self.current_stage, brain_type, exit_flags, mode, self.forward = structs.stream_unpack(stream, AVATAR_BRAIN_GENERIC_MID_1)
+		self.type = AvatarBrainGeneric.Type(brain_type)
+		self.exit_flags = AvatarBrainGeneric.ExitFlags(exit_flags)
+		self.mode = AvatarBrainGeneric.Mode(mode)
+		
+		(start_message_present,) = structs.read_exact(stream, 1)
+		if start_message_present:
+			self.start_message = Message.creatable_from_stream(stream)
+			if self.start_message is None:
+				raise ValueError("AvatarBrainGeneric start message is present, but nullptr?!")
+		else:
+			self.start_message = None
+		
+		(end_message_present,) = structs.read_exact(stream, 1)
+		if end_message_present:
+			self.end_message = Message.creatable_from_stream(stream)
+			if self.end_message is None:
+				raise ValueError("AvatarBrainGeneric end message is present, but nullptr?!")
+		else:
+			self.end_message = None
+		
+		self.fade_in, self.fade_out, move_mode, body_usage = structs.stream_unpack(stream, AVATAR_BRAIN_GENERIC_MID_2)
+		self.move_mode = AvatarBrainGeneric.MoveMode(move_mode)
+		self.body_usage = AvatarBrainGeneric.BodyUsage(body_usage)
+		
+		self.recipient = structs.Uoid.key_from_stream(stream)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		
+		stream.write(structs.UINT32.pack(len(self.stages)))
+		for stage in self.stages:
+			stage.write_creatable(stream)
+		
+		stream.write(AVATAR_BRAIN_GENERIC_MID_1.pack(self.current_stage, self.type, self.exit_flags, self.mode, self.forward))
+		
+		if self.start_message is None:
+			stream.write(b"\x00")
+		else:
+			stream.write(b"\x01")
+			Message.creatable_to_stream(self.start_message, stream)
+		
+		if self.end_message is None:
+			stream.write(b"\x00")
+		else:
+			stream.write(b"\x01")
+			Message.creatable_to_stream(self.end_message, stream)
+		
+		stream.write(AVATAR_BRAIN_GENERIC_MID_2.pack(self.fade_in, self.fade_out, self.move_mode, self.body_usage))
+		
+		structs.Uoid.key_to_stream(self.recipient, stream)
 
 
 class AvatarTask(abc.ABC):
@@ -80,6 +444,8 @@ class AvatarTask(abc.ABC):
 			return AvatarAnimationTask.from_stream(stream)
 		elif class_index == AvatarOneShotLinkTask.CLASS_INDEX:
 			return AvatarOneShotLinkTask.from_stream(stream)
+		elif class_index == AvatarTaskBrain.CLASS_INDEX:
+			return AvatarTaskBrain.from_stream(stream)
 		else:
 			raise UnknownClassIndexError(f"Unsupported plAvTask subclass: 0x{class_index:>04x}")
 	
@@ -209,6 +575,30 @@ class AvatarOneShotLinkTask(AvatarTask):
 	def write(self, stream: typing.BinaryIO) -> None:
 		structs.write_safe_string(stream, self.animation_name)
 		structs.write_safe_string(stream, self.marker_name)
+
+
+class AvatarTaskBrain(AvatarTask):
+	CLASS_INDEX = 0x0370
+	
+	brain: ArmatureBrain
+	
+	def __init__(self, brain: ArmatureBrain) -> None:
+		super().__init__()
+		
+		self.brain = brain
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["brain"] = repr(self.brain)
+		return fields
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "AvatarTaskBrain":
+		brain = ArmatureBrain.creatable_from_stream(stream)
+		return cls(brain)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		self.brain.write_creatable(stream)
 
 
 class MessageFlags(structs.IntFlag):
