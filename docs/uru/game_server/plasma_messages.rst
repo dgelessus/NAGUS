@@ -84,7 +84,16 @@ Avatar brains
 
 * :cpp:class:`plArmatureBrain` = 0x035b = 859
   
+  * ``plAvBrainHuman`` = 0x035c = 860
+    
+    * ``plAvBrainRideAnimatedPhysical`` = 0x049e = 1182 (unused, cannot be sent over the network)
+  * ``plAvBrainCritter`` = 0x035d = 861 (cannot be sent over the network)
+  * ``plAvBrainDrive`` = 0x035e = 862 (cannot be sent over the network)
   * :cpp:class:`plAvBrainGeneric` = 0x0360 = 864
+  
+    * ``plAvBrainCoop`` = 0x045f = 1119
+  * ``plAvBrainSwim`` = 0x042d = 1069 (cannot be sent over the network)
+  * ``plAvBrainClimb`` = 0x0453 = 1107 (cannot be sent over the network)
 
 .. cpp:class:: plArmatureBrain : public plCreatable
   
@@ -221,10 +230,12 @@ Avatar tasks
 * :cpp:class:`plAvTask` = 0x036a = 874 (abstract)
   
   * :cpp:class:`plAvAnimTask` = 0x036b = 875
+  * ``plAvSeekTask`` = 0x036c = 876 (cannot be sent over the network)
   * :cpp:class:`plAvOneShotTask` = 0x036e = 878 (cannot be sent over the network)
     
     * :cpp:class:`plAvOneShotLinkTask` = 0x0488 = 1160
   * :cpp:class:`plAvTaskBrain` = 0x0370 = 880
+  * ``plAvTaskSeek`` = 0x0390 = 912 (cannot be sent over the network)
 
 .. cpp:class:: plAvTask : public plCreatable
   
