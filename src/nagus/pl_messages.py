@@ -55,6 +55,7 @@ NOTIFY_MESSAGE_HEADER = struct.Struct("<ifiI")
 LINK_EFFECTS_TRIGGER_MESSAGE_HEADER = struct.Struct("<i?")
 PARTICLE_KILL_MESSAGE = struct.Struct("<ffB")
 INPUT_INTERFACE_MANAGER_MESSAGE_HEADER = struct.Struct("<BI")
+KI_MESSAGE_FOOTER = struct.Struct("<BBHfi")
 
 
 class UnknownClassIndexError(Exception):
@@ -1940,3 +1941,86 @@ class InputInterfaceManagerMessage(Message):
 		structs.write_safe_string(stream, self.age_file_name)
 		structs.write_safe_string(stream, self.spawn_point)
 		structs.Uoid.key_to_stream(self.avatar, stream)
+
+
+class KIMessage(Message):
+	class Command(structs.IntEnum):
+		chat_message = 0
+		# Not listing all the other commands defined on the client side,
+		# because they should never be sent over the network.
+	
+	class ChatFlags(structs.IntFlag):
+		private = 1 << 0
+		admin = 1 << 1
+		ccr_broadcast = 1 << 2
+		inter_age = 1 << 3
+		status = 1 << 4
+		neighbors = 1 << 5
+		subtitle = 1 << 6
+		localization_key = 1 << 7
+	
+	class Channel(structs.IntEnum):
+		default = 0
+		egg_room_1 = 1
+		egg_room_2 = 2
+		egg_room_3 = 3
+		egg_room_4 = 4
+		egg_room_5 = 5
+		maintainers_nexus_yellow = 6
+		maintainers_nexus_purple = 7
+	
+	CLASS_INDEX = 0x0364
+	
+	command: "KIMessage.Command"
+	sender_name: bytes
+	sender_ki_number: int
+	text: str
+	chat_flags: "KIMessage.ChatFlags"
+	channel: "KIMessage.Channel"
+	reserved_flags: int
+	delay: float
+	value: int
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		if self.command != KIMessage.Command.chat_message:
+			# mypy incorrectly says that this branch is unreachable.
+			# This would be true if KIMessage.Command was a plain Enum,
+			# but because it's an IntEnum,
+			# it can in fact have other values beyond its single declared value.
+			fields["command"] = repr(self.command) # type: ignore [unreachable]
+		fields["sender_name"] = repr(self.sender_name)
+		fields["sender_ki_number"] = repr(self.sender_ki_number)
+		fields["text"] = repr(self.text)
+		if self.chat_flags:
+			fields["chat_flags"] = repr(self.chat_flags)
+		if self.channel != KIMessage.Channel.default:
+			fields["channel"] = repr(self.channel)
+		if self.reserved_flags != 0:
+			fields["reserved_flags"] = repr(self.reserved_flags)
+		if self.delay != 0.0:
+			fields["delay"] = repr(self.delay)
+		if self.value != 0:
+			fields["value"] = repr(self.value)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		
+		(command,) = structs.read_exact(stream, 1)
+		self.command = KIMessage.Command(command)
+		self.sender_name = structs.read_safe_string(stream)
+		(self.sender_ki_number,) = structs.stream_unpack(stream, structs.UINT32)
+		self.text = structs.read_safe_wide_string(stream)
+		chat_flags, channel, self.reserved_flags, self.delay, self.value = structs.stream_unpack(stream, KI_MESSAGE_FOOTER)
+		self.chat_flags = KIMessage.ChatFlags(chat_flags)
+		self.channel = KIMessage.Channel(channel)
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		
+		stream.write(bytes([self.command]))
+		structs.write_safe_string(stream, self.sender_name)
+		stream.write(structs.UINT32.pack(self.sender_ki_number))
+		structs.write_safe_wide_string(stream, self.text)
+		stream.write(KI_MESSAGE_FOOTER.pack(self.chat_flags, self.channel, self.reserved_flags, self.delay, self.value))
