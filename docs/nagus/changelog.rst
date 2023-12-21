@@ -12,6 +12,10 @@ Version 0.1.1
 * Implemented all remaining game server messages.
   This has no effect on gameplay,
   but fixes multiple warning/error messages on the server side.
+* Implemented parsing of many (but not all) ``plMessage`` subclasses
+  that can be sent over the network.
+  This should have no effect on gameplay,
+  but gives more useful log messages if ``plMessage`` parsing and logging is enabled.
 * Changed SDL state handling to not persist states for avatar and/or clone objects,
   which become unusable once the age instance is unloaded.
   This should have no effect on gameplay,
