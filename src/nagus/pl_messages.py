@@ -724,7 +724,7 @@ class Message(object):
 			raise UnknownClassIndexError(f"Cannot create/read plMessage with unknown class index 0x{class_index:>04x}")
 		else:
 			self = clazz()
-			self.class_index = class_index
+			assert self.class_index == class_index
 			return self
 	
 	@property
