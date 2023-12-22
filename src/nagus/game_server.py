@@ -1133,6 +1133,8 @@ class NetMessageGameMessage(NetMessageStream):
 				if message is None:
 					raise ValueError("plMessage is nullptr, this should never happen!")
 				
+				assert message.class_index == class_index
+				
 				message.read(message_stream)
 				extra_data = message_stream.read()
 		except (EOFError, ValueError, pl_messages.UnknownClassIndexError) as exc:
@@ -1781,6 +1783,8 @@ class GameConnection(base.BaseMOULConnection):
 			except pl_messages.UnknownClassIndexError:
 				message = NetMessage()
 				message.class_index = class_index
+			
+			assert message.class_index == class_index
 			
 			message.read(buffer)
 			extra_data = buffer.read()
