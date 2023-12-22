@@ -59,7 +59,6 @@ JOIN_AGE_REQUEST = struct.Struct("<II16sI")
 JOIN_AGE_REPLY = struct.Struct("<II")
 PROPAGATE_BUFFER_HEADER = struct.Struct("<II")
 
-NET_MESSAGE_HEADER = struct.Struct("<HI")
 NET_MESSAGE_VERSION = struct.Struct("<BB")
 NET_MESSAGE_TIME_SENT = struct.Struct("<II")
 NET_MESSAGE_STREAMED_OBJECT_HEADER = struct.Struct("<IBI")
@@ -447,6 +446,17 @@ class NetMessage(object):
 		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
 		return f"<{self.class_description}: {joined_fields}>"
 	
+	@classmethod
+	def from_class_index(cls, class_index: int) -> "NetMessage":
+		try:
+			clazz = NET_MESSAGE_CLASSES_BY_INDEX[class_index]
+		except KeyError:
+			raise pl_messages.UnknownClassIndexError(f"Cannot create/read plNetMessage with unknown class index 0x{class_index:>04x}")
+		else:
+			self = clazz()
+			assert self.class_index == class_index
+			return self
+	
 	@property
 	def class_description(self) -> str:
 		name = type(self).__qualname__
@@ -455,7 +465,7 @@ class NetMessage(object):
 		return f"{name} (0x{self.class_index:>04x})"
 	
 	def read(self, stream: typing.BinaryIO) -> None:
-		self.class_index, flags = structs.stream_unpack(stream, NET_MESSAGE_HEADER)
+		(flags,) = structs.stream_unpack(stream, structs.UINT32)
 		self.flags = NetMessageFlags(flags)
 		
 		if NetMessageFlags.has_version in self.flags:
@@ -490,26 +500,14 @@ class NetMessage(object):
 			self.account_uuid = None
 	
 	@classmethod
-	def from_stream(cls, stream: typing.BinaryIO) -> "NetMessage":
-		# Peek the class index from the beginning of the message
-		pos = stream.tell()
-		try:
-			class_index, _ = structs.stream_unpack(stream, NET_MESSAGE_HEADER)
-		finally:
-			stream.seek(pos)
-		
-		try:
-			clazz = NET_MESSAGE_CLASSES_BY_INDEX[class_index]
-		except KeyError:
-			self = cls()
-		else:
-			self = clazz()
-		
+	def from_stream_with_class_index(cls, stream: typing.BinaryIO) -> "NetMessage":
+		(class_index,) = structs.stream_unpack(stream, structs.CLASS_INDEX)
+		self = cls.from_class_index(class_index)
 		self.read(stream)
 		return self
 	
 	def write(self, stream: typing.BinaryIO) -> None:
-		stream.write(NET_MESSAGE_HEADER.pack(self.class_index, self.flags))
+		stream.write(structs.UINT32.pack(self.flags))
 		
 		if NetMessageFlags.has_version in self.flags:
 			assert self.protocol_version is not None
@@ -546,6 +544,10 @@ class NetMessage(object):
 			stream.write(self.account_uuid.bytes_le)
 		else:
 			assert self.account_uuid is None
+	
+	def write_with_class_index(self, stream: typing.BinaryIO) -> None:
+		stream.write(structs.CLASS_INDEX.pack(self.class_index))
+		self.write(stream)
 	
 	async def handle(self, connection: "GameConnection") -> None:
 		logger_net_message_unhandled.error("Don't know how to handle plNetMessage of class %s - ignoring", self.class_description)
@@ -1738,7 +1740,7 @@ class GameConnection(base.BaseMOULConnection):
 		logger_net_message.debug("Sending propagate buffer: %r", message)
 		
 		with io.BytesIO() as stream:
-			message.write(stream)
+			message.write_with_class_index(stream)
 			buffer = stream.getvalue()
 		
 		await self.write_message(2, PROPAGATE_BUFFER_HEADER.pack(message.class_index, len(buffer)) + buffer)
@@ -1769,11 +1771,19 @@ class GameConnection(base.BaseMOULConnection):
 		buffer_type, buffer_length = await self.read_unpack(PROPAGATE_BUFFER_HEADER)
 		
 		with io.BytesIO(await self.read(buffer_length)) as buffer:
-			message = NetMessage.from_stream(buffer)
+			(class_index,) = structs.stream_unpack(buffer, structs.CLASS_INDEX)
+			
+			if buffer_type != class_index:
+				raise base.ProtocolError(f"PropagateBuffer type 0x{buffer_type:>04x} doesn't match class index in serialized message: 0x{class_index:>04x}")
+			
+			try:
+				message = NetMessage.from_class_index(class_index)
+			except pl_messages.UnknownClassIndexError:
+				message = NetMessage()
+				message.class_index = class_index
+			
+			message.read(buffer)
 			extra_data = buffer.read()
-		
-		if buffer_type != message.class_index:
-			raise base.ProtocolError(f"PropagateBuffer type 0x{buffer_type:>04x} doesn't match class index in serialized message: 0x{message.class_index:>04x}")
 		
 		logger_net_message.debug("Received propagate buffer: %r", message)
 		
