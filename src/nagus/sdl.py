@@ -119,7 +119,7 @@ class SDLStreamHeader(object):
 			self.uoid.write(stream)
 
 
-class VariableValueBase(object):
+class VariableValueBase(structs.FieldBasedRepr):
 	"""Base class for all SDL variable values (simple and nested SDL).
 	
 	Parses and writes the header structure common to all variables,
@@ -134,14 +134,10 @@ class VariableValueBase(object):
 	hint: typing.Optional[bytes]
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = collections.OrderedDict()
+		fields = super().repr_fields()
 		if self.hint is not None:
 			fields["hint"] = repr(self.hint)
 		return fields
-	
-	def __repr__(self) -> str:
-		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
-		return f"{type(self).__qualname__}({joined_fields})"
 	
 	def copy(self) -> "VariableValueBase":
 		copy = type(self)()
@@ -575,7 +571,7 @@ class NestedSDLVariableValue(NestedSDLVariableValueBase):
 	# TODO read, write
 
 
-class SDLRecordBase(object):
+class SDLRecordBase(structs.FieldBasedRepr):
 	"""Base class for the normal and guessing implementations of SDL records."""
 	
 	class Flags(structs.IntFlag):
@@ -594,14 +590,10 @@ class SDLRecordBase(object):
 		return self.flags == other.flags
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = collections.OrderedDict()
+		fields = super().repr_fields()
 		if self.flags:
 			fields["flags"] = repr(self.flags)
 		return fields
-	
-	def __repr__(self) -> str:
-		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
-		return f"{type(self).__qualname__}({joined_fields})"
 	
 	def copy(self) -> "SDLRecordBase":
 		copy = type(self)()

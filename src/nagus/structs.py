@@ -18,6 +18,7 @@
 """Common data types and utilities for binary data (de)serialization."""
 
 
+import abc
 import collections
 import datetime
 import enum
@@ -75,6 +76,16 @@ if not typing.TYPE_CHECKING and str(_TestEnum.thing) == "1":
 else:
 	IntEnum = enum.IntEnum
 	IntFlag = enum.IntFlag
+
+
+class FieldBasedRepr(abc.ABC):
+	@abc.abstractmethod
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		return collections.OrderedDict()
+	
+	def __repr__(self) -> str:
+		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
+		return f"{type(self).__name__}({joined_fields})"
 
 
 def read_exact(stream: typing.BinaryIO, byte_count: int) -> bytes:
@@ -371,7 +382,7 @@ class Location(object):
 		stream.write(LOCATION.pack(self.sequence_number, self.flags))
 
 
-class Uoid(object):
+class Uoid(FieldBasedRepr):
 	class Flags(IntFlag):
 		has_clone_ids = 1 << 0
 		has_load_mask = 1 << 1
@@ -389,7 +400,7 @@ class Uoid(object):
 	clone_ids: typing.Optional[typing.Tuple[int, int]]
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = collections.OrderedDict()
+		fields = super().repr_fields()
 		fields["location"] = repr(self.location)
 		if self.load_mask != 0xff:
 			fields["load_mask"] = hex(self.load_mask)
@@ -422,10 +433,6 @@ class Uoid(object):
 			self.object_name,
 			self.clone_ids,
 		))
-	
-	def __repr__(self) -> str:
-		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
-		return f"{type(self).__qualname__}({joined_fields})"
 	
 	def __str__(self) -> str:
 		if (

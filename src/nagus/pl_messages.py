@@ -62,7 +62,7 @@ class UnknownClassIndexError(Exception):
 	pass
 
 
-class AnimationStage(object):
+class AnimationStage(structs.FieldBasedRepr):
 	class NotifyFlags(structs.IntFlag):
 		enter = 1 << 0
 		loop = 1 << 1
@@ -135,9 +135,8 @@ class AnimationStage(object):
 		self.current_loop = current_loop
 		self.attached = attached
 	
-	@abc.abstractmethod
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = collections.OrderedDict()
+		fields = super().repr_fields()
 		
 		fields["animation_name"] = repr(self.animation_name)
 		if self.notify_flags:
@@ -169,10 +168,6 @@ class AnimationStage(object):
 			fields["attached"] = repr(self.attached)
 		
 		return fields
-	
-	def __repr__(self) -> str:
-		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
-		return f"{type(self).__name__}({joined_fields})"
 	
 	@classmethod
 	def from_stream(cls, stream: typing.BinaryIO) -> "AnimationStage":
@@ -242,16 +237,8 @@ class AnimationStage(object):
 		self.write(stream)
 
 
-class ArmatureBrain(abc.ABC):
+class ArmatureBrain(structs.FieldBasedRepr):
 	CLASS_INDEX: typing.ClassVar[int]
-	
-	@abc.abstractmethod
-	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		return collections.OrderedDict()
-	
-	def __repr__(self) -> str:
-		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
-		return f"{type(self).__name__}({joined_fields})"
 	
 	@classmethod
 	def from_class_index(cls, class_index: int) -> "ArmatureBrain":
@@ -422,16 +409,8 @@ class AvatarBrainGeneric(ArmatureBrain):
 		structs.Uoid.key_to_stream(self.recipient, stream)
 
 
-class AvatarTask(abc.ABC):
+class AvatarTask(structs.FieldBasedRepr):
 	CLASS_INDEX: typing.ClassVar[int]
-	
-	@abc.abstractmethod
-	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		return collections.OrderedDict()
-	
-	def __repr__(self) -> str:
-		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
-		return f"{type(self).__name__}({joined_fields})"
 	
 	@classmethod
 	@abc.abstractmethod
@@ -638,7 +617,7 @@ class MessageFlags(structs.IntFlag):
 	)
 
 
-class Message(object):
+class Message(structs.FieldBasedRepr):
 	CLASS_INDEX = 0x0202
 	
 	class_index: int
@@ -666,7 +645,7 @@ class Message(object):
 		self.flags = MessageFlags.local_propagate
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = collections.OrderedDict()
+		fields = super().repr_fields()
 		
 		if self.sender is not None:
 			fields["sender"] = str(self.sender)
@@ -1210,16 +1189,8 @@ class AvatarBrainGenericMessage(AvatarMessage):
 		))
 
 
-class NotifyEvent(abc.ABC):
+class NotifyEvent(structs.FieldBasedRepr):
 	TYPE: typing.ClassVar[int]
-	
-	@abc.abstractmethod
-	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		return collections.OrderedDict()
-	
-	def __repr__(self) -> str:
-		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
-		return f"{type(self).__name__}({joined_fields})"
 	
 	@classmethod
 	@abc.abstractmethod

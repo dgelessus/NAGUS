@@ -105,7 +105,7 @@ class GroupId(object):
 		stream.write(bytes([self.flags]))
 
 
-class ClientInfo(object):
+class ClientInfo(structs.FieldBasedRepr):
 	class Flags(enum.Flag):
 		account_uuid = 1 << 0
 		ki_number = 1 << 1
@@ -160,7 +160,7 @@ class ClientInfo(object):
 		self.client_key = client_key
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = collections.OrderedDict()
+		fields = super().repr_fields()
 		if self.account_uuid is not None:
 			fields["account_uuid"] = repr(self.account_uuid)
 		if self.ki_number is not None:
@@ -184,10 +184,6 @@ class ClientInfo(object):
 		if self.client_key is not None:
 			fields["client_key"] = repr(self.client_key)
 		return fields
-	
-	def __repr__(self) -> str:
-		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
-		return f"{type(self).__qualname__}({joined_fields})"
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		(flags,) = structs.stream_unpack(stream, structs.UINT16)
@@ -385,7 +381,7 @@ class CompressionType(enum.Enum):
 	dont = 3
 
 
-class NetMessage(object):
+class NetMessage(structs.FieldBasedRepr):
 	CLASS_INDEX = 0x025e
 	
 	class_index: int
@@ -419,7 +415,7 @@ class NetMessage(object):
 		self.account_uuid = None
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = collections.OrderedDict()
+		fields = super().repr_fields()
 		fields["flags"] = repr(self.flags)
 		
 		if self.protocol_version is not None:

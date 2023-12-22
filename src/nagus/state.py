@@ -139,7 +139,7 @@ def _uuid_to_db(uu: typing.Optional[uuid.UUID]) -> typing.Optional[bytes]:
 		return uu.bytes_le
 
 
-class VaultNodeData(object):
+class VaultNodeData(structs.FieldBasedRepr):
 	__slots__ = (
 		"node_id",
 		"create_time", "modify_time",
@@ -696,8 +696,9 @@ class VaultNodeData(object):
 		
 		return columns
 	
-	def __repr__(self) -> str:
-		parts = []
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		
 		for attr in type(self).__slots__:
 			value = getattr(self, attr)
 			if value is not None:
@@ -706,10 +707,9 @@ class VaultNodeData(object):
 				else:
 					rep = str(value)
 				
-				parts.append(attr + "=" + rep)
+				fields[attr] = rep
 		
-		args = ", ".join(parts)
-		return f"{type(self).__qualname__}({args})"
+		return fields
 
 
 class VaultNodeRef(object):
@@ -791,7 +791,7 @@ class VaultNodeFolderType(structs.IntEnum):
 	game_scores = 32
 
 
-class PublicAgeInstance(object):
+class PublicAgeInstance(structs.FieldBasedRepr):
 	instance_uuid: uuid.UUID
 	file_name: str
 	instance_name: str
@@ -827,7 +827,7 @@ class PublicAgeInstance(object):
 		self.current_population = current_population
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = collections.OrderedDict()
+		fields = super().repr_fields()
 		fields["instance_uuid"] = str(self.instance_uuid)
 		fields["file_name"] = repr(self.file_name)
 		fields["instance_name"] = repr(self.instance_name)
@@ -838,10 +838,6 @@ class PublicAgeInstance(object):
 		fields["owner_count"] = repr(self.owner_count)
 		fields["current_population"] = repr(self.current_population)
 		return fields
-	
-	def __repr__(self) -> str:
-		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
-		return f"{type(self).__qualname__}({joined_fields})"
 	
 	@classmethod
 	def unpack(cls, data: bytes) -> "PublicAgeInstance":
