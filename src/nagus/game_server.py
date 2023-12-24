@@ -1145,7 +1145,7 @@ class NetMessageGameMessage(NetMessageStream):
 				try:
 					message = pl_messages.Message.from_class_index(class_index)
 				except pl_messages.UnknownClassIndexError:
-					message = pl_messages.Message()
+					message = pl_messages.UnknownMessage()
 					message.class_index = class_index
 				
 				if message is None:
@@ -1214,7 +1214,7 @@ class NetMessageGameMessage(NetMessageStream):
 				logger_pl_message.warning("plMessage %s ccr_send_to_all_players flag (%r) doesn't match containing network game message's route_to_all_players flag (%r)", message.class_description, pl_messages.MessageFlags.ccr_send_to_all_players in message.flags, NetMessageFlags.route_to_all_players in self.flags)
 			
 			if extra_data:
-				logger_pl_message.debug("plMessage %s has extra trailing data: %r", message.class_description, extra_data)
+				logger_pl_message.warning("plMessage %s wasn't fully parsed - trailing data: %r", message.class_description, extra_data)
 	
 	async def handle(self, connection: "GameConnection") -> None:
 		# If full plMessage parsing is enabled,

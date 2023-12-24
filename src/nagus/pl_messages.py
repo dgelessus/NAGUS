@@ -618,7 +618,7 @@ class MessageFlags(structs.IntFlag):
 
 
 class Message(structs.FieldBasedRepr):
-	CLASS_INDEX = 0x0202
+	CLASS_INDEX: typing.ClassVar[typing.Optional[int]] = 0x0202
 	
 	class_index: int
 	sender: typing.Optional[structs.Uoid]
@@ -630,15 +630,18 @@ class Message(structs.FieldBasedRepr):
 	def __init_subclass__(cls, **kwargs: typing.Any) -> None:
 		super().__init_subclass__(**kwargs)
 		
-		if cls.CLASS_INDEX in MESSAGE_CLASSES_BY_INDEX:
-			raise ValueError(f"Attempted to create PlasmaMessage subclass {cls.__qualname__} with class index 0x{cls.CLASS_INDEX:>04x} which is already used by existing subclass {MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX].__qualname__}")
-		
-		MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX] = cls
+		if cls.CLASS_INDEX is not None:
+			if cls.CLASS_INDEX in MESSAGE_CLASSES_BY_INDEX:
+				raise ValueError(f"Attempted to create PlasmaMessage subclass {cls.__qualname__} with class index 0x{cls.CLASS_INDEX:>04x} which is already used by existing subclass {MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX].__qualname__}")
+			
+			MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX] = cls
 	
 	def __init__(self) -> None:
 		super().__init__()
 		
-		self.class_index = type(self).CLASS_INDEX
+		class_index = type(self).CLASS_INDEX
+		if class_index is not None:
+			self.class_index = class_index
 		self.sender = None
 		self.receivers = []
 		self.timestamp = 0.0
@@ -708,10 +711,11 @@ class Message(structs.FieldBasedRepr):
 	
 	@property
 	def class_description(self) -> str:
-		name = type(self).__qualname__
-		if self.class_index != type(self).CLASS_INDEX:
-			name += " subclass"
-		return f"{name} (0x{self.class_index:>04x})"
+		class_index_desc = f"0x{self.class_index:>04x}"
+		expected_class_index = type(self).CLASS_INDEX
+		if expected_class_index is not None and self.class_index != expected_class_index:
+			class_index_desc = "unexpected class index " + class_index_desc
+		return f"{type(self).__qualname__} ({class_index_desc})"
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		self.sender = structs.Uoid.key_from_stream(stream)
@@ -752,9 +756,29 @@ class Message(structs.FieldBasedRepr):
 			message.write(stream)
 
 
+assert isinstance(Message.CLASS_INDEX, int)
 MESSAGE_CLASSES_BY_INDEX: typing.Dict[int, typing.Type[Message]] = {
 	Message.CLASS_INDEX: Message,
 }
+
+
+class UnknownMessage(Message):
+	CLASS_INDEX = None
+	
+	data: bytes
+	
+	def repr_fields(self) -> "collections.OrderedDict[str, str]":
+		fields = super().repr_fields()
+		fields["data"] = repr(self.data)
+		return fields
+	
+	def read(self, stream: typing.BinaryIO) -> None:
+		super().read(stream)
+		self.data = stream.read()
+	
+	def write(self, stream: typing.BinaryIO) -> None:
+		super().write(stream)
+		stream.write(self.data)
 
 
 class LoadCloneMessage(Message):
