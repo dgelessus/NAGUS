@@ -393,15 +393,6 @@ class NetMessage(structs.FieldBasedRepr):
 	ki_number: typing.Optional[int]
 	account_uuid: typing.Optional[uuid.UUID]
 	
-	@classmethod
-	def __init_subclass__(cls, **kwargs: typing.Any) -> None:
-		super().__init_subclass__(**kwargs)
-		
-		if cls.CLASS_INDEX in NET_MESSAGE_CLASSES_BY_INDEX:
-			raise ValueError(f"Attempted to create NetMessage subclass {cls.__qualname__} with class index 0x{cls.CLASS_INDEX:>04x} which is already used by existing subclass {NET_MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX].__qualname__}")
-		
-		NET_MESSAGE_CLASSES_BY_INDEX[cls.CLASS_INDEX] = cls
-	
 	def __init__(self) -> None:
 		super().__init__()
 		
@@ -444,14 +435,50 @@ class NetMessage(structs.FieldBasedRepr):
 	
 	@classmethod
 	def from_class_index(cls, class_index: int) -> "NetMessage":
-		try:
-			clazz = NET_MESSAGE_CLASSES_BY_INDEX[class_index]
-		except KeyError:
-			raise pl_messages.UnknownClassIndexError(f"Cannot create/read plNetMessage with unknown class index 0x{class_index:>04x}")
+		if class_index == NetMessagePagingRoom.CLASS_INDEX:
+			return NetMessagePagingRoom()
+		elif class_index == NetMessageGameStateRequest.CLASS_INDEX:
+			return NetMessageGameStateRequest()
+		elif class_index == NetMessageTestAndSet.CLASS_INDEX:
+			return NetMessageTestAndSet()
+		elif class_index == NetMessageSDLState.CLASS_INDEX:
+			return NetMessageSDLState()
+		elif class_index == NetMessageSDLStateBroadcast.CLASS_INDEX:
+			return NetMessageSDLStateBroadcast()
+		elif class_index == NetMessageGetSharedState.CLASS_INDEX:
+			# Unused.
+			return NetMessageGetSharedState()
+		elif class_index == NetMessageObjectStateRequest.CLASS_INDEX:
+			# Unused.
+			return NetMessageObjectStateRequest()
+		elif class_index == NetMessageGameMessage.CLASS_INDEX:
+			return NetMessageGameMessage()
+		elif class_index == NetMessageGameMessageDirected.CLASS_INDEX:
+			return NetMessageGameMessageDirected()
+		elif class_index == NetMessageLoadClone.CLASS_INDEX:
+			return NetMessageLoadClone()
+		elif class_index == NetMessageVoice.CLASS_INDEX:
+			return NetMessageVoice()
+		elif class_index == NetMessageMembersListRequest.CLASS_INDEX:
+			return NetMessageMembersListRequest()
+		elif class_index == NetMessageGroupOwner.CLASS_INDEX:
+			# Should never be sent by clients.
+			return NetMessageGroupOwner()
+		elif class_index == NetMessageMembersList.CLASS_INDEX:
+			# Should never be sent by clients.
+			return NetMessageMembersList()
+		elif class_index == NetMessageMemberUpdate.CLASS_INDEX:
+			# Should never be sent by clients.
+			return NetMessageMemberUpdate()
+		elif class_index == NetMessageInitialAgeStateSent.CLASS_INDEX:
+			# Should never be sent by clients.
+			return NetMessageInitialAgeStateSent()
+		elif class_index == NetMessageRelevanceRegions.CLASS_INDEX:
+			return NetMessageRelevanceRegions()
+		elif class_index == NetMessagePlayerPage.CLASS_INDEX:
+			return NetMessagePlayerPage()
 		else:
-			self = clazz()
-			assert self.class_index == class_index
-			return self
+			raise pl_messages.UnknownClassIndexError(f"Unsupported plNetMessage class index: 0x{class_index:>04x}")
 	
 	@property
 	def class_description(self) -> str:
@@ -548,11 +575,6 @@ class NetMessage(structs.FieldBasedRepr):
 	async def handle(self, connection: "GameConnection") -> None:
 		logger_net_message_unhandled.error("Don't know how to handle plNetMessage of class %s - ignoring", self.class_description)
 		logger_net_message_unhandled.debug("Unhandled plNetMessage: %r", self)
-
-
-NET_MESSAGE_CLASSES_BY_INDEX: typing.Dict[int, typing.Type[NetMessage]] = {
-	NetMessage.CLASS_INDEX: NetMessage,
-}
 
 
 class NetMessageRoomsList(NetMessage):
