@@ -409,6 +409,10 @@ class NetMessage(structs.FieldBasedRepr):
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
+		
+		if self.class_index != type(self).CLASS_INDEX:
+			fields["class_index"] = f"0x{self.class_index:>04x}"
+		
 		fields["flags"] = repr(self.flags)
 		
 		if self.protocol_version is not None:
@@ -430,10 +434,6 @@ class NetMessage(structs.FieldBasedRepr):
 			fields["account_uuid"] = repr(self.account_uuid)
 		
 		return fields
-	
-	def __repr__(self) -> str:
-		joined_fields = ", ".join(name + "=" + value for name, value in self.repr_fields().items())
-		return f"<{self.class_description}: {joined_fields}>"
 	
 	@classmethod
 	def from_class_index(cls, class_index: int) -> "NetMessage":
@@ -486,9 +486,12 @@ class NetMessage(structs.FieldBasedRepr):
 	def class_description(self) -> str:
 		class_index_desc = f"0x{self.class_index:>04x}"
 		expected_class_index = type(self).CLASS_INDEX
-		if expected_class_index is not None and self.class_index != expected_class_index:
-			class_index_desc = "unexpected class index " + class_index_desc
-		return f"{type(self).__qualname__} ({class_index_desc})"
+		desc = type(self).__qualname__
+		if expected_class_index is None:
+			desc += f" ({class_index_desc})"
+		elif self.class_index != expected_class_index:
+			desc += f" (unexpected class index {class_index_desc})"
+		return desc
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		(flags,) = structs.stream_unpack(stream, structs.UINT32)
