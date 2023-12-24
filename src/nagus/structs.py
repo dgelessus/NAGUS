@@ -399,6 +399,24 @@ class Uoid(FieldBasedRepr):
 	object_name: bytes
 	clone_ids: typing.Optional[typing.Tuple[int, int]]
 	
+	def __init__(
+		self,
+		location: Location,
+		class_type: int,
+		object_id: int,
+		object_name: bytes,
+		clone_ids: typing.Optional[typing.Tuple[int, int]] = None,
+		load_mask: int = 0xff,
+	) -> None:
+		super().__init__()
+		
+		self.location = location
+		self.class_type = class_type
+		self.object_id = object_id
+		self.object_name = object_name
+		self.clone_ids = clone_ids
+		self.load_mask = load_mask
+	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
 		fields["location"] = repr(self.location)
@@ -458,33 +476,30 @@ class Uoid(FieldBasedRepr):
 		
 		return f"<{type(self).__qualname__}: {ret}>"
 	
-	def read(self, stream: typing.BinaryIO) -> None:
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "Uoid":
 		(flags,) = read_exact(stream, 1)
 		flags = Uoid.Flags(flags)
 		if flags & ~Uoid.Flags.supported:
 			raise ValueError(f"Uoid has unsupported flags set: {flags!r}")
 		
-		self.location = Location.from_stream(stream)
+		location = Location.from_stream(stream)
 		
 		if Uoid.Flags.has_load_mask in flags:
-			(self.load_mask,) = read_exact(stream, 1)
+			(load_mask,) = read_exact(stream, 1)
 		else:
-			self.load_mask = 0xff
+			load_mask = 0xff
 		
-		self.class_type, self.object_id = stream_unpack(stream, UOID_MID_PART)
-		self.object_name = read_safe_string(stream)
+		class_type, object_id = stream_unpack(stream, UOID_MID_PART)
+		object_name = read_safe_string(stream)
 		
 		if Uoid.Flags.has_clone_ids in flags:
 			clone_id, ignored, clone_player_id = stream_unpack(stream, UOID_CLONE_IDS)
-			self.clone_ids = clone_id, clone_player_id
+			clone_ids = clone_id, clone_player_id
 		else:
-			self.clone_ids = None
-	
-	@classmethod
-	def from_stream(cls, stream: typing.BinaryIO) -> "Uoid":
-		self = cls()
-		self.read(stream)
-		return self
+			clone_ids = None
+		
+		return cls(location, class_type, object_id, object_name, clone_ids, load_mask)
 	
 	@classmethod
 	def key_from_stream(cls, stream: typing.BinaryIO) -> "typing.Optional[Uoid]":
