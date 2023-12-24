@@ -1832,38 +1832,38 @@ class GameConnection(base.BaseMOULConnection):
 			message.read(buffer)
 			extra_data = buffer.read()
 		
-		logger_net_message.debug("Received propagate buffer: %r", message)
+		logger_net_message.debug("Parsed plNetMessage: %r", message)
 		
 		if extra_data:
-			raise base.ProtocolError(f"PropagateBuffer message {message.class_description} wasn't fully parsed - trailing data: {extra_data!r}")
+			raise base.ProtocolError(f"plNetMessage {message.class_description} wasn't fully parsed - trailing data: {extra_data!r}")
 		
 		# Check for unsupported and unexpected flags,
 		# possibly depending on the message class.
 		unsupported_flags = message.flags & ~NetMessageFlags.all_handled
 		if unsupported_flags:
-			logger_net_message.warning("PropagateBuffer message %s has flags set that we can't handle yet: %r", message.class_description, unsupported_flags)
+			logger_net_message.warning("plNetMessage %s has flags set that we can't handle yet: %r", message.class_description, unsupported_flags)
 		if NetMessageFlags.has_game_message_receivers in message.flags and not isinstance(message, NetMessageGameMessage):
-			logger_net_message.warning("PropagateBuffer message %s has has_game_message_receivers flag set even though it's not a game message", message.class_description)
+			logger_net_message.warning("plNetMessage %s has has_game_message_receivers flag set even though it's not a game message", message.class_description)
 		if NetMessageFlags.echo_back_to_sender in message.flags and not isinstance(message, (NetMessageGameMessage, NetMessageSDLState, NetMessageVoice)):
-			logger_net_message.warning("PropagateBuffer message %s has echo_back_to_sender flag set even though it's not a game message, SDL state, or voice", message.class_description)
+			logger_net_message.warning("plNetMessage %s has echo_back_to_sender flag set even though it's not a game message, SDL state, or voice", message.class_description)
 		if NetMessageFlags.new_sdl_state in message.flags and not isinstance(message, NetMessageSDLState):
-			logger_net_message.warning("PropagateBuffer message %s has new_sdl_state flag set even though it's not an SDL state message", message.class_description)
+			logger_net_message.warning("plNetMessage %s has new_sdl_state flag set even though it's not an SDL state message", message.class_description)
 		if NetMessageFlags.initial_age_state_request in message.flags and not isinstance(message, NetMessageGameStateRequest):
-			logger_net_message.warning("PropagateBuffer message %s has initial_age_state_request flag set even though it's not a game state request message", message.class_description)
+			logger_net_message.warning("plNetMessage %s has initial_age_state_request flag set even though it's not a game state request message", message.class_description)
 		if NetMessageFlags.use_relevance_regions in message.flags and not isinstance(message, (NetMessageSDLState, NetMessageGameMessage)):
-			logger_net_message.warning("PropagateBuffer message %s has use_relevance_regions flag set even though it's not an SDL state or game message", message.class_description)
+			logger_net_message.warning("plNetMessage %s has use_relevance_regions flag set even though it's not an SDL state or game message", message.class_description)
 		if NetMessageFlags.inter_age_routing in message.flags and not isinstance(message, NetMessageGameMessageDirected):
-			logger_net_message.warning("PropagateBuffer message %s has inter_age_routing flag set even though it's not a directed game message", message.class_description)
+			logger_net_message.warning("plNetMessage %s has inter_age_routing flag set even though it's not a directed game message", message.class_description)
 		if NetMessageFlags.route_to_all_players in message.flags and type(message) != NetMessageGameMessage:
-			logger_net_message.warning("PropagateBuffer message %s has route_to_all_players flag set even though its class is not plNetMsgGameMessage", message.class_description)
+			logger_net_message.warning("plNetMessage %s has route_to_all_players flag set even though its class is not plNetMsgGameMessage", message.class_description)
 		
 		if message.protocol_version is not None:
-			logger_net_message.warning("PropagateBuffer message %s contains protocol version: %r", message.class_description, message.protocol_version)
+			logger_net_message.warning("plNetMessage %s contains protocol version: %r", message.class_description, message.protocol_version)
 		if message.context is not None:
-			logger_net_message.warning("PropagateBuffer message %s contains context: %d", message.class_description, message.context)
+			logger_net_message.warning("plNetMessage %s contains context: %d", message.class_description, message.context)
 		if message.trans_id is not None:
-			logger_net_message.warning("PropagateBuffer message %s contains transaction ID: %d", message.class_description, message.trans_id)
+			logger_net_message.warning("plNetMessage %s contains transaction ID: %d", message.class_description, message.trans_id)
 		if message.account_uuid is not None:
-			logger_net_message.warning("PropagateBuffer message %s contains account UUID: %s", message.class_description, message.account_uuid)
+			logger_net_message.warning("plNetMessage %s contains account UUID: %s", message.class_description, message.account_uuid)
 		
 		await message.handle(self)
