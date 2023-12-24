@@ -20,6 +20,11 @@ Version 0.1.1
   which become unusable once the age instance is unloaded.
   This should have no effect on gameplay,
   but fixes some warnings on the client side.
+* Changed game server ``plNetMessage`` parsing to treat an incompletely parsed message as a hard error
+  (this previously only logged a warning).
+  Unknown message types are still allowed
+  (they log an error,
+  but don't disconnect the client).
 * Fixed OpenUru clients displaying the hood membership in the KI as "Member of (null) Bevin".
 
 Version 0.1.0
