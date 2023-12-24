@@ -472,7 +472,8 @@ class Uoid(FieldBasedRepr):
 			ret += f", id={self.id}"
 			ret += f", name={self.name!r}"
 			if self.clone_ids is not None:
-				ret += f", clone={self.clone_ids!r}"
+				clone_id, cloner_ki_number = self.clone_ids
+				ret += f", clone #{clone_id} by avatar {cloner_ki_number}"
 		
 		return f"<{type(self).__qualname__}: {ret}>"
 	
