@@ -1029,7 +1029,7 @@ class NetMessageSDLState(NetMessageStreamedObject):
 				logger_sdl.debug("Original change blob data: %r", blob_data)
 				logger_sdl.debug("Parsed and rewritten change blob data: %r", roundtripped_data)
 		
-		if self.uoid.object_name == AGE_SDL_HOOK_NAME:
+		if self.uoid.name == AGE_SDL_HOOK_NAME:
 			# Special treatment for AgeSDLHook:
 			# save in the appropriate vault node
 			# and not together with all the other per-instance SDL states.
@@ -1665,9 +1665,9 @@ class GameClientState(object):
 		
 		self.age_sdl_hook_uoid = structs.Uoid(
 			location=structs.Location(structs.make_sequence_number(self.age_sequence_prefix, -2), structs.Location.Flags.built_in),
-			class_type=0x0001, # Scene Object
-			object_id=1,
-			object_name=AGE_SDL_HOOK_NAME,
+			class_index=0x0001, # Scene Object
+			id=1,
+			name=AGE_SDL_HOOK_NAME,
 		)
 		
 		return True

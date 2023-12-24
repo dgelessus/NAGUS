@@ -394,26 +394,26 @@ class Uoid(FieldBasedRepr):
 	
 	location: Location
 	load_mask: int
-	class_type: int
-	object_id: int
-	object_name: bytes
+	class_index: int
+	id: int
+	name: bytes
 	clone_ids: typing.Optional[typing.Tuple[int, int]]
 	
 	def __init__(
 		self,
 		location: Location,
-		class_type: int,
-		object_id: int,
-		object_name: bytes,
+		class_index: int,
+		id: int,
+		name: bytes,
 		clone_ids: typing.Optional[typing.Tuple[int, int]] = None,
 		load_mask: int = 0xff,
 	) -> None:
 		super().__init__()
 		
 		self.location = location
-		self.class_type = class_type
-		self.object_id = object_id
-		self.object_name = object_name
+		self.class_index = class_index
+		self.id = id
+		self.name = name
 		self.clone_ids = clone_ids
 		self.load_mask = load_mask
 	
@@ -422,9 +422,9 @@ class Uoid(FieldBasedRepr):
 		fields["location"] = repr(self.location)
 		if self.load_mask != 0xff:
 			fields["load_mask"] = hex(self.load_mask)
-		fields["class_type"] = f"0x{self.class_type:>04x}"
-		fields["object_id"] = repr(self.object_id)
-		fields["object_name"] = repr(self.object_name)
+		fields["class_index"] = f"0x{self.class_index:>04x}"
+		fields["id"] = repr(self.id)
+		fields["name"] = repr(self.name)
 		if self.clone_ids is not None:
 			fields["clone_ids"] = repr(self.clone_ids)
 		return fields
@@ -436,9 +436,9 @@ class Uoid(FieldBasedRepr):
 		return (
 			self.location == other.location
 			and self.load_mask == other.load_mask
-			and self.class_type == other.class_type
-			and self.object_id == other.object_id
-			and self.object_name == other.object_name
+			and self.class_index == other.class_index
+			and self.id == other.id
+			and self.name == other.name
 			and self.clone_ids == other.clone_ids
 		)
 	
@@ -446,9 +446,9 @@ class Uoid(FieldBasedRepr):
 		return hash((
 			self.location,
 			self.load_mask,
-			self.class_type,
-			self.object_id,
-			self.object_name,
+			self.class_index,
+			self.id,
+			self.name,
 			self.clone_ids,
 		))
 	
@@ -457,20 +457,20 @@ class Uoid(FieldBasedRepr):
 			self.location.sequence_number == 0
 			and not self.location.flags
 			and self.load_mask == 0xff
-			and self.object_id == 0
+			and self.id == 0
 			and self.clone_ids is None
 		):
 			# Compact form for global fixed key UOIDs.
-			ret = f"fixed {self.object_name!r}, type=0x{self.class_type:>04x}"
+			ret = f"fixed {self.name!r}, class=0x{self.class_index:>04x}"
 		else:
 			# For all other UOIDs,
 			# display all fields that are present.
 			ret = str(self.location)
 			if self.load_mask != 0xff:
 				ret += f", mask=0x{self.load_mask:>02x}"
-			ret += f", type=0x{self.class_type:>04x}"
-			ret += f", id={self.object_id}"
-			ret += f", name={self.object_name!r}"
+			ret += f", class=0x{self.class_index:>04x}"
+			ret += f", id={self.id}"
+			ret += f", name={self.name!r}"
 			if self.clone_ids is not None:
 				ret += f", clone={self.clone_ids!r}"
 		
@@ -490,16 +490,16 @@ class Uoid(FieldBasedRepr):
 		else:
 			load_mask = 0xff
 		
-		class_type, object_id = stream_unpack(stream, UOID_MID_PART)
-		object_name = read_safe_string(stream)
+		class_index, object_id = stream_unpack(stream, UOID_MID_PART)
+		name = read_safe_string(stream)
 		
 		if Uoid.Flags.has_clone_ids in flags:
-			clone_id, ignored, clone_player_id = stream_unpack(stream, UOID_CLONE_IDS)
-			clone_ids = clone_id, clone_player_id
+			clone_id, ignored, cloner_ki_number = stream_unpack(stream, UOID_CLONE_IDS)
+			clone_ids = clone_id, cloner_ki_number
 		else:
 			clone_ids = None
 		
-		return cls(location, class_type, object_id, object_name, clone_ids, load_mask)
+		return cls(location, class_index, object_id, name, clone_ids, load_mask)
 	
 	@classmethod
 	def key_from_stream(cls, stream: typing.BinaryIO) -> "typing.Optional[Uoid]":
@@ -522,8 +522,8 @@ class Uoid(FieldBasedRepr):
 		if self.load_mask != 0xff:
 			stream.write(bytes([self.load_mask]))
 		
-		stream.write(UOID_MID_PART.pack(self.class_type, self.object_id))
-		write_safe_string(stream, self.object_name)
+		stream.write(UOID_MID_PART.pack(self.class_index, self.id))
+		write_safe_string(stream, self.name)
 		
 		if self.clone_ids is not None:
 			clone_id, clone_player_id = self.clone_ids
