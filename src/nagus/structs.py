@@ -309,7 +309,7 @@ def make_sequence_number(age: int, page: int) -> int:
 	# Prevent any combinations that would conflict with special/reserved locations after encoding.
 	if (
 		age == 0xfeff and page in range(0xffdf, 0x10000)
-		or age == -0xff and page == 0xffff
+		or age == -0xff and page in {0xfffe, 0xffff}
 	):
 		raise ValueError(f"Page number out of range: {page}")
 	
