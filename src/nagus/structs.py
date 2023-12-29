@@ -223,7 +223,6 @@ def write_unified_time(stream: typing.BinaryIO, dt: datetime.datetime) -> None:
 	stream.write(pack_unified_time(dt))
 
 
-# TODO Document this nonsense properly
 # The original open-sourced client code had a debug assertion that only allowed age prefix numbers from -0xfe to 0xfe (inclusive).
 # H'uru extended the range to -0xff to 0xfeff (inclusive).
 # OpenUru later separately extended the range to -0x7ffe to 0x7ffe (inclusive).

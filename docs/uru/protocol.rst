@@ -883,19 +883,152 @@ These data types/structures are used in multiple different parts of the protocol
   * **Microseconds:** 4-byte unsigned int.
     Fractional part of the timestamp for sub-second precision.
 
+.. index:: sequence number
+  single: sequence prefix
+  single: age number
+  double: age; sequence prefix
+  single: sequence suffix
+  single: page number
+  double: page; sequence suffix
+  :name: sequence_number
+
+.. object:: Sequence number
+  
+  A 4-byte unsigned int that identifies a :dfn:`location` in the engine
+  (sometimes also called a "room"),
+  which is a namespace for ``hsKeyedObject``\s.
+  Used mainly as part of :cpp:class:`plLocation` and only rarely on its own.
+  
+  Most sequence numbers encode an age number (sequence prefix) and a page number (sequence suffix) within that age.
+  A sequence number can be constructed from an *age* and *page* number as follows:
+  
+  * If *age* >= 0: (*age* << 16) + *page* + 0x21
+  * If *age* < 0: (-*age* << 16) + *page* + 0xff000001
+  
+  The age and page numbers can be extracted from a sequence number *seqnum* as follows:
+  
+  * If *seqnum* is in the range from 0x21 through 0xfeff0020:
+    
+    * **Age** = (*seqnum* - 0x21) >> 16
+    * **Page** = (*seqnum* - 0x21) & 0xffff
+  * If *seqnum* is in the range from 0xff010001 through 0xfffffffe:
+    
+    * **Age** = -((*seqnum* - 0xff000001) >> 16)
+    * **Page** = (*seqnum* - 0xff000001) & 0xffff
+  * If *seqnum* isn't in either of these ranges,
+    then it doesn't encode an age and page number.
+    Such sequence numbers don't correspond to a .prp file ---
+    they have a special meaning or are reserved or invalid.
+  
+  .. note::
+    
+    Age numbers are signed integers,
+    but it's less clear whether page numbers are supposed to be signed or unsigned.
+    This documentation considers page numbers to be unsigned,
+    because it makes the calculations simpler
+    and matches what the open-sourced client code does internally.
+    Some other code,
+    such as libHSPlasma,
+    treats page numbers as signed though,
+    because that gives a nicer representation for "common" page numbers
+    (see the :cpp:enumerator:`~plLocation::LocFlags::kBuiltIn` flag of :cpp:class:`plLocation`).
+  
+  .. seealso::
+    
+    The `Myst Online Uru Live Again Sequence Prefix List <https://wiki.openuru.org/index.php/Myst_Online_Uru_Live_Again_Sequence_Prefix_List>`__
+    on the OpenUru Wiki lists all age numbers that are currently used on Cyan's MOULa shard and the Minkata shards.
+    It's also used to coordinate future age number assignments to avoid conflicts.
+    
+    Other MOULa shards may not follow these age number assignments exactly.
+    For example,
+    the Gehn and TOC-MOUL shards use different age numbers for fan ages,
+    even for ones that were also later released on Cyan's shard.
+  
+  The full range of sequence numbers is structured as follows:
+  
+  * 0x0 is a special sequence number used for fixed keyed objects
+    (singletons basically).
+  * 0x1 through 0x20 are reserved for local use by clients and other tools.
+    They should never appear in :cpp:class:`plLocation`\s sent to a server.
+  * 0x21 through 0x10020 are regular sequence numbers for age 0.
+  * 0x10021 through 0x20020 are regular sequence numbers for age 1.
+  * (ditto for ages 2 through 32766)
+  * 0x7fff0021 through 0x80000020 are regular sequence numbers for age 32767.
+    This range may not work as expected with all tools,
+    because some code (e. g. libHSPlasma) treats sequence numbers 0x80000000 and higher as if they had a negative age number.
+  * 0x80000021 through 0x80010020 are regular sequence numbers for age 32768.
+    This range may not work as expected with all tools,
+    because some code (e. g. libHSPlasma) treats these sequence numbers as if they had a negative age number.
+  * (ditto for ages 32769 through 65278,
+    which may not work as expected with all tools)
+  * 0xfeff0021 through 0xfeffffff can't be used properly.
+    They theoretically correspond to age 65279,
+    but there's no way to encode pages 0xffe0 through 0xffff with that age number,
+    because the sequence numbers would conflict with the ranges below.
+  * 0xff000000 is reserved for use by the server.
+    The client also uses it (TODO only internally?) for ``plNetGroupId::kNetGroupUnknown``.
+  * 0xff000000 through 0xff010000 are reserved.
+    They theoretically fit the format for global sequence numbers,
+    but would correspond to age 0,
+    which isn't a global age and must be encoded using the regular sequence number format.
+    The client uses this range for a few more ``plNetGroupId`` constants.
+  * 0xff010001 through 0xff020000 are global sequence numbers for age -1.
+  * 0xff020001 through 0xff030000 are global sequence numbers for age -2.
+  * (ditto for ages -3 through -254)
+  * 0xffff0001 through 0xfffffffe are global sequence numbers for age -255.
+    There's no way to encode pages 0xfffe and 0xffff with this age number.
+  * 0xffffffff is reserved as an invalid sequence number.
+
 .. cpp:class:: plLocation
   
-  * **Sequence number:** 4-byte unsigned int.
+  * **Sequence number:** 4-byte :ref:`sequence number <sequence_number>`.
   * **Flags:** 2-byte unsigned int.
     See :cpp:enum:`LocFlags` for details.
+    These flags are considered part of the location's identity.
+    To prevent possible issues,
+    two :cpp:class:`plLocation`\s with the same sequence number should always have the same flags.
+  
+  Identifies a "location" in the engine ---
+  usually a page loaded from a .prp file.
   
   .. cpp:enum:: LocFlags
     
     .. cpp:enumerator:: kLocalOnly = 1 << 0
+      
+      According to its comment:
+      "Set if nothing in the room saves state."
+      Not used by the open-sourced client code
+      and also seems to be never used in any .prp files.
+    
     .. cpp:enumerator:: kVolatile = 1 << 1
+      
+      According to its comment:
+      "Set is nothing in the room persists when the server exits."
+      Not actually used by the open-sourced client code
+      and also seems to be never used in any .prp files.
+    
     .. cpp:enumerator:: kReserved = 1 << 2
+      
+      The sequence number refers to a page in a global age
+      or one of the reserved pages.
+      Should be set iff the sequence number is 0xff000000 or higher.
+      (For sequence numbers that encode an age and page number,
+      this is the case iff the age nuber is negative.)
+    
     .. cpp:enumerator:: kBuiltIn = 1 << 3
+      
+      The sequence number refers to one of the "common" pages:
+      Textures (0xffff/-1) or BuiltIn (0xfffe/-2).
+    
     .. cpp:enumerator:: kItinerant = 1 << 4
+      
+      The page is expected to be used outside of its age.
+      Not used by the open-sourced client code,
+      except that unlike all other flags,
+      it's ignored when comparing :cpp:class:`plLocation`\s for equality.
+      Only rarely used in the .prp files,
+      e. g. for the Eder Kemo fireflies page
+      (Garden_District_ItinerantBugCloud.prp --- age 1, page 3).
 
 .. cpp:class:: plLoadMask
   
@@ -912,30 +1045,103 @@ These data types/structures are used in multiple different parts of the protocol
     
     Has both quality and capability set to 0xff.
 
+.. index:: UOID
+  single: key
+  single: keyed object
+  single: hsKeyedObject
+  single: clone
+
 .. cpp:class:: plUoid
   
   * **Flags:** 1-byte unsigned int.
     See :cpp:enum:`ContentsFlags` for details.
   * **Location:** 6-byte :cpp:class:`plLocation`.
+    This usually identifies the .prp file where the object is stored on disk.
   * **Load mask:** 1-byte :cpp:class:`plLoadMask`.
     Only present if the :cpp:enumerator:`~ContentsFlags::kHasLoadMask` flag is set,
     otherwise defaults to :cpp:var:`plLoadMask::kAlways`.
-  * **Class type:** 2-byte unsigned int.
+    If present,
+    it should never be :cpp:var:`plLoadMask::kAlways`.
+    Only rarely present.
+    Used by the client to decide which objects to load depending on the graphics quality settings.
+    Not relevant for the identity of the referenced object.
+  * **Class index:** 2-byte unsigned int.
+    The referenced object's class.
+    Should be less than 0x0200
+    (the end of the class index space for keyed objects).
   * **Object ID:** 4-byte unsigned int.
+    Numeric identifier for the referenced object.
+    The object ID is unique only in combination with the location and class index.
+    Object ID 0 is a special value used for UOIDs that must be looked up by their name instead.
+    If the object ID is not 0,
+    then looking up the object by its ID *should* have the same effect as looking it up by name,
+    but this isn't always the case.
+    Object IDs aren't stable ---
+    for example,
+    libHSPlasma will often reassign object IDs when modifying a .prp file.
   * **Object name:** :ref:`SafeString <safe_string>`.
+    String identifier for the referenced object.
+    The object name is unique only in combination with the location and class index.
+    Object names are less likely to change than object IDs,
+    but slower to look up.
   * **Clone ID:** 2-byte unsigned int.
     Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
     otherwise defaults to 0.
+    If present,
+    it should never be 0.
+    If not 0,
+    the cloner KI number should also not be 0,
+    and this UOID refers to a clone of a template object.
+    If 0 (not present),
+    the cloner KI number should also be 0 (not present),
+    and this UOID refers to a non-clone object.
   * **Ignored:** 2-byte unsigned int.
     Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set.
-  * **Clone player ID:** 4-byte unsigned int.
+    Should always be 0.
+    Seems to exist only for backwards compatibility.
+  * **Cloner KI number:** 4-byte unsigned int.
     Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
     otherwise defaults to 0.
+    If present,
+    should never be 0.
+    KI number of the avatar that created this clone of the object.
+    Prevents clone ID conflicts between multiple clients.
+  
+  Every ``hsKeyedObject`` is uniquely identified by a UOID.
+  The structure of a UOID is a bit complex.
+  
+  * The location and class index act as a namespace.
+    Two objects with different locations or different class indices are never identical.
+    Different locations can (and do) contain objects with the same class, ID, and name.
+    Similarly,
+    objects of different classes in the same location can (and do) have the same ID and name.
+  * Within this namespace,
+    an object can be identified using either its object ID (if it has one) or its name.
+    Both ways *should* work the same,
+    but because object IDs are less stable than names,
+    looking up by ID can fail if a .prp file is changed without updating all UOIDs that reference it.
+    In those cases,
+    the game has to fall back to looking up by name.
+  * If a UOID has clone fields (clone ID and cloner KI number),
+    it refers to a :dfn:`clone` of another (non-clone) object.
+    Both clone fields are used together to identify the clone.
+    Every clone is distinct from its template
+    (which has the same UOID,
+    but without the clone fields)
+    and from any other clone of the same object with different clone fields.
+  * The load mask isn't really part of the object's identity.
+    To avoid problems,
+    there should never be two objects whose UOID differs only in the load mask field.
   
   .. cpp:enum:: ContentsFlags
     
     .. cpp:enumerator:: kHasCloneIDs = 1 << 0
+      
+      Whether the clone fields (clone ID, ignored, cloner KI number) are present.
+    
     .. cpp:enumerator:: kHasLoadMask = 1 << 1
+      
+      Whether the load mask field is present.
 
 .. cpp:class:: plKey
   
@@ -950,6 +1156,18 @@ These data types/structures are used in multiple different parts of the protocol
   * **UOID:** :cpp:class:`plUoid`.
     The UOID of the object identified by this key.
     Only present if the non-null field is true.
+  
+  In the data formats,
+  :cpp:class:`plKey` is just a nullable variant of :cpp:class:`plUoid` ---
+  although :cpp:class:`plKey` is also used in many places where it should never be ``nullptr``.
+  
+  In the open-sourced client code,
+  :cpp:class:`plKey` acts as a smart pointer/handle to the object identified by its :cpp:class:`plUoid`.
+  It holds a pointer to the actual ``hsKeyedObject`` along with a reference count,
+  manages loading the object from its .prp file
+  (and unloading it once it's no longer used),
+  links clone keys with their template ("owner") keys,
+  and a few more things.
 
 .. index:: creatable
   double: creatable; index
