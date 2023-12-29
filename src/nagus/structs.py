@@ -487,6 +487,8 @@ class Uoid(FieldBasedRepr):
 		
 		if Uoid.Flags.has_load_mask in flags:
 			(load_mask,) = read_exact(stream, 1)
+			if load_mask == 0xff:
+				raise ValueError(f"Uoid has explicit load mask, but it's the same as the implicit default 0xff")
 		else:
 			load_mask = 0xff
 		
@@ -495,6 +497,12 @@ class Uoid(FieldBasedRepr):
 		
 		if Uoid.Flags.has_clone_ids in flags:
 			clone_id, ignored, cloner_ki_number = stream_unpack(stream, UOID_CLONE_IDS)
+			if clone_id == 0:
+				raise ValueError(f"Uoid has clone IDs, but the clone ID is 0")
+			if ignored != 0:
+				raise ValueError(f"Uoid has non-zero ignored field in the clone IDs: {ignored:#x}")
+			if cloner_ki_number == 0:
+				raise ValueError(f"Uoid has clone IDs, but the cloner KI number is 0")
 			clone_ids = clone_id, cloner_ki_number
 		else:
 			clone_ids = None
