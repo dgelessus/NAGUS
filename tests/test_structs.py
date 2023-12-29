@@ -37,27 +37,25 @@ TEST_SEQUENCE_NUMBERS = [
 	(0xff0101b4, (-1, 435)), # FemaleSwimDockExit
 	(0xff0101e3, (-1, 482)), # MaleSwimDockExit
 	# Garden
-	(0x2001f, (1, -2)), # BuiltIn
-	(0x20020, (1, -1)), # Textures
 	(0x10022, (1, 1)), # trailerCamPage
 	(0x10024, (1, 3)), # ItinerantBugCloud
 	(0x10025, (1, 4)), # kemoGarden
 	(0x10026, (1, 5)), # kemoStorm
+	(0x2001f, (1, 0xfffe)), # BuiltIn
+	(0x20020, (1, 0xffff)), # Textures
 	# Personal
-	(0xe001f, (13, -2)), # BuiltIn
-	(0xe0020, (13, -1)), # Textures
 	(0xd0022, (13, 1)), # psnlMYSTII
 	(0xd0023, (13, 2)), # psnlFanYeeshaPages01
 	(0xd0024, (13, 3)), # trailerCamPage
+	(0xe001f, (13, 0xfffe)), # BuiltIn
+	(0xe0020, (13, 0xffff)), # Textures
 	# StartUp
 	(0xf0022, (15, 1)), # GUIDialog04c
 	# philRelto
-	(0x33001f, (50, -2)), # BuiltIn
-	(0x330020, (50, -1)), # Textures
 	(0x320022, (50, 1)), # PhilsRelto
+	(0x33001f, (50, 0xfffe)), # BuiltIn
+	(0x330020, (50, 0xffff)), # Textures
 	# GoMePubNew
-	(0x4d3001f, (1234, -2)), # BuiltIn
-	(0x4d30020, (1234, -1)), # Textures
 	(0x4d20022, (1234, 1)), # StoreRoom
 	(0x4d20023, (1234, 2)), # GoMePub
 	(0x4d20024, (1234, 3)), # Alcoves
@@ -66,14 +64,16 @@ TEST_SEQUENCE_NUMBERS = [
 	(0x4d20027, (1234, 6)), # Holidays
 	(0x4d20028, (1234, 7)), # gmpnCones
 	(0x4d20029, (1234, 8)), # Mysterium
+	(0x4d3001f, (1234, 0xfffe)), # BuiltIn
+	(0x4d30020, (1234, 0xffff)), # Textures
 	# FahetsHighgarden
-	(0x28cf001f, (10446, -2)), # BuiltIn
-	(0x28cf0020, (10446, -1)), # Textures
 	(0x28ce0021, (10446, 0)), # Default
+	(0x28cf001f, (10446, 0xfffe)), # BuiltIn
+	(0x28cf0020, (10446, 0xffff)), # Textures
 	# VeeTsah
-	(0x9c45001f, (40004, -2)), # BuiltIn
-	(0x9c450020, (40004, -1)), # Textures
 	(0x9c440022, (40004, 1)), # Temple
+	(0x9c45001f, (40004, 0xfffe)), # BuiltIn
+	(0x9c450020, (40004, 0xffff)), # Textures
 ]
 
 SPECIAL_TEST_SEQUENCE_NUMBERS = [

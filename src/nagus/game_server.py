@@ -1664,7 +1664,7 @@ class GameClientState(object):
 		logger_sdl.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, self.age_sequence_prefix)
 		
 		self.age_sdl_hook_uoid = structs.Uoid(
-			location=structs.Location(structs.make_sequence_number(self.age_sequence_prefix, -2), structs.Location.Flags.built_in),
+			location=structs.Location(structs.make_sequence_number(self.age_sequence_prefix, 0xfffe), structs.Location.Flags.built_in),
 			class_index=0x0001, # Scene Object
 			id=1,
 			name=AGE_SDL_HOOK_NAME,

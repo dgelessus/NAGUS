@@ -274,8 +274,6 @@ def split_sequence_number(sequence_number: int) -> typing.Tuple[int, int]:
 		age = sequence_number >> 16
 	
 	page = sequence_number & 0xffff
-	if page >= 0x8000:
-		page = page - 0x10000
 	
 	return age, page
 
@@ -302,9 +300,8 @@ def make_sequence_number(age: int, page: int) -> int:
 		raise ValueError(f"Potentially problematic age prefix number: {age}")
 	
 	# Any page suffix numbers outside this range are definitely invalid.
-	if page not in range(-0x8000, 0x8000):
+	if page not in range(0x10000):
 		raise ValueError(f"Page number out of range: {page}")
-	page = page & 0xffff
 	
 	# Prevent any combinations that would conflict with special/reserved locations after encoding.
 	if (
