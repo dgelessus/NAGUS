@@ -14,6 +14,7 @@ author = "dgelessus"
 # General configuration
 extensions = [
 	"sphinx.ext.autodoc",
+	"sphinx_rtd_theme",
 ]
 templates_path = ["_templates"]
 exclude_patterns = [
@@ -21,3 +22,6 @@ exclude_patterns = [
 	"Thumbs.db",
 	".DS_Store",
 ]
+
+# Options for HTML output
+html_theme = "sphinx_rtd_theme"
