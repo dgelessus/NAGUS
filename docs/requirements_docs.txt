@@ -1,1 +1,1 @@
-sphinx >= 3, != 5.2.0.post0
+sphinx >= 3, != 5.2.0.post0, < 8
