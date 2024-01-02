@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath("../src"))
 
 # Project information
 project = "NAGUS"
-copyright = '2022, dgelessus, CC BY-SA 4.0'
+copyright = "2024, dgelessus, CC BY-SA 4.0"
 author = "dgelessus"
 
 # General configuration
