@@ -138,7 +138,7 @@ Because of their complexity,
 each of these nested protocols is documented separately.
 
 .. toctree::
-  :titlesonly:
+  :maxdepth: 1
   
   game_server/net_messages
   game_server/plasma_messages
