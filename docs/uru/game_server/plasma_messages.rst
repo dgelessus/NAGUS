@@ -30,10 +30,9 @@ only of one of their non-abstract subclasses.
   or only used locally and never propagated over the network.
   
   Eventually,
-  this list should contain all :cpp:class:`plMessage` subclasses that can be propagated over the network,
-  but at the moment it only lists a few important messages,
-  such as ones that originate from the server
-  or require special server-side handling.
+  it should contain all :cpp:class:`plMessage` subclasses that are expected to be sent over the network.
+  For the moment,
+  it only covers an incomplete subset of messages that are commonly seen during normal gameplay.
 
 * :cpp:class:`plMessage` = 0x0202 = 514 (abstract)
   
