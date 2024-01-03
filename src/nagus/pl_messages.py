@@ -249,7 +249,9 @@ class ArmatureBrain(structs.FieldBasedRepr):
 	
 	@abc.abstractmethod
 	def read(self, stream: typing.BinaryIO) -> None:
-		structs.read_exact(stream, 21) # Reserved
+		reserved = structs.read_exact(stream, 21) # Reserved
+		if reserved != bytes(21):
+			raise ValueError(f"Unexpected data in ArmatureBrain reserved fields: {reserved!r}")
 	
 	@classmethod
 	def creatable_from_stream(cls, stream: typing.BinaryIO) -> "ArmatureBrain":
