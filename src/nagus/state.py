@@ -1043,6 +1043,11 @@ class ServerState(object):
 	# The key is the active avatar's KI number.
 	auth_connections_by_ki_number: typing.Dict[int, "auth_server.AuthConnection"]
 	
+	# The following attributes are only initialized in setup_database,
+	# because they are sometimes derived from the database and not just the configs.
+	public_aegura_instance_uuid: typing.Optional[uuid.UUID]
+	default_neighborhood_instance_uuid: typing.Optional[uuid.UUID]
+	
 	def __init__(self, config: configuration.Configuration, loop: asyncio.AbstractEventLoop, db: Database) -> None:
 		super().__init__()
 		
@@ -1163,30 +1168,42 @@ class ServerState(object):
 		
 		logger_vault.debug("All Players list node: %d", all_players_id)
 		
-		aegura_id, aegura_info_id = await self.create_age_instance(
-			age_file_name="city",
-			instance_uuid=PUBLIC_AEGURA_UUID,
-			instance_name="Ae'gura",
-			public=True,
-			allow_existing=True,
-		)
-		logger_vault.debug("Public Ae'gura instance: Age %d, Age Info %d", aegura_id, aegura_info_id)
+		for static_age in self.config.ages_static_ages_config:
+			instance_uuid = await self.setup_static_age_instance(
+				age_file_name=static_age.age_file_name,
+				instance_uuid=static_age.instance_uuid,
+				instance_name=static_age.instance_name,
+				user_defined_name=static_age.user_defined_name,
+			)
+			
+			if self.config.ages_public_aegura_instance == configuration.WhichStaticAgeInstance.static and static_age.age_file_name == structs.AEGURA_AGE_NAME:
+				assert not hasattr(self, "public_aegura_instance_uuid")
+				self.public_aegura_instance_uuid = instance_uuid
+			elif self.config.ages_default_neighborhood_instance == configuration.WhichStaticAgeInstance.static and static_age.age_file_name == structs.NEIGHBORHOOD_AGE_NAME:
+				assert not hasattr(self, "default_neighborhood_instance_uuid")
+				self.default_neighborhood_instance_uuid = instance_uuid
 		
-		bevin_id, bevin_info_id = await self.create_age_instance(
-			age_file_name="Neighborhood",
-			instance_uuid=DEFAULT_NEIGHBORHOOD_UUID,
-			# Calling this Bevin is okay lore-wise,
-			# because there's only a single instance!
-			instance_name="Bevin",
-			# We don't want a user-defined name here
-			# (because there's only a single Bevin instance).
-			# The empty string is a workaround for OpenUru clients,
-			# which display "Member of (null) Bevin" in the KI if the user-defined name is left unset.
-			user_defined_name="",
-			public=True,
-			allow_existing=True,
-		)
-		logger_vault.debug("Default neighborhood instance: Age %d, Age Info %d", bevin_id, bevin_info_id)
+		if isinstance(self.config.ages_public_aegura_instance, uuid.UUID):
+			self.public_aegura_instance_uuid = self.config.ages_public_aegura_instance
+		elif self.config.ages_public_aegura_instance == configuration.WhichStaticAgeInstance.static:
+			assert hasattr(self, "public_aegura_instance_uuid")
+		elif self.config.ages_public_aegura_instance == configuration.WhichStaticAgeInstance.none:
+			self.public_aegura_instance_uuid = None
+		else:
+			raise AssertionError(f"Unhandled value for config option ages.public_aegura_instance: {self.config.ages_public_aegura_instance!r}")
+		
+		logger_vault.debug("Public Ae'gura instance: %s", self.public_aegura_instance_uuid)
+		
+		if isinstance(self.config.ages_default_neighborhood_instance, uuid.UUID):
+			self.default_neighborhood_instance_uuid = self.config.ages_default_neighborhood_instance
+		elif self.config.ages_default_neighborhood_instance == configuration.WhichStaticAgeInstance.static:
+			assert hasattr(self, "default_neighborhood_instance_uuid")
+		elif self.config.ages_default_neighborhood_instance == configuration.WhichStaticAgeInstance.none:
+			self.default_neighborhood_instance_uuid = None
+		else:
+			raise AssertionError(f"Unhandled value for config option ages.default_neighborhood_instance: {self.config.ages_default_neighborhood_instance!r}")
+		
+		logger_vault.debug("Default neighborhood instance: %s", self.default_neighborhood_instance_uuid)
 		
 		logger_db.debug("Finished setting up the NAGUS database")
 	
@@ -1489,6 +1506,110 @@ class ServerState(object):
 		
 		return age_id, age_info_id
 	
+	async def setup_static_age_instance(
+		self,
+		age_file_name: str,
+		instance_uuid: typing.Optional[uuid.UUID],
+		instance_name: typing.Optional[str],
+		user_defined_name: typing.Optional[str],
+	) -> uuid.UUID:
+		"""Ensure that a public static instance of the given age exists,
+		by finding an existing matching instance if possible,
+		or creating a new one if necessary.
+		"""
+		
+		if instance_uuid is None:
+			# This static age instance is declared with an [auto] instance UUID,
+			# so we need to figure out what instance UUID to use.
+			async with await self.db.cursor() as cursor:
+				# Look for any existing public instances of the age in question.
+				# If an [auto] static instance is declared for an age,
+				# there should never be more than one public instance of that age -
+				# but for better predictability and robustness,
+				# in case multiple instances exist somehow,
+				# we always prefer the oldest one.
+				
+				await cursor.execute(
+					"""
+					select Uuid_1
+					from VaultNodes
+					where NodeType = ? and Int32_2 = 1 and Uuid_1 is not null and String64_2 = ?
+					order by CreateTime
+					limit 2
+					""",
+					(VaultNodeType.age_info, age_file_name),
+				)
+				
+				row = await cursor.fetchone()
+				if row is None:
+					# No existing public instance found,
+					# so create a new one with a random UUID.
+					# The next time the server is restarted,
+					# this instance will be found and not re-created.
+					instance_uuid = uuid.uuid4()
+					logger.debug("Couldn't find any existing public instance of %r - choosing a new random instance UUID: %s", age_file_name, instance_uuid)
+					_, age_info_id = await self.create_age_instance(
+						age_file_name=age_file_name,
+						instance_uuid=instance_uuid,
+						instance_name=instance_name,
+						user_defined_name=user_defined_name,
+						public=True,
+					)
+				else:
+					# Found an existing public instance of the age in question.
+					# (If there are multiple instances for some reason,
+					# this will be the oldest one.)
+					(existing_instance_uuid_bytes,) = row
+					existing_instance_uuid = uuid.UUID(bytes_le=existing_instance_uuid_bytes)
+					logger.debug("Found existing public instance of %r with UUID %s - using it as the static instance", age_file_name, existing_instance_uuid)
+					
+					if await cursor.fetchone() is not None:
+						logger.warning("Found multiple existing public instances of %r - using the oldest instance as the static instance: %s", age_file_name, existing_instance_uuid)
+					
+					# When an [auto] static instance declaration is fulfilled using an existing public instance,
+					# then *don't* update the existing instance's display names to match the declaration.
+					# This reduces the potential mess if the wrong public instance is selected for some reason.
+					
+					return existing_instance_uuid
+		else:
+			# This static age instance is declared with a hardcoded UUID,
+			# so we can use the regular logic for finding/creating an age instance by UUID.
+			logger.debug("Finding/creating a static instance of %r with UUID %s...", age_file_name, instance_uuid)
+			_, age_info_id = await self.create_age_instance(
+				age_file_name=age_file_name,
+				instance_uuid=instance_uuid,
+				instance_name=instance_name,
+				user_defined_name=user_defined_name,
+				public=True,
+				allow_existing=True,
+			)
+		
+		# Now that we have the instance,
+		# check that its Age Info node has all the metadata set to what the config says it should be.
+		# This is really only relevant when reusing an existing instance,
+		# but as an extra correctness check,
+		# just run the same logic on newly created instances as well.
+		
+		age_info_data = await self.fetch_vault_node(age_info_id)
+		age_info_needs_updating = False
+		
+		if age_info_data.int32_2 != 1:
+			logger.warning("Existing static instance of %r with UUID %s (Age Info node %d) isn't public - fixing that...", age_file_name, instance_uuid, age_info_id)
+			age_info_needs_updating = True
+		if age_info_data.string64_3 != instance_name:
+			logger.warning("Existing static instance of %r with UUID %s (Age Info node %d) has instance name %r - renaming to %r as declared in the config...", age_file_name, instance_uuid, age_info_id, age_info_data.string64_3, instance_name)
+			age_info_needs_updating = True
+		if age_info_data.string64_4 != user_defined_name:
+			logger.warning("Existing static instance of %r with UUID %s (Age Info node %d) has user-defined name %r - renaming to %r as declared in the config...", age_file_name, instance_uuid, age_info_id, age_info_data.string64_4, user_defined_name)
+			age_info_needs_updating = True
+		
+		if age_info_needs_updating:
+			# To reduce log spam about vault node updates,
+			# only actually update the node if anything is mismatched.
+			await self.update_vault_node(age_info_id, VaultNodeData(int32_2=1, string64_3=instance_name, string64_4=user_defined_name), uuid.uuid4())
+		
+		return instance_uuid
+	
 	async def find_public_age_instances(self, age_file_name: str) -> typing.AsyncIterable[PublicAgeInstance]:
 		async with await self.db.cursor() as cursor:
 			await cursor.execute(
@@ -1553,9 +1674,17 @@ class ServerState(object):
 		
 		system_id = await self.find_system_vault_node()
 		all_players_id = await self.find_all_players_vault_node()
+		
 		# TODO Automatically create new hoods as needed
-		_, hood_info_id = await self.find_age_instance("Neighborhood", DEFAULT_NEIGHBORHOOD_UUID)
-		_, aegura_info_id = await self.find_age_instance("city", PUBLIC_AEGURA_UUID)
+		if self.default_neighborhood_instance_uuid is None:
+			hood_info_id = None
+		else:
+			_, hood_info_id = await self.find_age_instance(structs.NEIGHBORHOOD_AGE_NAME, self.default_neighborhood_instance_uuid)
+		
+		if self.public_aegura_instance_uuid is None:
+			aegura_info_id = None
+		else:
+			_, aegura_info_id = await self.find_age_instance(structs.AEGURA_AGE_NAME, self.public_aegura_instance_uuid)
 		
 		player_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=0, node_type=VaultNodeType.player, int32_1=0, int32_2=explorer, uuid_1=account_id, string64_1=shape, istring64_1=name))
 		player_info_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.player_info, uint32_1=player_id, istring64_1=name))
@@ -1633,19 +1762,21 @@ class ServerState(object):
 		await self.add_vault_node_ref(VaultNodeRef(relto_link_id, relto_info_id))
 		await self.add_vault_node_ref(VaultNodeRef(ages_i_own_id, relto_link_id))
 		
-		# Make the avatar an owner of its neighborhood.
-		hood_owners_id = await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.age_owners), parent_id=hood_info_id)
-		await self.add_vault_node_ref(VaultNodeRef(hood_owners_id, player_info_id))
+		if hood_info_id is not None:
+			# Make the avatar an owner of its neighborhood.
+			hood_owners_id = await self.find_unique_vault_node(VaultNodeData(node_type=VaultNodeType.player_info_list, int32_1=VaultNodeFolderType.age_owners), parent_id=hood_info_id)
+			await self.add_vault_node_ref(VaultNodeRef(hood_owners_id, player_info_id))
+			
+			# Add a link to the neighborhood to the avatar's Ages I Own list.
+			hood_link_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_link, blob_1=b"Default:LinkInPointDefault:;"))
+			await self.add_vault_node_ref(VaultNodeRef(hood_link_id, hood_info_id))
+			await self.add_vault_node_ref(VaultNodeRef(ages_i_own_id, hood_link_id))
 		
-		# Add a link to the neighborhood to the avatar's Ages I Own list.
-		hood_link_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_link, blob_1=b"Default:LinkInPointDefault:;"))
-		await self.add_vault_node_ref(VaultNodeRef(hood_link_id, hood_info_id))
-		await self.add_vault_node_ref(VaultNodeRef(ages_i_own_id, hood_link_id))
-		
-		# Add a link to the public Ae'gura to the avatar's Ages I Own list.
-		aegura_link_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_link, blob_1=b"Ferry Terminal:LinkInPointFerry:;"))
-		await self.add_vault_node_ref(VaultNodeRef(aegura_link_id, aegura_info_id))
-		await self.add_vault_node_ref(VaultNodeRef(ages_i_own_id, aegura_link_id))
+		if aegura_info_id is not None:
+			# Add a link to the public Ae'gura to the avatar's Ages I Own list.
+			aegura_link_id = await self.create_vault_node(VaultNodeData(creator_account_uuid=account_id, creator_id=player_id, node_type=VaultNodeType.age_link, blob_1=b"Ferry Terminal:LinkInPointFerry:;"))
+			await self.add_vault_node_ref(VaultNodeRef(aegura_link_id, aegura_info_id))
+			await self.add_vault_node_ref(VaultNodeRef(ages_i_own_id, aegura_link_id))
 		
 		await self.add_vault_node_ref(VaultNodeRef(
 			player_id,

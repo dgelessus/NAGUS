@@ -4,7 +4,16 @@ Changelog
 Version 0.2.0
 -------------
 
-(not released yet)
+* Added configurable automatic creation of static public age instances,
+  using the same static_ages.ini configuration format as DIRTSAND.
+  This generic mechanism replaces the previous hardcoded creation of Bevin and a public Ae'gura instance.
+  
+  * Added a default static_ages.ini
+    that closely follows that from DIRTSAND.
+    As a result,
+    many more ages are now accessible by normal gameplay means,
+    namely Kirel, the Watcher's Pub, Phil's Relto, and all ages reachable from there.
+    (Note that many of them can only be accessed after manually changing some SDL settings.)
 
 Version 0.1.1
 -------------

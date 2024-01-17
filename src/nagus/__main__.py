@@ -228,6 +228,12 @@ written in pure Python. It is currently not very good.
 	logging.config.dictConfig(config.logging_config)
 	
 	try:
+		config.read_external_files()
+	except configuration.ConfigError as exc:
+		print(f"Error: While processing external configuration files: {exc}")
+		sys.exit(1)
+	
+	try:
 		asyncio.run(async_main(config))
 	except KeyboardInterrupt:
 		logger.info("KeyboardInterrupt received, stopping server.")

@@ -51,6 +51,9 @@ UOID_CLONE_IDS = struct.Struct("<HHI")
 CLASS_INDEX = UINT16
 NULL_CLASS_INDEX = 0x8000
 
+AEGURA_AGE_NAME = "city"
+NEIGHBORHOOD_AGE_NAME = "Neighborhood"
+
 
 class _TestEnum(enum.IntEnum):
 	thing = 1
