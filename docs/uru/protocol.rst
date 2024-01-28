@@ -279,8 +279,8 @@ The open-source client code defines the following message types and contents:
 In practice,
 only Connect and Encrypt messages are used.
 Message type Error is mostly ignored by the client ---
-it doesn't display the error in any way
-and just continues waiting for an Encrypt message.
+it stops the connection process,
+but doesn't actually display the error in any way.
 The client only considers encryption as failed
 if the server closes the connection entirely
 (resulting in a generic "Disconnected from Myst Online" error,
@@ -569,8 +569,7 @@ the server replies as soon as possible with a ping response.
 (The server cannot initiate pings,
 only reply to requests from the client.)
 
-For all types except the game server,
-the client regularly sends ping requests to the server
+The client regularly sends ping requests to the server
 to tell it that the connection is still alive.
 MOSS automatically disconnects clients that haven't sent pings for a while.
 DIRTSAND also times out inactive clients similarly,
