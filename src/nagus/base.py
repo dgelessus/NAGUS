@@ -21,6 +21,7 @@
 import abc
 import asyncio
 import enum
+import ipaddress
 import logging
 import struct
 import typing
@@ -297,6 +298,20 @@ class BaseMOULConnection(object):
 		self.reader = reader
 		self.writer = writer
 		self.server_state = server_state
+	
+	def get_own_ipv4_address(self) -> ipaddress.IPv4Address:
+		sockname = self.writer.get_extra_info("sockname")
+		if sockname is None:
+			raise ValueError("Couldn't determine own IP address")
+		elif len(sockname) != 2:
+			raise ValueError(f"Own address has unexpected format (probably IPv6): {sockname!r}")
+		else:
+			addr, port = sockname
+			return ipaddress.IPv4Address(addr)
+	
+	def get_own_address_string(self) -> str:
+		# TODO Do we care about supporting more than just IPv4 here?
+		return str(self.get_own_ipv4_address())
 	
 	async def read(self, byte_count: int) -> bytes:
 		"""Read ``byte_count`` bytes from the socket and raise :class:`~asyncio.IncompleteReadError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""

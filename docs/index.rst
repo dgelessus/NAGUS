@@ -40,6 +40,7 @@ Contents
   uru/encryption_keys
   uru/server_config
   uru/protocol
+  uru/gatekeeper_server
   uru/vault
   uru/sdl
   uru/auth_server

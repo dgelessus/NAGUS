@@ -177,10 +177,14 @@ some server connections can be bypassed/skipped for development purposes.
 When a file server address is set explicitly,
 using the :option:`/FileSrv` option (OpenUru)
 or the ``Server.File.Host`` server.ini command (H'uru),
-then the client never contacts the gatekeeper server.
+then the client never asks the gatekeeper server for the file server address.
 This does *not* work for the launcher though ---
 it ignores any file server override and always goes through the gatekeeper server.
-This makes overriding the file server only useful in combination with :option:`/LocalData`:
+This makes overriding the file server only useful for internal clients,
+which can be run directly without the launcher.
+
+The file server connection can also be bypassed using one or more of the following options
+(depending on the kind of client):
 
 .. option:: /LocalData
   

@@ -210,6 +210,9 @@ class Configuration(object):
 	server_status_message: str
 	server_status_add_version_info: bool
 	
+	server_gatekeeper_file_server_address: typing.Optional[str]
+	server_gatekeeper_auth_server_address: typing.Optional[str]
+	
 	server_auth_send_server_caps: SendServerCaps
 	server_auth_send_server_address: bool
 	server_auth_address_for_client: typing.Optional[ipaddress.IPv4Address]
@@ -274,6 +277,10 @@ class Configuration(object):
 			self.server_status_message = value
 		elif option == ("server", "status", "add_version_info"):
 			self.server_status_add_version_info = parse_bool(value)
+		elif option == ("server", "gatekeeper", "file_server_address"):
+			self.server_gatekeeper_file_server_address = value if value else None
+		elif option == ("server", "gatekeeper", "auth_server_address"):
+			self.server_gatekeeper_auth_server_address = value if value else None
 		elif option == ("server", "auth", "send_server_caps"):
 			try:
 				self.server_auth_send_server_caps = SendServerCaps(value)
@@ -366,6 +373,7 @@ class Configuration(object):
 					"nagus.game_server.sdl": {"level": "INFO"},
 					"nagus.game_server.test_and_set": {"level": "INFO"},
 					"nagus.game_server.voice": {"level": "INFO"},
+					"nagus.gatekeeper_server": {"level": "INFO"},
 				},
 			}
 		if not hasattr(self, "logging_enable_crash_lines"):
@@ -394,12 +402,19 @@ class Configuration(object):
 			self.server_status_message = "Welcome to URU"
 		if not hasattr(self, "server_status_add_version_info"):
 			self.server_status_add_version_info = True
+		if not hasattr(self, "server_gatekeeper_file_server_address"):
+			self.server_gatekeeper_file_server_address = None
 		if not hasattr(self, "server_auth_send_server_caps"):
 			self.server_auth_send_server_caps = SendServerCaps.compatible
 		if not hasattr(self, "server_auth_send_server_address"):
 			self.server_auth_send_server_address = True
 		if not hasattr(self, "server_auth_address_for_client"):
 			self.server_auth_address_for_client = self.server_address_for_client
+		if not hasattr(self, "server_gatekeeper_auth_server_address"):
+			if self.server_auth_address_for_client is None:
+				self.server_gatekeeper_auth_server_address = None
+			else:
+				self.server_gatekeeper_auth_server_address = str(self.server_auth_address_for_client)
 		if not hasattr(self, "server_auth_disconnected_client_timeout"):
 			self.server_auth_disconnected_client_timeout = 30 if self.server_auth_send_server_address else 0
 		if not hasattr(self, "server_game_address_for_client"):

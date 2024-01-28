@@ -39,6 +39,7 @@ from . import configuration
 from . import console
 from . import crash_lines
 from . import game_server
+from . import gatekeeper_server
 from . import state
 
 
@@ -49,7 +50,8 @@ logger_client = logger.getChild("client")
 DEFAULT_CONFIG_FILE_NAME = "nagus_config.ini"
 
 CONNECTION_CLASSES: typing.Sequence[typing.Type[base.BaseMOULConnection]] = [
-	# TODO Add gatekeeper and file servers once implemented
+	gatekeeper_server.GatekeeperConnection,
+	# TODO Add file server once implemented
 	auth_server.AuthConnection,
 	game_server.GameConnection,
 ]

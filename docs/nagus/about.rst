@@ -143,7 +143,6 @@ Still to be implemented
   
   * Figure out how to do account creation and other account management stuff
     that can't be done via the game client.
-* The :ref:`gatekeeper server <gatekeeper_server>` for sending the other server addresses.
 * The :ref:`file server <file_server>` to make the patcher work
   (or at least safely do nothing).
 * Serving "secure" files (SDL, Python) via the :ref:`auth server <auth_server>`

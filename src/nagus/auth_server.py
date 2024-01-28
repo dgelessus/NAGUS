@@ -180,16 +180,6 @@ class AuthConnection(base.BaseMOULConnection):
 		
 		self.client_state = AuthClientState()
 	
-	def _get_own_ipv4_address(self) -> ipaddress.IPv4Address:
-		sockname = self.writer.get_extra_info("sockname")
-		if sockname is None:
-			raise ValueError("Couldn't determine own IP address")
-		elif len(sockname) != 2:
-			raise ValueError(f"Own address has unexpected format (probably IPv6): {sockname!r}")
-		else:
-			(addr, port) = sockname
-			return ipaddress.IPv4Address(addr)
-	
 	async def write(self, data: bytes) -> None:
 		try:
 			await super().write(data)
@@ -462,7 +452,7 @@ class AuthConnection(base.BaseMOULConnection):
 			try:
 				ip_addr = self.server_state.config.server_auth_address_for_client
 				if ip_addr is None:
-					ip_addr = self._get_own_ipv4_address()
+					ip_addr = self.get_own_ipv4_address()
 			except ValueError:
 				logger_connect.warning("Unable to get own IPv4 address - won't send a ServerAddr message to the client", exc_info=True)
 			else:
@@ -965,7 +955,7 @@ class AuthConnection(base.BaseMOULConnection):
 		else:
 			ip_addr = self.server_state.config.server_game_address_for_client
 			if ip_addr is None:
-				ip_addr = self._get_own_ipv4_address()
+				ip_addr = self.get_own_ipv4_address()
 			await self.age_reply(trans_id, base.NetError.success, age_node_id, instance_uuid, age_node_id, ip_addr)
 	
 	async def public_age_list(self, trans_id: int, result: base.NetError, age_instances: typing.Sequence[state.PublicAgeInstance]) -> None:

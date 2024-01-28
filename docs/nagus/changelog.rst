@@ -14,6 +14,9 @@ Version 0.2.0
     many more ages are now accessible by normal gameplay means,
     namely Kirel, the Watcher's Pub, Phil's Relto, and all ages reachable from there.
     (Note that many of them can only be accessed after manually changing some SDL settings.)
+* Implemented the gatekeeper server.
+  This is necessary preparation for making the launcher work
+  (once the file server is implemented).
 
 Version 0.1.1
 -------------
