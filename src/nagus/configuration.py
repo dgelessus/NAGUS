@@ -112,7 +112,7 @@ class StaticAgeInstanceDefinition(object):
 		return f"{type(self).__qualname__}(age_file_name={self.age_file_name!r}, instance_uuid={self.instance_uuid!r}, instance_name={self.instance_name!r}, user_defined_name={self.user_defined_name!r})"
 
 
-def parse_static_ages_ini(ini_path: typing.Union[str, bytes, os.PathLike]) -> typing.Iterable[StaticAgeInstanceDefinition]:
+def parse_static_ages_ini(ini_path: typing.Union[str, bytes, os.PathLike[str], os.PathLike[bytes]]) -> typing.Iterable[StaticAgeInstanceDefinition]:
 	# Can't use configparser here,
 	# because static_ages.ini may contain multiple sections with the same name:
 	# an age instance that should receive a random instance UUID uses the section name [auto]
@@ -191,7 +191,7 @@ class Configuration(object):
 	database_path: str
 	database_journal_mode: str
 	
-	logging_config: dict
+	logging_config: typing.Dict[str, typing.Any]
 	logging_enable_crash_lines: bool
 	
 	console_enable: bool
@@ -324,7 +324,7 @@ class Configuration(object):
 				
 				self.set_option(section_name_parts + (option_name,), value)
 	
-	def set_options_from_ini_file(self, ini_path: typing.Union[str, bytes, os.PathLike]) -> None:
+	def set_options_from_ini_file(self, ini_path: typing.Union[str, bytes, os.PathLike[str], os.PathLike[bytes]]) -> None:
 		parser = configparser.ConfigParser(
 			# Disable alternative syntax characters.
 			delimiters=("=",),

@@ -102,7 +102,7 @@ def read_exact(stream: typing.BinaryIO, byte_count: int) -> bytes:
 	return data
 
 
-def stream_unpack(stream: typing.BinaryIO, st: struct.Struct) -> tuple:
+def stream_unpack(stream: typing.BinaryIO, st: struct.Struct) -> typing.Tuple[typing.Any, ...]:
 	"""Unpack data from the stream according to the struct st.
 	
 	The number of bytes to read is determined using st.size,

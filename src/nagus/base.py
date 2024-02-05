@@ -209,7 +209,7 @@ def pack_string_field(string: str, max_length: int = 0xffff) -> bytes:
 
 ConnT = typing.TypeVar("ConnT", bound="BaseMOULConnection")
 MessageHandler = typing.Callable[[ConnT], typing.Awaitable[None]]
-MessageHandlerT = typing.TypeVar("MessageHandlerT", bound=MessageHandler)
+MessageHandlerT = typing.TypeVar("MessageHandlerT", bound=MessageHandler[typing.Any])
 
 
 def message_handler(message_type: int) -> typing.Callable[[MessageHandlerT], MessageHandlerT]:
@@ -251,7 +251,7 @@ class BaseMOULConnection(object):
 	(see :func:`message_handler`).
 	"""
 	
-	MESSAGE_HANDLERS: typing.ClassVar[typing.Dict[int, MessageHandler]]
+	MESSAGE_HANDLERS: "typing.ClassVar[typing.Dict[int, MessageHandler[BaseMOULConnection]]]"
 	CONNECTION_TYPE: ConnectionType # to be set in each subclass
 	
 	reader: asyncio.StreamReader
@@ -290,7 +290,7 @@ class BaseMOULConnection(object):
 				except AttributeError:
 					continue
 				
-				cls.MESSAGE_HANDLERS[message_type] = typing.cast(MessageHandler, attr)
+				cls.MESSAGE_HANDLERS[message_type] = typing.cast(MessageHandler[BaseMOULConnection], attr)
 	
 	def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, server_state: state.ServerState) -> None:
 		super().__init__()
@@ -329,7 +329,7 @@ class BaseMOULConnection(object):
 		self.writer.write(data)
 		await self.writer.drain()
 	
-	async def read_unpack(self, st: struct.Struct) -> tuple:
+	async def read_unpack(self, st: struct.Struct) -> typing.Tuple[typing.Any, ...]:
 		"""Read and unpack data from the socket according to the struct ``st``.
 		
 		The number of bytes to read is determined using :field:`struct.Struct.size`,
