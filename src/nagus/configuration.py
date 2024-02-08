@@ -201,8 +201,8 @@ class Configuration(object):
 	ages_default_neighborhood_instance: typing.Union[uuid.UUID, WhichStaticAgeInstance]
 	
 	server_listen_address: str
-	server_address_for_client: typing.Optional[ipaddress.IPv4Address]
 	server_port: int
+	server_address_for_client: typing.Optional[ipaddress.IPv4Address]
 	
 	server_status_enable: bool
 	server_status_listen_address: str
