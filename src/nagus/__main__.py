@@ -232,7 +232,7 @@ written in pure Python. It is currently not very good.
 	try:
 		config.read_external_files()
 	except configuration.ConfigError as exc:
-		print(f"Error: While processing external configuration files: {exc}")
+		print(f"Error: While processing external configuration files: {exc}", file=sys.stderr)
 		sys.exit(1)
 	
 	try:
