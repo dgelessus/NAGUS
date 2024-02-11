@@ -135,16 +135,42 @@ Cyan MOULa build IDs
   This appears to be the first release of MOULa.
 * Build 1.871:
   Released `2010-02-17 <https://mystonline.com/forums/viewtopic.php?f=36&t=19753>`__.
+  
+  * First build for which Cyan released the `Plasma 3ds Max 7 plugins <http://cho.cyan.com/bahrowings/MOULaPlugins871.zip>`__
+    (`OpenUru mirror <https://assets.openuru.org/cyan/MOULaPlugins871.zip>`__),
+    but only as binaries without source code,
+    built 2010-02-04,
+    released `2010-03-05 <https://mystonline.com/forums/viewtopic.php?t=20178>`__.
 * Build 1.887:
   Released `2010-04-02 <https://web.archive.org/web/20110515133633/http://www.atomicgamer.com:80/games/1835/myst-online-uru-live/files>`__.
+  
+  * For this build,
+    Cyan released the `KI Python scripts, textures, and 3ds Max models <http://cho.cyan.com/bahrowings/KI-887.zip>`__
+    (`OpenUru mirror <https://assets.openuru.org/cyan/KI-887.zip>`__),
+    timestamped 2010-04-13.
 * Build 1.893:
   Released `2010-05-21 <https://distfiles.macports.org/mystonline/UruLauncher.exe-1.893.zip>`__ (or earlier?).
+  
+  * First build for which Cyan released a bundle of data files for the `auth server <https://assets.openuru.org/cyan/AuthFiles.zip>`__
+    and `game server <https://assets.openuru.org/cyan/GameFiles.zip>`__,
+    timestamped 2011-02-10.
+  * First build for which Cyan released a complete bundle of `script source code <https://assets.openuru.org/cyan/Scripts893.zip>`__
+    (.py, .sdl, .age, .fni),
+    timestamped 2011-03-21.
 * Build 1.897:
-  Released ???.
+  Released around 2011-01-05?
+  First release of the `client and 3ds Max plugins source code <https://assets.openuru.org/cyan/MOULOpenSourceClientPlugin.zip>`__,
+  timestamped 2011-01-05,
+  released `2011-04-06 <https://mystonline.com/forums/viewtopic.php?f=36&t=24534>`__.
   CWE Git commit `30bbdbd3 <https://foundry.openuru.org/gitblit/commit/?r=CWE.git&h=30bbdbd327c2ea6832b88e40ceca2a6707a3a0d5>`__ (2011-03-12).
 * Build 1.902:
   Released `2011-04-15 <https://mystonline.com/forums/viewtopic.php?f=36&t=24583>`__.
   CWE Git commit `a363a783 <https://foundry.openuru.org/gitblit/commit/?r=CWE.git&h=a363a783c5d2ffc7aa104275e5f34feb81db0e4b>`__ (2011-04-19).
+  
+  * Last build for which Cyan released a bundle of data files for the `auth server <https://assets.openuru.org/cyan/AuthFiles902.zip>`__
+    and `game server <https://assets.openuru.org/cyan/GameFiles902.zip>`__
+    and a bundle of `script source code <https://assets.openuru.org/cyan/Scripts902.zip>`__,
+    timestamped 2011-04-13.
 * Build 1.905:
   Released `2012-02-13 <https://mystonline.com/forums/viewtopic.php?f=36&t=25435>`__.
   CWE Git commit `cbea546c <https://foundry.openuru.org/gitblit/commit/?r=CWE.git&h=cbea546c61507f9d549d41354ec8993482304680>`__ (2012-02-07).
@@ -154,10 +180,18 @@ Cyan MOULa build IDs
 * Build 1.912:
   Released `2012-05-29 <https://mystonline.com/forums/viewtopic.php?f=36&t=25730>`__.
   CWE Git commit `68ba122a <https://foundry.openuru.org/gitblit/commit/?r=CWE.git&h=68ba122afeb131b31e7d5f22fadffb16c987b802>`__ (2012-06-14).
+* Build 1.917:
+  Never released as a client build.
+  Cyan released a binary build of the `Plasma 3ds Max 7 plugins <http://cho.cyan.com/bahrowings/MOULaPlugins917.zip>`__
+  (`OpenUru mirror <https://assets.openuru.org/cyan/MOULaPlugins917.zip>`__)
+  with this build number,
+  built 2013-06-05,
+  timestamped 2014-06-12,
+  released `2016-05-13 <https://wiki.openuru.org/index.php?title=Cyan_Worlds_Sources_And_Tools&diff=2939&oldid=2037>`__\?
 * Build 1.918:
   Released `2013-06-11 <https://mystonline.com/forums/viewtopic.php?f=36&t=26572>`__.
   CWE Git commit `46a0cf62 <https://foundry.openuru.org/gitblit/commit/?r=CWE.git&h=46a0cf6206211366c43d5132b6190b3f4ca35c62>`__ (2013-07-05).
-  All later client updates (as of 2022) also use this build number.
+  All later client updates (as of 2024) also use this build number.
 
 .. index:: factory ID
   :name: factory_id
