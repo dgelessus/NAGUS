@@ -194,3 +194,37 @@ def challenge_hash(client_challenge: int, server_challenge: int, password_hash: 
 	"""Calculate the challenge hash from client and server challenge values and a password hash."""
 	
 	return slow_sha_0(CHALLENGE_HASH_DATA.pack(client_challenge, server_challenge, password_hash))
+
+
+class Rc4State(object):
+	state: bytearray
+	i: int
+	j: int
+	
+	def __init__(self, key: bytes) -> None:
+		super().__init__()
+		
+		self.state = bytearray(range(256))
+		
+		j = 0
+		for i in range(256):
+			j = (j + self.state[i] + key[i % len(key)]) & 0xff
+			self.state[i], self.state[j] = self.state[j], self.state[i]
+		
+		self.i = 0
+		self.j = 0
+	
+	def crypt(self, data: bytes) -> bytes:
+		res = bytearray(data)
+		
+		for b, byte in enumerate(data):
+			self.i = (self.i + 1) & 0xff
+			self.j = (self.j + self.state[self.i]) & 0xff
+			self.state[self.i], self.state[self.j] = self.state[self.j], self.state[self.i]
+			res[b] ^= self.state[(self.state[self.i] + self.state[self.j]) & 0xff]
+		
+		# Yes, this is a pointless copy,
+		# but some APIs are very particular about the type of byte buffers
+		# and don't accept bytearray in place of bytes
+		# (e. g. uuid.UUID's bytes/bytes_le kwargs).
+		return bytes(res)

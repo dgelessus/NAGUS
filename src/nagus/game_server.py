@@ -1681,6 +1681,7 @@ class GameConnection(base.BaseMOULConnection):
 	def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, server_state: state.ServerState) -> None:
 		super().__init__(reader, writer, server_state)
 		
+		self.dh_keys = self.server_state.config.server_game_keys
 		self.client_state = GameClientState()
 	
 	async def read_connect_packet_data(self) -> None:

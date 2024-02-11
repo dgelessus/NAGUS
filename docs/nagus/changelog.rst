@@ -17,6 +17,19 @@ Version 0.2.0
 * Implemented the gatekeeper server.
   This is necessary preparation for making the launcher work
   (once the file server is implemented).
+* Implemented encryption for all connections that support it
+  (gatekeeper, auth, game).
+  
+  * Connection encryption remains optional.
+    If the server has no encryption keys configured,
+    NAGUS treats all connections as unencrypted,
+    like before.
+    Clients can also still request unencrypted connections
+    even if the server has encryption keys configured.
+  * There is no support for generating encryption keys yet.
+    For now,
+    the recommended solution is to use DIRTSAND's key generator
+    (`dirtsand --generate-keys`).
 
 Version 0.1.1
 -------------

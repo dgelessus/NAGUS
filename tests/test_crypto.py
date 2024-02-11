@@ -86,6 +86,14 @@ CHALLENGE_TEST_HASHES = [
 	(0xb30d7f53, 0xdeadbeef, "469f82acd0b514293cfd31c19f7703000b36eca2", "d9930d4f26a2e58da91df760243a94a101950d30"),
 ]
 
+RC4_TEST_DATA = [
+	# Stolen from Wikipedia:
+	# https://en.wikipedia.org/wiki/RC4#Test_vectors
+	(b"Key", b"Plaintext", b"\xbb\xf3\x16\xe8\xd9@\xaf\n\xd3"),
+	(b"Wiki", b"pedia", b"\x10!\xbf\x04 "),
+	(b"Secret", b"Attack at dawn", b"E\xa0\x1fd_\xc3[85RTK\x9b\xf5"),
+]
+
 
 class ShaTest(unittest.TestCase):
 	def test_sha_0(self) -> None:
@@ -151,6 +159,25 @@ class ShaTest(unittest.TestCase):
 		for client_challenge, server_challenge, password_hash, hex_hash in CHALLENGE_TEST_HASHES:
 			with self.subTest(client_challenge=client_challenge, server_challenge=server_challenge, password_hash=password_hash, hash=hex_hash):
 				self.assertEqual(crypto.challenge_hash(client_challenge, server_challenge, bytes.fromhex(password_hash)), bytes.fromhex(hex_hash))
+
+
+class Rc4Test(unittest.TestCase):
+	def test_rc4_batch(self) -> None:
+		for key, plaintext, ciphertext in RC4_TEST_DATA:
+			with self.subTest(key=key, plaintext=plaintext):
+				state_encrypt = crypto.Rc4State(key)
+				state_decrypt = crypto.Rc4State(key)
+				self.assertEqual(state_encrypt.crypt(plaintext), ciphertext)
+				self.assertEqual(state_decrypt.crypt(ciphertext), plaintext)
+	
+	def test_rc4_bytewise(self) -> None:
+		for key, plaintext, ciphertext in RC4_TEST_DATA:
+			with self.subTest(key=key, plaintext=plaintext):
+				state_encrypt = crypto.Rc4State(key)
+				state_decrypt = crypto.Rc4State(key)
+				for p, c in zip(plaintext, ciphertext):
+					self.assertEqual(state_encrypt.crypt(bytes([p])), bytes([c]))
+					self.assertEqual(state_decrypt.crypt(bytes([c])), bytes([p]))
 
 
 if __name__ == "__main__":

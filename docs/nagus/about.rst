@@ -129,12 +129,8 @@ Still to be implemented
   * Tracking non-persistent SDL states on the server side
     and sending them to other clients when joining an existing game server.
   * Handling concurrent :cpp:class:`plNetMsgTestAndSet`\s (locking) properly.
-* Connection encryption.
-  Currently,
-  client connections are always unencrypted
-  and clients must have :ref:`encryption disabled <disabling_connection_encryption>` to connect.
+* Generating connection encryption keys for the server.
   
-  * Generating server keys.
   * Outputting the corresponding client keys in the appropriate formats for H'uru and OpenUru clients.
 * Actual authentication and account management.
   Currently,

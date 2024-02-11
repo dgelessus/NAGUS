@@ -178,6 +178,7 @@ class AuthConnection(base.BaseMOULConnection):
 	def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, server_state: state.ServerState) -> None:
 		super().__init__(reader, writer, server_state)
 		
+		self.dh_keys = self.server_state.config.server_auth_keys
 		self.client_state = AuthClientState()
 	
 	async def write(self, data: bytes) -> None:
@@ -270,6 +271,7 @@ class AuthConnection(base.BaseMOULConnection):
 				self.server_state.auth_connections_by_ki_number[self.client_state.ki_number] = self
 			
 			# Send any messages that we tried to send during the disconnect.
+			# FIXME This is probably actually not the right place to do this. Should wait until after encryption is set up (and probably after the client re-sends a ClientRegisterRequest).
 			if self.client_state.messages_while_disconnected:
 				logger_connect.debug("Sending %d messages that were queued during the disconnect", len(self.client_state.messages_while_disconnected))
 				while self.client_state.messages_while_disconnected:

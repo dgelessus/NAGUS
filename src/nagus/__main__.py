@@ -221,7 +221,11 @@ written in pure Python. It is currently not very good.
 			print(f"Error: In -c/--config option: {exc}", file=sys.stderr)
 			sys.exit(2)
 	
-	config.set_defaults()
+	try:
+		config.set_defaults()
+	except configuration.ConfigError as exc:
+		print(f"Error: In server configuration: {exc}", file=sys.stderr)
+		sys.exit(1)
 	
 	logging.basicConfig(
 		format="[%(levelname)s] %(name)s: %(message)s",

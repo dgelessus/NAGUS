@@ -24,6 +24,8 @@ but this way is easier for now.
 
 
 import ast
+import base64
+import binascii
 import collections
 import configparser
 import enum
@@ -72,8 +74,26 @@ def parse_ipv4_address(s: str) -> ipaddress.IPv4Address:
 		raise ConfigError(f"Invalid IPv4 address: {exc!s}")
 
 
+def parse_dh_key(s: str) -> int:
+	try:
+		data = base64.b64decode(s)
+	except binascii.Error as exc:
+		raise ConfigError(f"Invalid encryption key: Invalid base-64 data: {exc}")
+	
+	if len(data) != 64:
+		raise ConfigError(f"Invalid encryption key: Must be exactly 64 bytes (512 bits) long, but found {len(data)} bytes")
+	
+	return int.from_bytes(data, "big")
+
+
 class WhichStaticAgeInstance(enum.Enum):
 	static = "static"
+	none = "none"
+
+
+class Encryption(enum.Enum):
+	force = "force"
+	default = "default"
 	none = "none"
 
 
@@ -86,6 +106,22 @@ class SendServerCaps(enum.Enum):
 class ParsePlMessages(enum.Enum):
 	necessary = "necessary"
 	known = "known"
+
+
+class DHKeys(object):
+	g: int
+	n: int
+	a: int
+	
+	def __init__(self, g: int, n: int, a: int) -> None:
+		super().__init__()
+		
+		self.g = g
+		self.n = n
+		self.a = a
+	
+	def __repr__(self) -> str:
+		return f"{type(self).__qualname__}(g={self.g!r}, n={self.n:#x}, a={self.a:#x})"
 
 
 class StaticAgeInstanceDefinition(object):
@@ -202,6 +238,7 @@ class Configuration(object):
 	
 	server_listen_address: str
 	server_port: int
+	server_encryption: typing.Optional[Encryption]
 	server_address_for_client: typing.Optional[ipaddress.IPv4Address]
 	
 	server_status_enable: bool
@@ -210,16 +247,31 @@ class Configuration(object):
 	server_status_message: str
 	server_status_add_version_info: bool
 	
+	server_gatekeeper_key_g: int
+	server_gatekeeper_key_n: typing.Optional[int]
+	server_gatekeeper_key_a: typing.Optional[int]
 	server_gatekeeper_file_server_address: typing.Optional[str]
 	server_gatekeeper_auth_server_address: typing.Optional[str]
 	
+	server_auth_key_g: int
+	server_auth_key_n: typing.Optional[int]
+	server_auth_key_a: typing.Optional[int]
 	server_auth_send_server_caps: SendServerCaps
 	server_auth_send_server_address: bool
 	server_auth_address_for_client: typing.Optional[ipaddress.IPv4Address]
 	server_auth_disconnected_client_timeout: int
 	
+	server_game_key_g: int
+	server_game_key_n: typing.Optional[int]
+	server_game_key_a: typing.Optional[int]
 	server_game_address_for_client: typing.Optional[ipaddress.IPv4Address]
 	server_game_parse_pl_messages: ParsePlMessages
+	
+	# The following variables aren't set directly from configuration options,
+	# but are derived from multiple options after some simple checks.
+	server_gatekeeper_keys: typing.Optional[DHKeys]
+	server_auth_keys: typing.Optional[DHKeys]
+	server_game_keys: typing.Optional[DHKeys]
 	
 	# The following variables aren't set directly from configuration options,
 	# but instead derived from external files referenced in the options.
@@ -265,6 +317,11 @@ class Configuration(object):
 			self.server_listen_address = value
 		elif option == ("server", "port"):
 			self.server_port = parse_int(value)
+		elif option == ("server", "encryption"):
+			try:
+				self.server_encryption = Encryption(value)
+			except ValueError as exc:
+				raise ConfigError(f"Invalid value for option: {exc}")
 		elif option == ("server", "address_for_client"):
 			self.server_address_for_client = parse_ipv4_address(value) if value else None
 		elif option == ("server", "status", "enable"):
@@ -277,10 +334,22 @@ class Configuration(object):
 			self.server_status_message = value
 		elif option == ("server", "status", "add_version_info"):
 			self.server_status_add_version_info = parse_bool(value)
+		elif option == ("server", "gatekeeper", "key_g"):
+			self.server_gatekeeper_key_g = parse_int(value)
+		elif option == ("server", "gatekeeper", "key_n"):
+			self.server_gatekeeper_key_n = parse_dh_key(value) if value else None
+		elif option == ("server", "gatekeeper", "key_a"):
+			self.server_gatekeeper_key_a = parse_dh_key(value) if value else None
 		elif option == ("server", "gatekeeper", "file_server_address"):
 			self.server_gatekeeper_file_server_address = value if value else None
 		elif option == ("server", "gatekeeper", "auth_server_address"):
 			self.server_gatekeeper_auth_server_address = value if value else None
+		elif option == ("server", "auth", "key_g"):
+			self.server_auth_key_g = parse_int(value)
+		elif option == ("server", "auth", "key_n"):
+			self.server_auth_key_n = parse_dh_key(value) if value else None
+		elif option == ("server", "auth", "key_a"):
+			self.server_auth_key_a = parse_dh_key(value) if value else None
 		elif option == ("server", "auth", "send_server_caps"):
 			try:
 				self.server_auth_send_server_caps = SendServerCaps(value)
@@ -294,6 +363,12 @@ class Configuration(object):
 			self.server_auth_disconnected_client_timeout = parse_int(value)
 			if self.server_auth_disconnected_client_timeout < 0:
 				raise ConfigError(f"Timeout must not be negative: {self.server_auth_disconnected_client_timeout}")
+		elif option == ("server", "game", "key_g"):
+			self.server_game_key_g = parse_int(value)
+		elif option == ("server", "game", "key_n"):
+			self.server_game_key_n = parse_dh_key(value) if value else None
+		elif option == ("server", "game", "key_a"):
+			self.server_game_key_a = parse_dh_key(value) if value else None
 		elif option == ("server", "game", "address_for_client"):
 			self.server_game_address_for_client = parse_ipv4_address(value) if value else None
 		elif option == ("server", "game", "parse_pl_messages"):
@@ -402,8 +477,20 @@ class Configuration(object):
 			self.server_status_message = "Welcome to URU"
 		if not hasattr(self, "server_status_add_version_info"):
 			self.server_status_add_version_info = True
+		if not hasattr(self, "server_gatekeeper_key_g"):
+			self.server_gatekeeper_key_g = 4
+		if not hasattr(self, "server_gatekeeper_key_n"):
+			self.server_gatekeeper_key_n = None
+		if not hasattr(self, "server_gatekeeper_key_a"):
+			self.server_gatekeeper_key_a = None
 		if not hasattr(self, "server_gatekeeper_file_server_address"):
 			self.server_gatekeeper_file_server_address = None
+		if not hasattr(self, "server_auth_key_g"):
+			self.server_auth_key_g = 41
+		if not hasattr(self, "server_auth_key_n"):
+			self.server_auth_key_n = None
+		if not hasattr(self, "server_auth_key_a"):
+			self.server_auth_key_a = None
 		if not hasattr(self, "server_auth_send_server_caps"):
 			self.server_auth_send_server_caps = SendServerCaps.compatible
 		if not hasattr(self, "server_auth_send_server_address"):
@@ -417,10 +504,49 @@ class Configuration(object):
 				self.server_gatekeeper_auth_server_address = str(self.server_auth_address_for_client)
 		if not hasattr(self, "server_auth_disconnected_client_timeout"):
 			self.server_auth_disconnected_client_timeout = 30 if self.server_auth_send_server_address else 0
+		if not hasattr(self, "server_game_key_g"):
+			self.server_game_key_g = 73
+		if not hasattr(self, "server_game_key_n"):
+			self.server_game_key_n = None
+		if not hasattr(self, "server_game_key_a"):
+			self.server_game_key_a = None
 		if not hasattr(self, "server_game_address_for_client"):
 			self.server_game_address_for_client = self.server_address_for_client
 		if not hasattr(self, "server_game_parse_pl_messages"):
 			self.server_game_parse_pl_messages = ParsePlMessages.necessary
+		
+		if not hasattr(self, "server_encryption"):
+			have_keys = (
+				self.server_gatekeeper_key_n is not None
+				or self.server_gatekeeper_key_a is not None
+				or self.server_auth_key_n is not None
+				or self.server_auth_key_a is not None
+				or self.server_game_key_n is not None
+				or self.server_game_key_a is not None
+			)
+			self.server_encryption = Encryption.default if have_keys else Encryption.none
+		
+		if self.server_encryption == Encryption.none:
+			self.server_gatekeeper_keys = None
+			self.server_auth_keys = None
+			self.server_game_keys = None
+		else:
+			if self.server_gatekeeper_key_n is None:
+				raise ConfigError(f"Incomplete encryption configuration: Missing server.gatekeeper.key_n")
+			if self.server_gatekeeper_key_a is None:
+				raise ConfigError(f"Incomplete encryption configuration: Missing server.gatekeeper.key_a")
+			if self.server_auth_key_n is None:
+				raise ConfigError(f"Incomplete encryption configuration: Missing server.auth.key_n")
+			if self.server_auth_key_a is None:
+				raise ConfigError(f"Incomplete encryption configuration: Missing server.auth.key_a")
+			if self.server_game_key_n is None:
+				raise ConfigError(f"Incomplete encryption configuration: Missing server.game.key_n")
+			if self.server_game_key_a is None:
+				raise ConfigError(f"Incomplete encryption configuration: Missing server.game.key_a")
+			
+			self.server_gatekeeper_keys = DHKeys(self.server_gatekeeper_key_g, self.server_gatekeeper_key_n, self.server_gatekeeper_key_a)
+			self.server_auth_keys = DHKeys(self.server_auth_key_g, self.server_auth_key_n, self.server_auth_key_a)
+			self.server_game_keys = DHKeys(self.server_game_key_g, self.server_game_key_n, self.server_game_key_a)
 	
 	def read_external_files(self) -> None:
 		"""Read configuration variables that are stored in or derived from other files.

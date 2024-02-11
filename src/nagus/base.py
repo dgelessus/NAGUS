@@ -23,10 +23,13 @@ import asyncio
 import enum
 import ipaddress
 import logging
+import random
 import struct
 import typing
 import uuid
 
+from . import configuration
+from . import crypto
 from . import state
 from . import structs
 
@@ -41,6 +44,9 @@ CONNECT_HEADER_TAIL = struct.Struct("<III16s")
 CONNECT_HEADER_LENGTH = struct.calcsize("<BH") + CONNECT_HEADER_TAIL.size
 
 SETUP_MESSAGE_HEADER = struct.Struct("<BB")
+
+
+SYSTEM_RANDOM = random.SystemRandom()
 
 
 class BuildType(enum.Enum):
@@ -257,11 +263,14 @@ class BaseMOULConnection(object):
 	reader: asyncio.StreamReader
 	writer: asyncio.StreamWriter
 	server_state: state.ServerState
+	dh_keys: typing.Optional[configuration.DHKeys]
 	
 	build_id: int
 	build_type: BuildType
 	branch_id: int
 	product_id: uuid.UUID
+	encryption_state_read: typing.Optional[crypto.Rc4State]
+	encryption_state_write: typing.Optional[crypto.Rc4State]
 	
 	@classmethod
 	def __init_subclass__(cls) -> None:
@@ -298,6 +307,9 @@ class BaseMOULConnection(object):
 		self.reader = reader
 		self.writer = writer
 		self.server_state = server_state
+		
+		self.encryption_state_read = None
+		self.encryption_state_write = None
 	
 	def get_own_ipv4_address(self) -> ipaddress.IPv4Address:
 		sockname = self.writer.get_extra_info("sockname")
@@ -314,18 +326,30 @@ class BaseMOULConnection(object):
 		return str(self.get_own_ipv4_address())
 	
 	async def read(self, byte_count: int) -> bytes:
-		"""Read ``byte_count`` bytes from the socket and raise :class:`~asyncio.IncompleteReadError` if too few bytes are read (i. e. the connection was disconnected prematurely)."""
+		"""Read ``byte_count`` bytes from the socket and raise :class:`~asyncio.IncompleteReadError` if too few bytes are read (i. e. the connection was disconnected prematurely).
 		
-		return await self.reader.readexactly(byte_count)
+		If encryption has been set up for this connection,
+		the data is automatically decrypted after reading.
+		"""
+		
+		data = await self.reader.readexactly(byte_count)
+		if self.encryption_state_read is not None:
+			data = self.encryption_state_read.crypt(data)
+		return data
 	
 	async def write(self, data: bytes) -> None:
 		"""Write ``data`` to the socket.
+		
+		If encryption has been set up for this connection,
+		the data is automatically encrypted before writing.
 		
 		The exact implementation might change in the future ---
 		it seems that Uru expects certain data to arrive as a single packet,
 		even though TCP doesn't guarantee that packet boundaries are preserved in transmission.
 		"""
 		
+		if self.encryption_state_write is not None:
+			data = self.encryption_state_write.crypt(data)
 		self.writer.write(data)
 		await self.writer.drain()
 	
@@ -373,36 +397,61 @@ class BaseMOULConnection(object):
 		raise NotImplementedError()
 	
 	async def setup_encryption(self) -> None:
-		"""Handle an encryption setup packet from the client and set up encryption accordingly.
-		
-		Currently doesn't actually support encryption yet!
-		Unencrypted H'uru connections are accepted.
-		Anything that looks like an encrypted connection is assumed to be an OpenUru client with encryption disabled.
-		"""
+		"""Handle an encryption setup packet from the client and set up encryption accordingly."""
 		
 		message_type, length = await self.read_unpack(SETUP_MESSAGE_HEADER)
 		message_type = SetupMessageType(message_type)
 		logger_crypt.debug("Received setup message: type %s, %d bytes", message_type, length)
+		if message_type != SetupMessageType.cli2srv_connect:
+			raise ProtocolError(f"Client sent unexpected setup message type: {message_type!r}")
 		
 		data = await self.read(length - SETUP_MESSAGE_HEADER.size)
 		logger_crypt.debug("Setup message data: %s", data)
 		
 		if data:
-			# Received a server seed from client.
-			# We don't support encryption yet,
-			# so for now,
-			# assume it's a CWE/OpenUru client built with NO_ENCRYPTION.
-			# In this case,
-			# we have to send back a seed of the correct length,
-			# but the client will not use it and the connection will be unencrypted.
-			logger_crypt.debug("Received a server seed, but encryption not supported yet! Assuming NO_ENCRYPTION and replying with a dummy client seed.")
-			await self.write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
+			# Received the Diffie-Hellman y value from the client.
+			if self.dh_keys is None:
+				# The server has encryption completely disabled
+				# (usually because no keys are configured),
+				# so assume the connection is from a CWE/OpenUru client built with NO_ENCRYPTION.
+				# In this case,
+				# we have to send back a seed of the correct length,
+				# but the client will not use it and the connection will be unencrypted.
+				logger_crypt.debug("Client sent a non-empty Diffie-Hellman y value, but this server has encryption disabled - assuming NO_ENCRYPTION and replying with a dummy seed")
+				await self.write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + b"noCrypt")
+				self.encryption_state_read = None
+				self.encryption_state_write = None
+			else:
+				# Encryption is enabled,
+				# so do the key exchange.
+				if len(data) != 64:
+					raise ProtocolError(f"Expected Diffie-Hellman y value to be 64 bytes long, but client sent {len(data)} bytes")
+				
+				dh_y = int.from_bytes(data, "little")
+				logger_crypt.debug("Received y from client: %#x", dh_y)
+				
+				seed = random.randrange(2**56)
+				seed_data = seed.to_bytes(7, "little")
+				await self.write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 9) + seed_data)
+				if logger_crypt.isEnabledFor(logging.DEBUG):
+					logger_crypt.debug("Sent generated seed to client: %s", seed_data.hex())
+				
+				session_key_data = (seed ^ (pow(dh_y, self.dh_keys.a, self.dh_keys.n) & (2**56 - 1))).to_bytes(7, "little")
+				if logger_crypt.isEnabledFor(logging.DEBUG):
+					logger_crypt.debug("Agreed on RC4 session key: %s", session_key_data.hex())
+				self.encryption_state_read = crypto.Rc4State(session_key_data)
+				self.encryption_state_write = crypto.Rc4State(session_key_data)
 		else:
-			# H'uru internal client sent an empty server seed to explicitly request no encryption.
-			# We have to reply with an empty client seed,
+			# H'uru internal client sent an empty y value to explicitly request no encryption.
+			if self.server_state.config.server_encryption == configuration.Encryption.force:
+				raise ProtocolError(f"Client tried request no encryption, but the server is configured to require encryption")
+			
+			# We have to reply with an empty seed,
 			# or else the client will abort the connection.
-			logger_crypt.debug("Received empty server seed - setting up unencrypted connection.")
+			logger_crypt.debug("Received empty Diffie-Hellman y value - setting up unencrypted connection")
 			await self.write(SETUP_MESSAGE_HEADER.pack(SetupMessageType.srv2cli_encrypt.value, 2))
+			self.encryption_state_read = None
+			self.encryption_state_write = None
 		
 		logger_crypt.debug("Done setting up encryption")
 	

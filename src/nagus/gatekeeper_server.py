@@ -18,11 +18,13 @@
 """Implements the :ref:`gatekeeper server <gatekeeper_server>`."""
 
 
+import asyncio
 import logging
 import struct
 import uuid
 
 from . import base
+from . import state
 from . import structs
 
 
@@ -38,6 +40,11 @@ FILE_SERVER_IP_ADDRESS_REQUEST = struct.Struct("<I?")
 
 class GatekeeperConnection(base.BaseMOULConnection):
 	CONNECTION_TYPE = base.ConnectionType.cli2gatekeeper
+	
+	def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, server_state: state.ServerState) -> None:
+		super().__init__(reader, writer, server_state)
+		
+		self.dh_keys = self.server_state.config.server_gatekeeper_keys
 	
 	async def read_connect_packet_data(self) -> None:
 		data_length, token = await self.read_unpack(CONNECT_DATA)
