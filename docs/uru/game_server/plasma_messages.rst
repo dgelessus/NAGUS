@@ -891,8 +891,8 @@ Avatar tasks
     
     * Float = 1
     * Key = 2
-    * Int = 3
-    * Null = 4
+    * Int = 3: Only supported since MOULa build 1.912 (from 2012).
+    * Null = 4: Only supported since MOULa build 1.912 (from 2012).
   * **Number value:** 4-byte value.
     The value of a numeric variable.
     Has no pre-defined meaning.
