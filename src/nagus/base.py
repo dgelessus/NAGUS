@@ -470,6 +470,8 @@ class BaseMOULConnection(object):
 		except asyncio.TimeoutError as exc:
 			raise ProtocolError(f"Client sent unsupported message type {message_type} and no data quickly following it")
 		else:
+			if self.encryption_state_read is not None:
+				data = self.encryption_state_read.crypt(data)
 			raise ProtocolError(f"Client sent unsupported message type {message_type} - next few bytes: {data!r}")
 	
 	async def handle_message(self, message_type: int) -> None:
