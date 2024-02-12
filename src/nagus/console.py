@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 HELP_TEXT = """Available commands:
 	exit, shutdown, stop, q, quit - Shut down the server
 	help, ? - Display this help text
+	version - Display the server's version number
 	kick token|address|account|avatar WHO - Forcibly disconnect a client from the server
 	list - List all clients connected to the server
 	loglevel CATEGORY [LEVEL_NAME] - Display or change the log level for a category of log messages (or category "root" for all)
