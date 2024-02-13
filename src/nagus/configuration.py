@@ -464,7 +464,7 @@ class Configuration(object):
 		if not hasattr(self, "server_listen_address"):
 			self.server_listen_address = ""
 		if not hasattr(self, "server_port"):
-			self.server_port = 14617
+			self.server_port = structs.DEFAULT_SERVER_PORT
 		if not hasattr(self, "server_address_for_client"):
 			self.server_address_for_client = None
 		if not hasattr(self, "server_status_enable"):
@@ -478,7 +478,7 @@ class Configuration(object):
 		if not hasattr(self, "server_status_add_version_info"):
 			self.server_status_add_version_info = True
 		if not hasattr(self, "server_gatekeeper_key_g"):
-			self.server_gatekeeper_key_g = 4
+			self.server_gatekeeper_key_g = structs.DEFAULT_GATEKEEPER_DH_G
 		if not hasattr(self, "server_gatekeeper_key_n"):
 			self.server_gatekeeper_key_n = None
 		if not hasattr(self, "server_gatekeeper_key_a"):
@@ -486,7 +486,7 @@ class Configuration(object):
 		if not hasattr(self, "server_gatekeeper_file_server_address"):
 			self.server_gatekeeper_file_server_address = None
 		if not hasattr(self, "server_auth_key_g"):
-			self.server_auth_key_g = 41
+			self.server_auth_key_g = structs.DEFAULT_AUTH_DH_G
 		if not hasattr(self, "server_auth_key_n"):
 			self.server_auth_key_n = None
 		if not hasattr(self, "server_auth_key_a"):
@@ -505,7 +505,7 @@ class Configuration(object):
 		if not hasattr(self, "server_auth_disconnected_client_timeout"):
 			self.server_auth_disconnected_client_timeout = 30 if self.server_auth_send_server_address else 0
 		if not hasattr(self, "server_game_key_g"):
-			self.server_game_key_g = 73
+			self.server_game_key_g = structs.DEFAULT_GAME_DH_G
 		if not hasattr(self, "server_game_key_n"):
 			self.server_game_key_n = None
 		if not hasattr(self, "server_game_key_a"):

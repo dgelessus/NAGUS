@@ -17,3 +17,7 @@ docs/_build
 *.sqlite
 *.sqlite-*
 nagus_config.ini
+
+# Generated client configuration files
+cwe_server_config.patch
+server.ini

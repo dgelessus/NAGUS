@@ -20,6 +20,7 @@
 
 import asyncio
 import logging
+import pathlib
 import shlex
 import sys
 import typing
@@ -28,6 +29,7 @@ import uuid
 from . import __version__
 from . import auth_server
 from . import base
+from . import client_config_gen
 from . import state
 
 
@@ -38,6 +40,7 @@ HELP_TEXT = """Available commands:
 	exit, shutdown, stop, q, quit - Shut down the server
 	help, ? - Display this help text
 	version - Display the server's version number
+	client_config export [PATH] - Generate configuration files for clients to connect to this server (server.ini for H'uru and source patch for CWE/OpenUru)
 	kick token|address|account|avatar WHO - Forcibly disconnect a client from the server
 	list - List all clients connected to the server
 	loglevel CATEGORY [LEVEL_NAME] - Display or change the log level for a category of log messages (or category "root" for all)
@@ -77,6 +80,29 @@ async def run_command(server_state: state.ServerState, command: str, args: typin
 	elif command == "version":
 		_check_arg_count(0)
 		print(f"This is NAGUS version {__version__}")
+	elif command == "client_config":
+		if len(args) not in {1, 2}:
+			raise UserError(f"Expected 1 or 2 arguments, not {len(args)}")
+		
+		if args[0] == "export":
+			dest_dir = pathlib.Path(args[1] if len(args) == 2 else ".")
+			dest_dir.mkdir(exist_ok=True)
+			
+			with open(dest_dir / "server.ini", "w", encoding="utf-8", newline="\n") as fout:
+				for line in client_config_gen.generate_server_ini(server_state.config):
+					print(line, file=fout)
+			
+			# Encodings are kind of a mess in the original open-sourced CWE codebase -
+			# there are multiple files with non-ASCII Windows-1252 characters
+			# and the compiler isn't configured to accept UTF-8 anywhere,
+			# so to be safe,
+			# require everything to be plain ASCII here.
+			with open(dest_dir / "cwe_server_config.patch", "w", encoding="ascii", newline="\n") as fout:
+				fout.write(client_config_gen.generate_cwe_server_config_patch(server_state.config))
+			
+			print(f"Successfully exported client configuration as server.ini and cwe_server_config.patch in {dest_dir}")
+		else:
+			raise UserError(f"Unknown subcommand: {args[0]!r} (expected export)")
 	elif command == "kick":
 		_check_arg_count(2)
 		

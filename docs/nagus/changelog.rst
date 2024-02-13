@@ -14,6 +14,10 @@ Version 0.2.0
     many more ages are now accessible by normal gameplay means,
     namely Kirel, the Watcher's Pub, Phil's Relto, and all ages reachable from there.
     (Note that many of them can only be accessed after manually changing some SDL settings.)
+* Added console command ``client_config export`` for generating configuration settings for clients
+  to connect to the server in its current configuration.
+  The configuration is generated both as a server.ini file for H'uru clients
+  and as a source code patch for traditional CWE/OpenUru clients.
 * Implemented the gatekeeper server.
   This is necessary preparation for making the launcher work
   (once the file server is implemented).

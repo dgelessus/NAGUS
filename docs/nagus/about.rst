@@ -130,8 +130,6 @@ Still to be implemented
     and sending them to other clients when joining an existing game server.
   * Handling concurrent :cpp:class:`plNetMsgTestAndSet`\s (locking) properly.
 * Generating connection encryption keys for the server.
-  
-  * Outputting the corresponding client keys in the appropriate formats for H'uru and OpenUru clients.
 * Actual authentication and account management.
   Currently,
   there's one single account
