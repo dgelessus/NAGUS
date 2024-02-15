@@ -41,6 +41,7 @@ logger_age = logger.getChild("age")
 logger_avatar = logger.getChild("avatar")
 logger_client_errors = logger.getChild("client_errors")
 logger_connect = logger.getChild("connect")
+logger_file = logger.getChild("file")
 logger_login = logger.getChild("login")
 logger_ping = logger.getChild("ping")
 logger_score = logger.getChild("score")
@@ -98,6 +99,8 @@ VAULT_NODE_FIND_REPLY_HEADER = struct.Struct("<III")
 VAULT_SEND_NODE = struct.Struct("<II")
 AGE_REQUEST_HEADER = struct.Struct("<I")
 AGE_REPLY = struct.Struct("<III16sII")
+FILE_LIST_REQUEST_HEADER = struct.Struct("<I")
+FILE_LIST_REPLY_HEADER = struct.Struct("<III")
 GET_PUBLIC_AGE_LIST_HEADER = struct.Struct("<I")
 PUBLIC_AGE_LIST_HEADER = struct.Struct("<III")
 SET_AGE_PUBLIC = struct.Struct("<I?")
@@ -959,6 +962,29 @@ class AuthConnection(base.BaseMOULConnection):
 			if ip_addr is None:
 				ip_addr = self.get_own_ipv4_address()
 			await self.age_reply(trans_id, base.NetError.success, age_node_id, instance_uuid, age_node_id, ip_addr)
+	
+	async def file_list_reply(self, trans_id: int, result: base.NetError, file_list_data: bytes) -> None:
+		count, rem = divmod(len(file_list_data), 2)
+		if rem:
+			raise ValueError(f"File list data cannot have an odd length: {len(file_list_data)} bytes")
+		
+		logger_file.debug("Sending file list reply: transaction ID %d, result %r, %d elements, data: %r", trans_id, result, count, file_list_data)
+		
+		await self.write_message(36, FILE_LIST_REPLY_HEADER.pack(trans_id, result, count) + file_list_data)
+	
+	@base.message_handler(37)
+	async def file_list_request(self) -> None:
+		(trans_id,) = await self.read_unpack(FILE_LIST_REQUEST_HEADER)
+		directory = await self.read_string_field(260)
+		extension = await self.read_string_field(256)
+		logger_file.debug("File list request: transaction ID %d, directory %r, extension %r", trans_id, directory, extension)
+		
+		# TODO Actually serve some files
+		if directory == "SDL":
+			# This makes recent H'uru clients happy without having to pass /LocalSDL.
+			await self.file_list_reply(trans_id, base.NetError.success, b"\x00\x00\x00\x00")
+		else:
+			await self.file_list_reply(trans_id, base.NetError.file_not_found, b"\x00\x00\x00\x00")
 	
 	async def public_age_list(self, trans_id: int, result: base.NetError, age_instances: typing.Sequence[state.PublicAgeInstance]) -> None:
 		logger_vault_read.debug("Sending public age list: transaction ID %d, result %r, %d instances: %r", trans_id, result, len(age_instances), age_instances)

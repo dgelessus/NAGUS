@@ -134,7 +134,7 @@ not even their structure.
   :header: #,Cli2Auth,Auth2Cli,#
   :widths: auto
   
-  37,FileListRequest,FileListReply,36
+  37,:ref:`FileListRequest <cli2auth_file_list_request>`,:ref:`FileListReply <auth2cli_file_list_reply>`,36
   38,FileDownloadRequest,FileDownloadChunk,37
   39,FileDownloadChunkAck,,
 
@@ -2076,6 +2076,73 @@ The result is usually one of:
 * :cpp:enumerator:`kNetSuccess`
 * :cpp:enumerator:`kNetErrVaultNodeNotFound`: For some reason,
   the open-sourced client code considers this a success.
+
+.. _cli2auth_file_list_request:
+
+Cli2Auth_FileListRequest
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 37
+* **Transaction ID:** 4-byte unsigned int.
+* **Directory:** :c:macro:`NET_MSG_FIELD_STRING`\(260).
+  Name of the directory for which to return a file list.
+* **Extension:** :c:macro:`NET_MSG_FIELD_STRING`\(256).
+  File extension of files to include in the file list.
+
+Request a list of files available for download from the auth server in the given directory and with the given extension.
+
+In practice,
+only the following combinations of directory and extension are used by the client: 
+
+.. csv-table:: Auth server file lists
+  :name: auth_file_lists
+  :header: Directory,Extension,Description
+  :widths: auto
+  
+  ``Python``,``pak``,Contains a single Python.pak file.
+  ``SDL``,``sdl``,Contains all .sdl files used on this server.
+
+MOSS ignores the extension and only uses the directory name to look up the file list.
+DIRTSAND requires both the directory name and the extension to match the expected values exactly.
+(TODO What does Cyan's server software do?)
+
+.. _auth2cli_file_list_reply:
+
+Auth2Cli_FileListReply
+^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 36
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **File list element count:** 4-byte unsigned int.
+  Element count for the following file list array.
+  Can be at most 1048576 (2 MiB).
+* **File list:** Variable-length array of 2-byte unsigned ints.
+  A concatenated list of file entries.
+  Every entry has the following structure:
+  
+  * **Name:** Variable-length zero-terminated UTF-16 string.
+    Name of the file.
+  * **Size, high half:** 2-byte unsigned int.
+    The most significant half of the 4-byte file size.
+  * **Size, low half:** 2-byte unsigned int.
+    The least significant half of the 4-byte file size.
+  * **Size, terminator:** 2-byte unsigned int.
+    Always 0.
+  
+  Every entry is terminated by its last field's terminating 0,
+  so there is no extra separator between the list entries.
+  The entire list is followed by a second terminating 0
+  (after the terminating 0 of the last field of the last entry).
+  As a special case,
+  an empty file list is represented as two 0 values.
+
+Reply to a :ref:`FileListRequest <cli2auth_file_list_request>`.
+
+The result is usually one of:
+
+* :cpp:enumerator:`kNetSuccess`
+* :cpp:enumerator:`kNetErrFileNotFound`: The requested directory doesn't exist on the server.
 
 .. _cli2auth_propagate_buffer:
 

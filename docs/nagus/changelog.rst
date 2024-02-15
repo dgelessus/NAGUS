@@ -4,6 +4,10 @@ Changelog
 Version 0.2.0
 -------------
 
+First version that works with H'uru clients without ``/LocalSDL``
+and is compatible with MoulKI.
+There is still no support for multiplayer or serving files to clients.
+
 * Added configurable automatic creation of static public age instances,
   using the same static_ages.ini configuration format as DIRTSAND.
   This generic mechanism replaces the previous hardcoded creation of Bevin and a public Ae'gura instance.
@@ -18,6 +22,11 @@ Version 0.2.0
   to connect to the server in its current configuration.
   The configuration is generated both as a server.ini file for H'uru clients
   and as a source code patch for traditional CWE/OpenUru clients.
+* Added minimal support for auth server file requests.
+  This doesn't actually serve any files yet ---
+  it only returns an empty list of SDL files
+  (to make H'uru clients without ``/LocalSDL`` happy)
+  and reports "file not found" for everything else.
 * Implemented the gatekeeper server.
   This is necessary preparation for making the launcher work
   (once the file server is implemented).
