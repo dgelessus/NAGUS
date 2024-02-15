@@ -135,8 +135,8 @@ not even their structure.
   :widths: auto
   
   37,:ref:`FileListRequest <cli2auth_file_list_request>`,:ref:`FileListReply <auth2cli_file_list_reply>`,36
-  38,FileDownloadRequest,FileDownloadChunk,37
-  39,FileDownloadChunkAck,,
+  38,:ref:`FileDownloadRequest <cli2auth_file_download_request>`,:ref:`FileDownloadChunk <auth2cli_file_download_chunk>`,37
+  39,:ref:`FileDownloadChunkAck <cli2auth_file_download_chunk_ack>`,,
 
 .. csv-table:: Game
   :name: auth_messages_game
@@ -2143,6 +2143,82 @@ The result is usually one of:
 
 * :cpp:enumerator:`kNetSuccess`
 * :cpp:enumerator:`kNetErrFileNotFound`: The requested directory doesn't exist on the server.
+
+.. _cli2auth_file_download_request:
+
+Cli2Auth_FileDownloadRequest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 38
+* **Transaction ID:** 4-byte unsigned int.
+* **File path:** :c:macro:`NET_MSG_FIELD_STRING`\(260).
+  Server-side path of the requested file,
+  as previously returned in a :ref:`FileListReply <auth2cli_file_list_reply>` entry.
+
+Download a file from the auth server.
+
+The server replies with a variable number of :ref:`FileDownloadChunk <auth2cli_file_download_chunk>` messages,
+each containing a part of the file data.
+The client reassembles the complete file by combining the data from all of these chunks based on their offsets.
+In response to each received :ref:`FileDownloadChunk <auth2cli_file_download_chunk>`,
+the client also sends a :ref:`FileDownloadChunkAck <cli2auth_file_download_chunk_ack>` message.
+
+All of these messages use the same transaction ID as the client's original request.
+
+.. _auth2cli_file_download_chunk:
+
+Auth2Cli_FileDownloadChunk
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 37
+* **Transaction ID:** 4-byte unsigned int.
+* **Result:** 4-byte :cpp:enum:`ENetError`.
+* **Total file size:** 4-byte unsigned int.
+  Size of the complete file data.
+  Should always match the size field in the corresponding :ref:`FileListReply <auth2cli_file_list_reply>` entry.
+* **Chunk offset:** 4-byte unsigned int.
+  Byte offset of this chunk within the overall file.
+* **Chunk size:** 4-byte unsigned int.
+  Byte count for the following chunk field.
+  May be at most 1460.
+* **Chunk data:** Variable-length byte array.
+  The data at the given offset in the file.
+
+Reply to a :ref:`FileDownloadRequest <cli2auth_file_download_request>`.
+
+Unless the file is small enough to fit into a single chunk,
+the server sends multiple such replies in response to a single request.
+If any chunk's result is not successful,
+the client considers the entire download failed.
+
+The server doesn't explicitly notify the client when the download has completed.
+The client assumes that the file data is complete after receiving a chunk whose data reaches or exceeds the total file size.
+This means that the last chunk of the file must be sent last by the server,
+otherwise the client will consider the download complete before all data has actually been received.
+
+Actually,
+the open-sourced client code requires *all* chunks to be sent in order,
+not just the last chunk.
+Although each chunk's offset within the file is given explicitly,
+the client code fails to handle out-of-order chunks,
+so every chunk must start exactly where the preceding chunk ended.
+
+The client sends a :ref:`FileDownloadChunkAck <cli2auth_file_download_chunk_ack>` message in response to every received chunk.
+
+.. _cli2auth_file_download_chunk_ack:
+
+Cli2Auth_FileDownloadChunkAck
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* *Message type* = 39
+* **Transaction ID:** 4-byte unsigned int.
+
+Client's reply to a :ref:`FileDownloadChunk <auth2cli_file_download_chunk>` message.
+
+Both MOSS and DIRTSAND wait for this reply before sending the next chunk in the file
+(if any),
+even though the auth server connection is TCP-based,
+so there is no risk of chunks getting lost or out of order.
 
 .. _cli2auth_propagate_buffer:
 

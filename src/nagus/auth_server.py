@@ -101,6 +101,9 @@ AGE_REQUEST_HEADER = struct.Struct("<I")
 AGE_REPLY = struct.Struct("<III16sII")
 FILE_LIST_REQUEST_HEADER = struct.Struct("<I")
 FILE_LIST_REPLY_HEADER = struct.Struct("<III")
+FILE_DOWNLOAD_REQUEST_HEADER = struct.Struct("<I")
+FILE_DOWNLOAD_CHUNK_HEADER = struct.Struct("<IIIII")
+FILE_DOWNLOAD_CHUNK_ACK = struct.Struct("<I")
 GET_PUBLIC_AGE_LIST_HEADER = struct.Struct("<I")
 PUBLIC_AGE_LIST_HEADER = struct.Struct("<III")
 SET_AGE_PUBLIC = struct.Struct("<I?")
@@ -985,6 +988,27 @@ class AuthConnection(base.BaseMOULConnection):
 			await self.file_list_reply(trans_id, base.NetError.success, b"\x00\x00\x00\x00")
 		else:
 			await self.file_list_reply(trans_id, base.NetError.file_not_found, b"\x00\x00\x00\x00")
+	
+	async def file_download_chunk(self, trans_id: int, result: base.NetError, total_file_size: int, chunk_offset: int, chunk: bytes) -> None:
+		logger_file.debug("Sending file download chunk: transaction ID %d, result %r, total file size %d bytes, %d bytes at offset %d", trans_id, result, total_file_size, len(chunk), chunk_offset)
+		
+		await self.write_message(37, FILE_DOWNLOAD_CHUNK_HEADER.pack(trans_id, result, total_file_size, chunk_offset, len(chunk)) + chunk)
+	
+	@base.message_handler(38)
+	async def file_download_request(self) -> None:
+		(trans_id,) = await self.read_unpack(FILE_DOWNLOAD_REQUEST_HEADER)
+		file_path = await self.read_string_field(260)
+		logger_file.debug("File download request: transaction ID %d, file path %r", trans_id, file_path)
+		
+		# TODO Actually serve some files
+		await self.file_download_chunk(trans_id, base.NetError.file_not_found, 0, 0, b"")
+	
+	@base.message_handler(39)
+	async def file_download_chunk_ack(self) -> None:
+		(trans_id,) = await self.read_unpack(FILE_DOWNLOAD_CHUNK_ACK)
+		logger_file.debug("Client acknowledged file download chunk: transaction ID %d", trans_id)
+		
+		# TODO Actually serve some files
 	
 	async def public_age_list(self, trans_id: int, result: base.NetError, age_instances: typing.Sequence[state.PublicAgeInstance]) -> None:
 		logger_vault_read.debug("Sending public age list: transaction ID %d, result %r, %d instances: %r", trans_id, result, len(age_instances), age_instances)
