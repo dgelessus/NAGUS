@@ -451,7 +451,7 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 		if self.variable_array_length is not None:
 			fields["variable_array_length"] = repr(self.variable_array_length)
 		if self.values_indices:
-			fields["self.values_indices"] = repr(self.values_indices)
+			fields["values_indices"] = repr(self.values_indices)
 		fields["values"] = repr(self.values)
 		return fields
 	
