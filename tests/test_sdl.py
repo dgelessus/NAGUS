@@ -784,6 +784,26 @@ class SDLStreamHeaderTest(unittest.TestCase):
 					self.assertEqual(stream.getvalue(), data)
 
 
+class GuessedSimpleVariableValueTest(unittest.TestCase):
+	def test_eq_copy(self) -> None:
+		for _, header, record in TEST_SDL_BLOBS:
+			with self.subTest(header=header):
+				for var in record.simple_values.values():
+					copy = var.copy()
+					self.assertIsNot(copy, var)
+					self.assertEqual(copy, var)
+
+
+class GuessedNestedSDLVariableValueTest(unittest.TestCase):
+	def test_eq_copy(self) -> None:
+		for _, header, record in TEST_SDL_BLOBS:
+			with self.subTest(header=header):
+				for i, var in record.nested_sdl_values.items():
+					copy = var.copy()
+					self.assertIsNot(copy, var)
+					self.assertEqual(copy, var)
+
+
 class GuessedSDLRecordTest(unittest.TestCase):
 	def test_read_sdl_record(self) -> None:
 		for data, header, record in TEST_SDL_BLOBS:
@@ -800,6 +820,13 @@ class GuessedSDLRecordTest(unittest.TestCase):
 					header.write(stream)
 					record.write(stream)
 					self.assertEqual(stream.getvalue(), data)
+	
+	def test_eq_copy(self) -> None:
+		for _, header, record in TEST_SDL_BLOBS:
+			with self.subTest(header=header):
+				copy = record.copy()
+				self.assertIsNot(copy, record)
+				self.assertEqual(copy, record)
 
 
 if __name__ == "__main__":

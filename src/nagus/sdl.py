@@ -29,6 +29,7 @@ The normal version will be finished later.
 """
 
 
+import abc
 import collections
 import datetime
 import io
@@ -144,10 +145,9 @@ class VariableValueBase(structs.FieldBasedRepr):
 			fields["hint"] = repr(self.hint)
 		return fields
 	
+	@abc.abstractmethod
 	def copy(self) -> "VariableValueBase":
-		copy = type(self)()
-		copy.hint = self.hint
-		return copy
+		raise NotImplementedError()
 	
 	def base_read(self, stream: typing.BinaryIO) -> None:
 		"""Read the part of the variable value structure that does *not* vary depending on the state descriptor."""
@@ -228,11 +228,9 @@ class SimpleVariableValueBase(VariableValueBase):
 			fields["timestamp"] = repr(self.timestamp)
 		return fields
 	
+	@abc.abstractmethod
 	def copy(self) -> "SimpleVariableValueBase":
-		copy = typing.cast(SimpleVariableValueBase, super().copy())
-		copy.flags = self.flags
-		copy.timestamp = self.timestamp
-		return copy
+		raise NotImplementedError()
 	
 	def base_read(self, stream: typing.BinaryIO) -> None:
 		super().base_read(stream)
@@ -352,9 +350,12 @@ class GuessedSimpleVariableValue(SimpleVariableValueBase):
 		return res
 	
 	def copy(self) -> "GuessedSimpleVariableValue":
-		copy = typing.cast(GuessedSimpleVariableValue, super().copy())
-		copy.data = self.data
-		return copy
+		return GuessedSimpleVariableValue(
+			hint=self.hint,
+			flags=self.flags,
+			timestamp=self.timestamp,
+			data=self.data,
+		)
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		"""Write the full variable value back.
@@ -395,9 +396,12 @@ class SimpleVariableValue(SimpleVariableValueBase):
 		return super().__eq__(other) and self.values == other.values
 	
 	def copy(self) -> "SimpleVariableValue":
-		copy = typing.cast(SimpleVariableValue, super().copy())
-		copy.values = list(self.values)
-		return copy
+		return SimpleVariableValue(
+			hint=self.hint,
+			flags=self.flags,
+			timestamp=self.timestamp,
+			values=list(self.values),
+		)
 	
 	def read(self, stream: typing.BinaryIO, element_count: typing.Optional[int], element_reader: typing.Callable[[typing.BinaryIO], typing.Any]) -> None:
 		"""Read a full variable value from an SDL blob.
@@ -535,11 +539,12 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 				yield "\t\t" + line
 	
 	def copy(self) -> "GuessedNestedSDLVariableValue":
-		copy = typing.cast(GuessedNestedSDLVariableValue, super().copy())
-		copy.variable_array_length = self.variable_array_length
-		copy.values_indices = self.values_indices
-		copy.values = dict(self.values)
-		return copy
+		return GuessedNestedSDLVariableValue(
+			hint=self.hint,
+			variable_array_length=self.variable_array_length,
+			values_indices=self.values_indices,
+			values=dict(self.values),
+		)
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		self.base_read(stream)
@@ -636,10 +641,11 @@ class NestedSDLVariableValue(NestedSDLVariableValueBase):
 		return fields
 	
 	def copy(self) -> "NestedSDLVariableValue":
-		copy = typing.cast(NestedSDLVariableValue, super().copy())
-		copy.variable_array_length = self.variable_array_length
-		copy.values = dict(self.values)
-		return copy
+		return NestedSDLVariableValue(
+			hint=self.hint,
+			variable_array_length=self.variable_array_length,
+			values=dict(self.values),
+		)
 	
 	# TODO read, write
 
@@ -673,10 +679,9 @@ class SDLRecordBase(structs.FieldBasedRepr):
 			fields["flags"] = repr(self.flags)
 		return fields
 	
+	@abc.abstractmethod
 	def copy(self) -> "SDLRecordBase":
-		copy = type(self)()
-		copy.flags = self.flags
-		return copy
+		raise NotImplementedError()
 	
 	def base_read(self, stream: typing.BinaryIO) -> None:
 		(flags,) = structs.stream_unpack(stream, structs.UINT16)
@@ -821,12 +826,13 @@ class GuessedSDLRecord(SDLRecordBase):
 				yield from it
 	
 	def copy(self) -> "GuessedSDLRecord":
-		copy = typing.cast(GuessedSDLRecord, super().copy())
-		copy.simple_values_indices = self.simple_values_indices
-		copy.simple_values = dict(self.simple_values)
-		copy.nested_sdl_values_indices = self.nested_sdl_values_indices
-		copy.nested_sdl_values = dict(self.nested_sdl_values)
-		return copy
+		return GuessedSDLRecord(
+			flags=self.flags,
+			simple_values_indices=self.simple_values_indices,
+			simple_values=dict(self.simple_values),
+			nested_sdl_values_indices=self.nested_sdl_values_indices,
+			nested_sdl_values=dict(self.nested_sdl_values),
+		)
 	
 	def read(self, stream: typing.BinaryIO) -> None:
 		self.base_read(stream)
