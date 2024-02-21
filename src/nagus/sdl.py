@@ -133,6 +133,11 @@ class VariableValueBase(structs.FieldBasedRepr):
 	
 	hint: typing.Optional[bytes]
 	
+	def __init__(self, *, hint: typing.Optional[bytes] = None) -> None:
+		super().__init__()
+		
+		self.hint = hint
+	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
 		if self.hint is not None:
@@ -198,6 +203,18 @@ class SimpleVariableValueBase(VariableValueBase):
 	flags: "SimpleVariableValueBase.Flags"
 	timestamp: typing.Optional[datetime.datetime]
 	
+	def __init__(
+		self,
+		*,
+		hint: typing.Optional[bytes] = None,
+		flags: "SimpleVariableValueBase.Flags" = Flags(0),
+		timestamp: typing.Optional[datetime.datetime] = None,
+	) -> None:
+		super().__init__(hint=hint)
+		
+		self.flags = flags
+		self.timestamp = timestamp
+	
 	def __eq__(self, other: object) -> bool:
 		if not isinstance(other, SimpleVariableValueBase):
 			return NotImplemented
@@ -255,6 +272,18 @@ class GuessedSimpleVariableValue(SimpleVariableValueBase):
 	"""
 	
 	data: bytes
+	
+	def __init__(
+		self,
+		*,
+		hint: typing.Optional[bytes] = None,
+		flags: SimpleVariableValueBase.Flags = SimpleVariableValueBase.Flags(0),
+		timestamp: typing.Optional[datetime.datetime] = None,
+		data: bytes = b"",
+	) -> None:
+		super().__init__(hint=hint, flags=flags, timestamp=timestamp)
+		
+		self.data = data
 	
 	def __eq__(self, other: object) -> bool:
 		if not isinstance(other, GuessedSimpleVariableValue):
@@ -341,6 +370,18 @@ class SimpleVariableValue(SimpleVariableValueBase):
 	"""A parsed simple variable value."""
 	
 	values: typing.List[typing.Any]
+	
+	def __init__(
+		self,
+		*,
+		hint: typing.Optional[bytes] = None,
+		flags: SimpleVariableValueBase.Flags = SimpleVariableValueBase.Flags(0),
+		timestamp: typing.Optional[datetime.datetime] = None,
+		values: typing.List[typing.Any],
+	) -> None:
+		super().__init__(hint=hint, flags=flags, timestamp=timestamp)
+		
+		self.values = values
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
@@ -436,6 +477,20 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 	values_indices: bool
 	values: "typing.Dict[int, GuessedSDLRecord]"
 	
+	def __init__(
+		self,
+		*,
+		hint: typing.Optional[bytes] = None,
+		variable_array_length: typing.Optional[int] = None,
+		values_indices: bool = False,
+		values: "typing.Dict[int, GuessedSDLRecord]",
+	) -> None:
+		super().__init__(hint=hint)
+		
+		self.variable_array_length = variable_array_length
+		self.values_indices = values_indices
+		self.values = values
+	
 	def __eq__(self, other: object) -> bool:
 		if not isinstance(other, GuessedNestedSDLVariableValue):
 			return NotImplemented
@@ -524,8 +579,14 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 			else:
 				index = i
 			
-			value = self.values[index] = GuessedSDLRecord()
+			value = self.values[index] = GuessedSDLRecord(simple_values={}, nested_sdl_values={})
 			value.read(stream)
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "GuessedNestedSDLVariableValue":
+		self = GuessedNestedSDLVariableValue(values={})
+		self.read(stream)
+		return self
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		self.base_write(stream)
@@ -545,6 +606,18 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 class NestedSDLVariableValue(NestedSDLVariableValueBase):
 	variable_array_length: typing.Optional[int]
 	values: "typing.Dict[int, SDLRecordBase]" # TODO Use SDLRecord class once it exists
+	
+	def __init__(
+		self,
+		*,
+		hint: typing.Optional[bytes] = None,
+		variable_array_length: typing.Optional[int] = None,
+		values: "typing.Dict[int, SDLRecordBase]",
+	) -> None:
+		super().__init__(hint=hint)
+		
+		self.variable_array_length = variable_array_length
+		self.values = values
 	
 	def __eq__(self, other: object) -> bool:
 		if not isinstance(other, NestedSDLVariableValue):
@@ -582,6 +655,11 @@ class SDLRecordBase(structs.FieldBasedRepr):
 	IO_VERSION: int = 6
 	
 	flags: "SDLRecordBase.Flags"
+	
+	def __init__(self, *, flags: "SDLRecordBase.Flags" = Flags(0)) -> None:
+		super().__init__()
+		
+		self.flags = flags
 	
 	def __eq__(self, other: object) -> bool:
 		if not isinstance(other, SDLRecordBase):
@@ -665,6 +743,22 @@ class GuessedSDLRecord(SDLRecordBase):
 	simple_values: typing.Dict[int, GuessedSimpleVariableValue]
 	nested_sdl_values_indices: bool
 	nested_sdl_values: typing.Dict[int, GuessedNestedSDLVariableValue]
+	
+	def __init__(
+		self,
+		*,
+		flags: SDLRecordBase.Flags = SDLRecordBase.Flags(0),
+		simple_values_indices: bool = False,
+		simple_values: typing.Dict[int, GuessedSimpleVariableValue],
+		nested_sdl_values_indices: bool = False,
+		nested_sdl_values: typing.Dict[int, GuessedNestedSDLVariableValue],
+	) -> None:
+		super().__init__(flags=flags)
+		
+		self.simple_values_indices = simple_values_indices
+		self.simple_values = simple_values
+		self.nested_sdl_values_indices = nested_sdl_values_indices
+		self.nested_sdl_values = nested_sdl_values
 	
 	def __eq__(self, other: object) -> bool:
 		if not isinstance(other, GuessedSDLRecord):
@@ -858,8 +952,14 @@ class GuessedSDLRecord(SDLRecordBase):
 			else:
 				index = i
 			
-			sdl_value = self.nested_sdl_values[index] = GuessedNestedSDLVariableValue()
+			sdl_value = self.nested_sdl_values[index] = GuessedNestedSDLVariableValue(values={})
 			sdl_value.read(stream)
+	
+	@classmethod
+	def from_stream(cls, stream: typing.BinaryIO) -> "GuessedSDLRecord":
+		self = cls(simple_values={}, nested_sdl_values={})
+		self.read(stream)
+		return self
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		self.base_write(stream)
@@ -897,9 +997,8 @@ class GuessedSDLRecord(SDLRecordBase):
 def guess_parse_sdl_blob(stream: typing.BinaryIO) -> typing.Tuple[SDLStreamHeader, GuessedSDLRecord]:
 	header = SDLStreamHeader.from_stream(stream)
 	
-	record = GuessedSDLRecord()
 	try:
-		record.read(stream)
+		record = GuessedSDLRecord.from_stream(stream)
 	except ValueError as exc:
 		raise ValueError(f"Failed to parse SDL blob of type {header.descriptor_name!r} v{header.descriptor_version}: {exc}")
 	
