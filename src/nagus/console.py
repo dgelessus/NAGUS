@@ -251,5 +251,9 @@ async def run_line(server_state: state.ServerState, line: str) -> None:
 
 async def run_console(server_state: state.ServerState) -> None:
 	while True:
-		line = await read_line("nagus> ")
+		try:
+			line = await read_line("nagus> ")
+		except EOFError:
+			raise ServerShutdownRequest("Server was shut down via EOF/Ctrl+D at the console")
+		
 		await run_line(server_state, line)
