@@ -243,8 +243,9 @@ written in pure Python. It is currently not very good.
 		asyncio.run(async_main(config))
 	except KeyboardInterrupt:
 		logger.info("KeyboardInterrupt received, stopping server.")
-	except console.ServerShutdownRequest:
-		logger.info("Shutdown requested via console, stopping server.")
+	except console.ServerShutdownRequest as exc:
+		logger.info("Shutdown requested, stopping server: %s", exc)
+		logger.debug("Traceback for shutdown request:", exc_info=exc)
 	
 	sys.exit(0)
 
