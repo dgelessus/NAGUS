@@ -65,7 +65,7 @@ Connect packet
 --------------
 
 When a client connects to a server,
-it immediately sends a *connect packet* with some information about the client and the requested connection type.
+the client immediately sends a *connect packet* with some information about the client and the requested connection type.
 A connect packet consists of a generic header and a connection type-specific data section.
 Both sections should be sent together :ref:`as a single packet <packet_boundaries>`.
 
