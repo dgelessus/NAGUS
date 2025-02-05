@@ -199,7 +199,7 @@ Here are the exact formats for all types
     
     * Nil = 0 (apparently not a valid channel ID)
     * Csr = 1
-    * Max = 2 (based on comments, this probably stands for 3DS Max, not "maximum" --- although this is also the highest defined channel ID!)
+    * Max = 2 (based on comments, this probably stands for 3ds Max, not "maximum" --- although this is also the highest defined channel ID!)
 
 .. note::
   
