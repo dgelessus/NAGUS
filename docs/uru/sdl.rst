@@ -557,9 +557,15 @@ The blob format of :ref:`simple variable <sdl_types>` values is:
   and the "same as default" flag is *not* set.
   For fixed-length array variables,
   the array length is known from the state descriptor and so not stored in the SDL blob.
-* **Variable values:** Variable-length array of variable values as described in :ref:`sdl_types`.
-  If the array length field is not present,
-  the variable has a fixed array length known from the state descriptor.
+* **Variable values:** Variable-length array.
+  For variable-length array variables,
+  the number of elements is stored in the preceding array length field.
+  For fixed-length array variables,
+  the number of elements is known from the state descriptor
+  and the array length field is not present.
+  All elements in an array have the same structure,
+  but that structure varies depending on the type specified in the state descriptor ---
+  see :ref:`sdl_types`.
   Only present if the "same as default" flag is *not* set.
 
 The blob format of :ref:`nested SDL variable <sdl_nested_types>` values is:
@@ -582,6 +588,7 @@ The blob format of :ref:`nested SDL variable <sdl_nested_types>` values is:
   this field is always 1 byte long,
   regardless of the actual array length.
 * **Variable values:** Variable-length array.
+  The number of elements is stored in the preceding value count field.
   Each element is structured as follows:
   
   * **Element index:** :ref:`Variable-length integer <sdl_var_length_int>`.
