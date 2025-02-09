@@ -39,6 +39,29 @@ import typing
 from . import structs
 
 
+class StateDescriptorId(object):
+	name: bytes
+	version: int
+	
+	def __init__(self, name: bytes, version: int) -> None:
+		super().__init__()
+		
+		self.name = name
+		self.version = version
+	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, StateDescriptorId):
+			return NotImplemented
+		
+		return self.name == other.name and self.version == other.version
+	
+	def __repr__(self) -> str:
+		return f"{type(self).__qualname__}({self.name!r}, {self.version!r})"
+	
+	def __str__(self) -> str:
+		return f"{self.name!r} v{self.version}"
+
+
 class SDLStreamHeader(object):
 	class Flags(structs.IntFlag):
 		has_uoid = 1 << 0
@@ -49,20 +72,17 @@ class SDLStreamHeader(object):
 			| var_length_io
 		)
 	
-	descriptor_name: bytes
-	descriptor_version: int
+	descriptor_id: StateDescriptorId
 	uoid: typing.Optional[structs.Uoid]
 	
 	def __init__(
 		self,
-		descriptor_name: bytes,
-		descriptor_version: int,
+		descriptor_id: StateDescriptorId,
 		uoid: typing.Optional[structs.Uoid] = None,
 	) -> None:
 		super().__init__()
 		
-		self.descriptor_name = descriptor_name
-		self.descriptor_version = descriptor_version
+		self.descriptor_id = descriptor_id
 		self.uoid = uoid
 	
 	def __eq__(self, other: object) -> bool:
@@ -70,16 +90,12 @@ class SDLStreamHeader(object):
 			return NotImplemented
 		
 		return (
-			self.descriptor_name == other.descriptor_name
-			and self.descriptor_version == other.descriptor_version
+			self.descriptor_id == other.descriptor_id
 			and self.uoid == other.uoid
 		)
 	
 	def __repr__(self) -> str:
-		parts = [
-			repr(self.descriptor_name),
-			repr(self.descriptor_version),
-		]
+		parts = [repr(self.descriptor_id)]
 		
 		if self.uoid is not None:
 			parts.append(f"uoid={self.uoid!r}")
@@ -105,7 +121,7 @@ class SDLStreamHeader(object):
 		else:
 			uoid = None
 		
-		return cls(descriptor_name, descriptor_version, uoid)
+		return cls(StateDescriptorId(descriptor_name, descriptor_version), uoid)
 	
 	def write(self, stream: typing.BinaryIO) -> None:
 		flags = SDLStreamHeader.Flags.var_length_io
@@ -113,8 +129,8 @@ class SDLStreamHeader(object):
 			flags |= SDLStreamHeader.Flags.has_uoid
 		stream.write(structs.UINT16.pack(flags))
 		
-		structs.write_safe_string(stream, self.descriptor_name)
-		stream.write(structs.UINT16.pack(self.descriptor_version))
+		structs.write_safe_string(stream, self.descriptor_id.name)
+		stream.write(structs.UINT16.pack(self.descriptor_id.version))
 		
 		if self.uoid is not None:
 			self.uoid.write(stream)
@@ -1025,7 +1041,7 @@ def guess_parse_sdl_blob(stream: typing.BinaryIO) -> typing.Tuple[SDLStreamHeade
 	try:
 		record = GuessedSDLRecord.from_stream(stream)
 	except ValueError as exc:
-		raise ValueError(f"Failed to parse SDL blob of type {header.descriptor_name!r} v{header.descriptor_version}: {exc}")
+		raise ValueError(f"Failed to parse SDL blob of type {header.descriptor_id}: {exc}")
 	
 	lookahead = stream.read(16)
 	

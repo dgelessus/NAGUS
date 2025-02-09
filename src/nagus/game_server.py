@@ -1012,7 +1012,7 @@ class NetMessageSDLState(NetMessageStreamedObject):
 				logger_sdl.info("SDL change blob header contains UOID: %s", header.uoid)
 			
 			if logger_sdl.isEnabledFor(logging.DEBUG):
-				logger_sdl.debug("Parsed SDL change for %r v%d:", header.descriptor_name, header.descriptor_version)
+				logger_sdl.debug("Parsed SDL change for %s:", header.descriptor_id)
 				for line in record.as_multiline_str():
 					logger_sdl.debug("%s", line.replace("\t", "    "))
 		
@@ -1022,10 +1022,10 @@ class NetMessageSDLState(NetMessageStreamedObject):
 				record.write(stream_out)
 				roundtripped_data = stream_out.getvalue()
 		except Exception:
-			logger_sdl.warning("Failed to write parsed SDL change for %r v%d back to a blob", header.descriptor_name, header.descriptor_version, exc_info=True)
+			logger_sdl.warning("Failed to write parsed SDL change for %s back to a blob", header.descriptor_id, exc_info=True)
 		else:
 			if roundtripped_data != blob_data:
-				logger_sdl.warning("Failed to roundtrip SDL change blob for %r v%d", header.descriptor_name, header.descriptor_version)
+				logger_sdl.warning("Failed to roundtrip SDL change blob for %s", header.descriptor_id)
 				logger_sdl.debug("Original change blob data: %r", blob_data)
 				logger_sdl.debug("Parsed and rewritten change blob data: %r", roundtripped_data)
 		
@@ -1074,7 +1074,7 @@ class NetMessageSDLState(NetMessageStreamedObject):
 			# TODO Cache parsed object SDL states in memory for easier updating?
 			
 			try:
-				existing_blob = await connection.server_state.fetch_object_sdl_state(connection.client_state.age_node_id, self.uoid, header.descriptor_name)
+				existing_blob = await connection.server_state.fetch_object_sdl_state(connection.client_state.age_node_id, self.uoid, header.descriptor_id.name)
 			except state.ObjectStateNotFound:
 				logger_sdl.debug("No existing SDL blob found for object %s - will initialize it with the blob sent by the client", self.uoid)
 				if NetMessageFlags.new_sdl_state not in self.flags:
@@ -1091,7 +1091,7 @@ class NetMessageSDLState(NetMessageStreamedObject):
 					logger_sdl.error("Failed to apply change to existing saved SDL blob for object %s", self.uoid, exc_info=True)
 					return
 			
-			await connection.server_state.save_object_sdl_state(connection.client_state.age_node_id, self.uoid, header.descriptor_name, changed_blob)
+			await connection.server_state.save_object_sdl_state(connection.client_state.age_node_id, self.uoid, header.descriptor_id.name, changed_blob)
 		else:
 			pass # TODO Save in memory for sending to other clients later
 
