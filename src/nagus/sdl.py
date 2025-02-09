@@ -293,11 +293,11 @@ def format_simple_variable_data(data: bytes) -> str:
 		with io.BytesIO(data) as stream:
 			try:
 				uoid = structs.Uoid.from_stream(stream)
-				ok = not stream.read()
+				tail_data = stream.read()
+				if not tail_data:
+					return str(uoid)
 			except (EOFError, ValueError):
-				ok = False
-		
-		return str(uoid) if ok else repr(data)
+				pass
 	elif len(data) == 8:
 		# TIME
 		timestamp, micros = structs.UNIFIED_TIME.unpack(data)
@@ -305,11 +305,9 @@ def format_simple_variable_data(data: bytes) -> str:
 			try:
 				return structs.unpack_unified_time(data).isoformat()
 			except (struct.error, OverflowError):
-				return repr(data)
-		else:
-			return repr(data)
-	else:
-		return repr(data)
+				pass
+	
+	return repr(data)
 
 
 class GuessedSimpleVariableValue(SimpleVariableValueBase):
