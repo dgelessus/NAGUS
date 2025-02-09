@@ -260,6 +260,58 @@ class SimpleVariableValueBase(VariableValueBase):
 MIN_REASONABLE_TIMESTAMP = datetime.datetime(2020, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
 
 
+def format_simple_variable_data(data: bytes) -> str:
+	"""Try to render the given simple variable data
+	in a way that is more human-readable,
+	but still unambiguous.
+	
+	This function tries to recognize certain data types
+	by the length of the data
+	and whether it matches some simple patterns:
+	
+	* STRING32 values are recognized if they start with a printable ASCII character.
+		They are rendered as quoted Latin-1 strings.
+	* PLKEY values are recognized if they don't use any reserved fields.
+		They are rendered in the usual format used by NAGUS for UOIDs/keys.
+	* TIME values are recognized if they have a valid microseconds field and aren't too far in the past.
+		They are rendered using :func:`datetime.datetime.isoformat`.
+	
+	Unrecognized values are rendered using the standard bytes repr.
+	"""
+	
+	if len(data) == 32 and 0x20 <= data[0] <= 0x7f:
+		# STRING32
+		s = data.rstrip(b"\x00").decode("latin-1")
+		return repr(s)
+	elif (
+		len(data) >= 17 # minimum possible length for UOID
+		and data[0] & ~0x3 == 0 # UOID flags valid
+		and data[5] & ~0x1f == 0 # location flags valid
+		and data[6] == 0 # location flags MSB unused
+	):
+		# PLKEY
+		with io.BytesIO(data) as stream:
+			try:
+				uoid = structs.Uoid.from_stream(stream)
+				ok = not stream.read()
+			except (EOFError, ValueError):
+				ok = False
+		
+		return str(uoid) if ok else repr(data)
+	elif len(data) == 8:
+		# TIME
+		timestamp, micros = structs.UNIFIED_TIME.unpack(data)
+		if timestamp >= MIN_REASONABLE_TIMESTAMP and micros in range(1000000):
+			try:
+				return structs.unpack_unified_time(data).isoformat()
+			except (struct.error, OverflowError):
+				return repr(data)
+		else:
+			return repr(data)
+	else:
+		return repr(data)
+
+
 class GuessedSimpleVariableValue(SimpleVariableValueBase):
 	"""A simple variable value whose size was guessed rather than known from a state descriptor.
 	
@@ -301,38 +353,7 @@ class GuessedSimpleVariableValue(SimpleVariableValueBase):
 			flags &= ~SimpleVariableValueBase.Flags.same_as_default
 			res = "<default>"
 		else:
-			# Try to give a nicer, but still unambiguous representation for easily recognized data types.
-			if len(self.data) == 32 and 0x20 <= self.data[0] <= 0x7f:
-				# STRING32
-				s = self.data.rstrip(b"\x00").decode("latin-1")
-				res = repr(s)
-			elif (
-				len(self.data) >= 17 # minimum possible length for UOID
-				and self.data[0] & ~0x3 == 0 # UOID flags valid
-				and self.data[5] & ~0x1f == 0 # location flags valid
-				and self.data[6] == 0 # location flags MSB unused
-			):
-				# PLKEY
-				with io.BytesIO(self.data) as stream:
-					try:
-						uoid = structs.Uoid.from_stream(stream)
-						ok = not stream.read()
-					except (EOFError, ValueError):
-						ok = False
-				
-				res = str(uoid) if ok else repr(self.data)
-			elif len(self.data) == 8:
-				# TIME
-				timestamp, micros = structs.UNIFIED_TIME.unpack(self.data)
-				if timestamp >= MIN_REASONABLE_TIMESTAMP and micros in range(1000000):
-					try:
-						res = structs.unpack_unified_time(self.data).isoformat()
-					except (struct.error, OverflowError):
-						res = repr(self.data)
-				else:
-					res = repr(self.data)
-			else:
-				res = repr(self.data)
+			res = format_simple_variable_data(self.data)
 		
 		if self.timestamp is None:
 			assert SimpleVariableValueBase.Flags.has_timestamp not in flags
