@@ -711,8 +711,8 @@ class NetMessageGameStateRequest(NetMessageRoomsList):
 				await connection.send_initial_age_sdl(age_sdl_blob)
 		
 		# Find and send saved SDL states for objects within the age instance.
-		async for uoid, _, sdl_blob in connection.server_state.find_object_sdl_states(connection.client_state.age_node_id):
-			logger_sdl.debug("Sending initial state for object %s", uoid)
+		async for uoid, descriptor_name, sdl_blob in connection.server_state.find_object_sdl_states(connection.client_state.age_node_id):
+			logger_sdl.debug("Sending initial state %r for object %s", descriptor_name, uoid)
 			object_state_message = NetMessageSDLState()
 			object_state_message.uoid = uoid
 			object_state_message.compress_and_set_data(sdl_blob)
