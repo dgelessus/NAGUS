@@ -394,13 +394,18 @@ repeated for each element.
 Nested SDL types
 ^^^^^^^^^^^^^^^^
 
-Any state descriptor can also be used as an SDL variable type by prefixing its name with ``$``.
+Any previously declared state descriptor can also be used as an SDL variable type by prefixing its name with ``$``.
 
 .. csv-table::
   :header: #,Name
   :widths: auto
   
   5,:samp:`${DescName}`
+
+A state descriptor must be fully declared *before* it can be used as a variable type.
+This makes it impossible to declare self-referring or infinitely recursive state descriptors.
+Because the order in which different .sdl files are parsed is unpredictable,
+a nested SDL variable can only reliably use a state descriptor declared in the same .sdl file.
 
 The ``DEFAULT`` attribute is not supported for variables with a nested SDL type.
 A nested SDL variable's default value is determined recursively by the default values for the individual nested variables.
