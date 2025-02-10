@@ -183,6 +183,8 @@ The following attributes are available:
   there is no way to set different default values for individual elements.
   The format of :samp:`{value}` depends on the variable type
   and is described in more detail in :ref:`sdl_types`.
+  If a variable doesn't have this attribute,
+  its default value is a 0/empty/null value of the appropriate type.
 * :samp:`DEFAULTOPTION={option}` sets options that affect the variable's behavior.
   :samp:`{option}` is case-insensitive.
   Unknown options are silently ignored by the open-sourced client code and DIRTSAND,
@@ -254,20 +256,20 @@ Some of these are relatively complex,
 but still count as atomic from the perspective of SDL.
 
 .. csv-table::
-  :header: #,Name,``DEFAULT`` literal syntax,Type in memory,Blob data format,Notes
+  :header: #,Name,``DEFAULT`` literal syntax,implicit default value,Type in memory,Blob data format,Notes
   :widths: auto
   
-  0,``INT``,signed integer,``int``,4-byte signed int,
-  1,``FLOAT``,floating-point number,``float``,4-byte floating-point number,
-  2,``BOOL``,"``false``, ``true``, or integer",``bool``,1-byte boolean,1\.
-  3,``STRING32``,unquoted text,``char [32]``,32-byte 8-bit string (zero-terminated),2\.
-  4,``PLKEY``,``nil``,:class:`plUoid`,:class:`plUoid`,3\.
-  6,``CREATABLE`` or ``MESSAGE``,(none),``plCreatable *``,(see notes),4\.
-  7,``DOUBLE``,floating-point number,``double``,8-byte floating-point number,
-  8,``TIME``,number,``double``,:class:`plUnifiedTime`,5\.
-  9,``BYTE``,unsigned integer,``unsigned char``,1-byte unsigned int,
-  10,``SHORT``,signed integer,``short``,2-byte signed int,
-  11,``AGETIMEOFDAY``,(none),``float``,no data,6\.
+  0,``INT``,signed integer,``0``,``int``,4-byte signed int,
+  1,``FLOAT``,floating-point number,``0.0``,``float``,4-byte floating-point number,
+  2,``BOOL``,"``false``, ``true``, or integer",``false``,``bool``,1-byte boolean,1\.
+  3,``STRING32``,unquoted text,empty string,``char [32]``,32-byte 8-bit string (zero-terminated),2\.
+  4,``PLKEY``,``nil``,``nil``,:class:`plUoid`,:class:`plUoid`,3\.
+  6,``CREATABLE`` or ``MESSAGE``,(none),``nullptr``,``plCreatable *``,(see notes),4\.
+  7,``DOUBLE``,floating-point number,``0.0``,``double``,8-byte floating-point number,
+  8,``TIME``,number,"""``0``"" (see notes)",``double``,:class:`plUnifiedTime`,5\.
+  9,``BYTE``,unsigned integer,``0``,``unsigned char``,1-byte unsigned int,
+  10,``SHORT``,signed integer,``0``,``short``,2-byte signed int,
+  11,``AGETIMEOFDAY``,(none),(n/a),``float``,no data,6\.
 
 Notes:
 
@@ -295,7 +297,15 @@ Notes:
 3.
   There is no literal syntax for ``PLKEY`` values.
   The only supported default value is ``nil`` (case-sensitive),
-  which behaves the same as setting no default value at all.
+  which behaves the same as setting no explicit default value at all.
+  
+  The client defines a ``nil`` UOID as having
+  sequence number 0xffffffff (the "invalid" sequence number),
+  load mask 0xff (the implicit default in the :class:`plUoid` data format),
+  and all other fields set to 0/empty.
+  DIRTSAND differs slightly from this definition:
+  it sets the class index to 0x8000 rather than 0x0000
+  and also considers *any* UOID with class index 0x8000 to be ``nil`` for SDL purposes.
 4.
   This type is not used in practice on the client side.
   It only appears in a single state descriptor,
@@ -393,6 +403,7 @@ Any state descriptor can also be used as an SDL variable type by prefixing its n
   5,:samp:`${DescName}`
 
 The ``DEFAULT`` attribute is not supported for variables with a nested SDL type.
+A nested SDL variable's default value is determined recursively by the default values for the individual nested variables.
 
 The blob data format of a nested SDL type is an :ref:`SDL blob body <sdl_blob_body>`
 (*without* a stream header)
