@@ -86,9 +86,13 @@ GateKeeper2Cli_FileSrvIpAddressReply
 * **File server address:** :c:macro:`NET_MSG_FIELD_STRING`\(24).
   Although the open-sourced client code specifically calls this an "IP address",
   the client also correctly handles domain names in this field.
-  Domain names may include a port number,
-  but plain IP addresses must not
-  (the client will always use the default port).
+  The string may optionally include a port number ---
+  if it doesn't,
+  the default server port is used.
+  For H'uru clients,
+  if the string is a plain IP address
+  (rather than a domain name),
+  it cannot include a port number.
 
 Reply to a :ref:`FileSrvIpAddressRequest <cli2gatekeeper_file_srv_ip_address_request>` message.
 
@@ -112,8 +116,12 @@ GateKeeper2Cli_AuthSrvIpAddressReply
 * **Auth server address:** :c:macro:`NET_MSG_FIELD_STRING`\(24).
   Although the open-sourced client code specifically calls this an "IP address",
   the client also correctly handles domain names in this field.
-  Domain names may include a port number,
-  but plain IP addresses must not
-  (the client will always use the default port).
+  The string may optionally include a port number ---
+  if it doesn't,
+  the default server port is used.
+  For H'uru clients,
+  if the string is a plain IP address
+  (rather than a domain name),
+  it cannot include a port number.
 
 Reply to an :ref:`AuthSrvIpAddressRequest <cli2gatekeeper_auth_srv_ip_address_request>` message.
