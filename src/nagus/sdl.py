@@ -155,6 +155,12 @@ class VariableValueBase(structs.FieldBasedRepr):
 		
 		self.hint = hint
 	
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, VariableValueBase):
+			return NotImplemented
+		
+		return self.hint == other.hint
+	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
 		if self.hint is not None:
@@ -235,7 +241,11 @@ class SimpleVariableValueBase(VariableValueBase):
 		if not isinstance(other, SimpleVariableValueBase):
 			return NotImplemented
 		
-		return self.flags == other.flags and self.timestamp == other.timestamp
+		return (
+			super().__eq__(other)
+			and self.flags == other.flags
+			and self.timestamp == other.timestamp
+		)
 	
 	def repr_fields(self) -> "collections.OrderedDict[str, str]":
 		fields = super().repr_fields()
@@ -535,7 +545,8 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 			return NotImplemented
 		
 		return (
-			self.variable_array_length == other.variable_array_length
+			super().__eq__(other)
+			and self.variable_array_length == other.variable_array_length
 			and self.values_indices == other.values_indices
 			and self.values == other.values
 		)
@@ -664,7 +675,8 @@ class NestedSDLVariableValue(NestedSDLVariableValueBase):
 			return NotImplemented
 		
 		return (
-			self.variable_array_length == other.variable_array_length
+			super().__eq__(other)
+			and self.variable_array_length == other.variable_array_length
 			and self.values == other.values
 		)
 	
