@@ -1,2 +1,2 @@
-sphinx >= 3, != 5.2.0.post0, < 8
-sphinx-rtd-theme < 3
+sphinx >= 3, != 5.2.0.post0, < 9
+sphinx-rtd-theme < 4
