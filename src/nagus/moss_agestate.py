@@ -73,6 +73,6 @@ def format_moss_agestates(agestates: typing.Iterable[typing.Tuple[structs.Uoid, 
 		yield f"State for object {uoid}:"
 		if header.uoid is not None:
 			yield f"\tWarning: SDL header also contains a UOID! {header.uoid}"
-		yield f"\t{header.descriptor_name!r} v{header.descriptor_version}"
+		yield f"\t{header.descriptor_id}"
 		for line in record.as_multiline_str():
 			yield "\t" + line
