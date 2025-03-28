@@ -899,7 +899,11 @@ class GuessedSDLRecord(SDLRecordBase):
 			lookahead = stream.read(6)
 			stream.seek(pos)
 			
-			if _looks_like_start_of_variable(lookahead[1:]):
+			if lookahead == b"\x00":
+				# No nested SDL variables either -
+				# this is an empty blob.
+				self.nested_sdl_values_indices = True
+			elif _looks_like_start_of_variable(lookahead[1:]):
 				self.nested_sdl_values_indices = False
 			elif _looks_like_start_of_variable(lookahead[2:]):
 				self.nested_sdl_values_indices = True
