@@ -733,6 +733,16 @@ class VaultNodeRef(object):
 		self.owner_id = owner_id
 		self.seen = seen
 	
+	@classmethod
+	def unpack(cls, data: bytes) -> "VaultNodeRef":
+		parent_id, child_id, owner_id, seen = VAULT_NODE_REF.unpack(data)
+		return cls(
+			parent_id=parent_id,
+			child_id=child_id,
+			owner_id=owner_id,
+			seen=seen,
+		)
+	
 	def pack(self) -> bytes:
 		return VAULT_NODE_REF.pack(self.parent_id, self.child_id, self.owner_id, self.seen)
 	
