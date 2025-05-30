@@ -43,6 +43,9 @@ There is still no support for multiplayer or serving files to clients.
     For now,
     the recommended solution is to use DIRTSAND's key generator
     (`dirtsand --generate-keys`).
+* Fixed inconsistent parsing of sequence numbers
+  when deriving the age sequence prefix on link-in.
+  This fixes an exception in the game server when linking to Veelay Tsahvahn.
 
 Version 0.1.1
 -------------

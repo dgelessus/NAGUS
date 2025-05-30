@@ -1650,12 +1650,22 @@ class GameClientState(object):
 			or ``False`` if the location didn't contain a usable prefix.
 		"""
 		
-		if location.sequence_number not in range(0x21, 0x80000000) or structs.Location.Flags.reserved in location.flags:
-			logger_sdl.debug("Attempted to derive the age's sequence prefix from a global or reserved location: %s", location)
+		if structs.Location.Flags.reserved in location.flags:
+			logger_sdl.debug("Attempted to derive the age's sequence prefix from a reserved location: %s", location)
 			return False
 		
-		(self.age_sequence_prefix, _) = structs.split_sequence_number(location.sequence_number)
-		logger_sdl.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, self.age_sequence_prefix)
+		try:
+			seq_prefix, _ = structs.split_sequence_number(location.sequence_number)
+		except ValueError as exc:
+			logger_sdl.debug("Attempted to derive the age's sequence prefix from a special, invalid, or ambiguous sequence number: %s", location, exc_info=exc)
+			return False
+		
+		if seq_prefix < 0:
+			logger_sdl.debug("Attempted to derive the age's sequence prefix from a global location (sequence prefix %d < 0): %s", seq_prefix, location)
+			return False
+		
+		logger_sdl.debug("Received message containing a non-global location %r - assuming that this age's sequence prefix is %d", location, seq_prefix)
+		self.age_sequence_prefix = seq_prefix
 		
 		self.age_sdl_hook_uoid = structs.Uoid(
 			location=structs.Location(structs.make_sequence_number(self.age_sequence_prefix, 0xfffe), structs.Location.Flags.built_in),
