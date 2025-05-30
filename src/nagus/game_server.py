@@ -1193,7 +1193,8 @@ class NetMessageGameMessage(NetMessageStream):
 						if message.is_player != self.is_player:
 							logger_pl_message.warning("plLoadAvatarMsg %s is_player (%r) doesn't match containing network load clone message's is_player (%r)", message.class_description, message.is_player, self.is_player)
 						
-						connection.client_state.try_find_age_sequence_prefix_from_load_avatar_msg(message)
+						if not hasattr(connection.client_state, "age_sequence_prefix"):
+							connection.client_state.try_find_age_sequence_prefix_from_load_avatar_msg(message)
 					elif self.is_player:
 						logger_pl_message.warning("plLoadCloneMsg %s isn't an avatar message, but containing network load clone message's is_player is set", message.class_description)
 					
