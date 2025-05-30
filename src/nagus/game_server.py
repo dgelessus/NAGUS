@@ -1193,8 +1193,7 @@ class NetMessageGameMessage(NetMessageStream):
 						if message.is_player != self.is_player:
 							logger_pl_message.warning("plLoadAvatarMsg %s is_player (%r) doesn't match containing network load clone message's is_player (%r)", message.class_description, message.is_player, self.is_player)
 						
-						if message.spawn_point is not None:
-							connection.client_state.try_find_age_sequence_prefix(message.spawn_point.location)
+						connection.client_state.try_find_age_sequence_prefix_from_load_avatar_msg(message)
 					elif self.is_player:
 						logger_pl_message.warning("plLoadCloneMsg %s isn't an avatar message, but containing network load clone message's is_player is set", message.class_description)
 					
@@ -1334,13 +1333,7 @@ class NetMessageLoadClone(NetMessageGameMessage):
 			logger_pl_message.error("Failed to parse player load clone message - cannot determine age sequence prefix, but ignoring and forwarding anyway...", exc_info=exc)
 		else:
 			logger_pl_message.debug("Parsed player plLoadAvatarMsg: %r", message)
-			
-			# The client sometimes first sends a plLoadAvatarMsg without a spawn point,
-			# followed very soon by another almost identical plLoadAvatarMsg that does have a spawn point.
-			if message.spawn_point is not None:
-				connection.client_state.try_find_age_sequence_prefix(message.spawn_point.location)
-			else:
-				logger_pl_message.debug("Player plLoadAvatarMsg spawn point is nullptr - cannot determine age sequence prefix yet")
+			connection.client_state.try_find_age_sequence_prefix_from_load_avatar_msg(message)
 	
 	async def handle(self, connection: "GameConnection") -> None:
 		logger_pl_message.debug("Received load clone message for %s, player? %r, loading? %r", self.uoid, self.is_player, self.is_loading)
@@ -1671,6 +1664,14 @@ class GameClientState(object):
 		)
 		
 		return True
+	
+	def try_find_age_sequence_prefix_from_load_avatar_msg(self, message: pl_messages.LoadAvatarMessage) -> None:
+		# The client sometimes first sends a plLoadAvatarMsg without a spawn point,
+		# followed very soon by another almost identical plLoadAvatarMsg that does have a spawn point.
+		if message.spawn_point is not None:
+			self.try_find_age_sequence_prefix(message.spawn_point.location)
+		else:
+			logger_pl_message.debug("plLoadAvatarMsg spawn point is nullptr - cannot determine age sequence prefix yet")
 
 
 class GameConnection(base.BaseMOULConnection):
