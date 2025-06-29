@@ -89,7 +89,7 @@ GateKeeper2Cli_FileSrvIpAddressReply
   The string may optionally include a port number ---
   if it doesn't,
   the default server port is used.
-  For H'uru clients,
+  For H'uru clients before 2025,
   if the string is a plain IP address
   (rather than a domain name),
   it cannot include a port number.
@@ -119,7 +119,7 @@ GateKeeper2Cli_AuthSrvIpAddressReply
   The string may optionally include a port number ---
   if it doesn't,
   the default server port is used.
-  For H'uru clients,
+  For H'uru clients before 2025,
   if the string is a plain IP address
   (rather than a domain name),
   it cannot include a port number.
