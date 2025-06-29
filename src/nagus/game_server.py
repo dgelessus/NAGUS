@@ -34,6 +34,7 @@ from . import base
 from . import configuration
 from . import pl_messages
 from . import sdl
+from .sdl import guess
 from . import state
 from . import structs
 
@@ -892,14 +893,14 @@ class NetMessageTestAndSet(NetMessageSharedState):
 					logger_test_and_set.warning("Avatar %d tried to unlock %s even though it's locked by %d - ignoring", connection.client_state.ki_number, self.uoid, lock_owner)
 
 
-def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStreamHeader, change_record: sdl.GuessedSDLRecord) -> bytes:
+def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStreamHeader, change_record: sdl.guess.GuessedSDLRecord) -> bytes:
 	"""Parse the SDL blob ``current_blob``,
 	apply the changed values from the already parsed SDL record ``change_record`` onto it,
 	and return the SDL blob with the change applied.
 	"""
 	
 	with io.BytesIO(current_blob) as stream:
-		current_header, current_record = sdl.guess_parse_sdl_blob(stream)
+		current_header, current_record = sdl.guess.guess_parse_sdl_blob(stream)
 		
 		if current_header.uoid is not None:
 			logger_sdl_change.info("Currently saved SDL blob header contains UOID: %s", current_header.uoid)
@@ -927,7 +928,7 @@ def _apply_parsed_change_to_blob(current_blob: bytes, change_header: sdl.SDLStre
 	# Check that the changed blob can be re-parsed successfully.
 	
 	with io.BytesIO(changed_blob) as stream:
-		roundtripped_header, roundtripped_record = sdl.guess_parse_sdl_blob(stream)
+		roundtripped_header, roundtripped_record = sdl.guess.guess_parse_sdl_blob(stream)
 		if roundtripped_header != current_header:
 			raise ValueError(f"Re-parsed changed SDL blob header ({roundtripped_header}) doesn't match original header ({current_header})")
 		
@@ -1003,7 +1004,7 @@ class NetMessageSDLState(NetMessageStreamedObject):
 		blob_data = self.decompress_data()
 		with io.BytesIO(blob_data) as stream:
 			try:
-				header, record = sdl.guess_parse_sdl_blob(stream)
+				header, record = sdl.guess.guess_parse_sdl_blob(stream)
 			except ValueError:
 				logger_sdl.warning("Failed to parse SDL change blob - this change will not be saved or sent to new clients", exc_info=True)
 				return

@@ -25,6 +25,7 @@ import typing
 
 from . import game_server
 from . import sdl
+from .sdl import guess
 from . import structs
 
 
@@ -41,7 +42,7 @@ def iter_moss_agestates(stream: typing.BinaryIO) -> typing.Iterable[bytes]:
 		dat = stream.read(structs.UINT32.size)
 
 
-def unpack_single_moss_agestate(data: bytes) -> typing.Tuple[structs.Uoid, sdl.SDLStreamHeader, sdl.GuessedSDLRecord]:
+def unpack_single_moss_agestate(data: bytes) -> typing.Tuple[structs.Uoid, sdl.SDLStreamHeader, sdl.guess.GuessedSDLRecord]:
 	# Add dummy message flags field,
 	# which isn't included in the pseudo-game-server-message saved by MOSS.
 	padded_data = bytes(4) + data
@@ -54,7 +55,7 @@ def unpack_single_moss_agestate(data: bytes) -> typing.Tuple[structs.Uoid, sdl.S
 			print(f"Extra data after stream message: {rest!r}")
 	
 	with io.BytesIO(msg.decompress_data()) as stream:
-		header, record = sdl.guess_parse_sdl_blob(stream)
+		header, record = sdl.guess.guess_parse_sdl_blob(stream)
 		
 		rest = stream.read()
 		if rest:
@@ -63,12 +64,12 @@ def unpack_single_moss_agestate(data: bytes) -> typing.Tuple[structs.Uoid, sdl.S
 	return msg.uoid, header, record
 
 
-def iter_unpack_moss_agestates(stream: typing.BinaryIO) -> typing.Iterable[typing.Tuple[structs.Uoid, sdl.SDLStreamHeader, sdl.GuessedSDLRecord]]:
+def iter_unpack_moss_agestates(stream: typing.BinaryIO) -> typing.Iterable[typing.Tuple[structs.Uoid, sdl.SDLStreamHeader, sdl.guess.GuessedSDLRecord]]:
 	for dat in iter_moss_agestates(stream):
 		yield unpack_single_moss_agestate(dat)
 
 
-def format_moss_agestates(agestates: typing.Iterable[typing.Tuple[structs.Uoid, sdl.SDLStreamHeader, sdl.GuessedSDLRecord]]) -> typing.Iterable[str]:
+def format_moss_agestates(agestates: typing.Iterable[typing.Tuple[structs.Uoid, sdl.SDLStreamHeader, sdl.guess.GuessedSDLRecord]]) -> typing.Iterable[str]:
 	for uoid, header, record in agestates:
 		yield f"State for object {uoid}:"
 		if header.uoid is not None:

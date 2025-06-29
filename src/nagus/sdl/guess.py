@@ -1,5 +1,5 @@
 # This file is part of NAGUS, an Uru Live server that is not very good.
-# Copyright (C) 2023 dgelessus
+# Copyright (C) 2025 dgelessus
 # 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -15,272 +15,32 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""Handles reading and writing of SDL blobs.
+"""The "guessed" implementation of SDL de-/serialization.
 
-This module contains two variants of SDL de-/serialization:
-a normal version that works based on state descriptors
-and a "guessed" version that tries to parse blobs *without* knowing the state descriptor.
+Tries to parse SDL blobs *without* knowing their state descriptor.
+Almost all SDL blobs that a client will produce can be parsed this way.
+However,
+SDL blobs produced by some other software (DIRTSAND in particular) won't work,
+because the "guess-parser" relies on some not strictly necessary fields being present,
+which are always written by Cyan's SDL implementation,
+but not necessarily by other implementations.
 
-The "guessed" version is currently more developed,
-because I want to use it to get basic SDL functionality working
-without having to implement the complexity of the full SDL system yet.
+This implementation also can't support migrating an SDL blob to a different version of the state descriptor.
+
+Despite these limitations,
+it's enough to run a server with no .sdl files at all on the server side.
 It may also be useful as a debugging tool for inspecting unknown SDL blobs.
-The normal version will be finished later.
 """
 
 
-import abc
 import collections
 import datetime
 import io
 import struct
 import typing
 
-from . import structs
-
-
-class StateDescriptorId(object):
-	name: bytes
-	version: int
-	
-	def __init__(self, name: bytes, version: int) -> None:
-		super().__init__()
-		
-		self.name = name
-		self.version = version
-	
-	def __eq__(self, other: object) -> bool:
-		if not isinstance(other, StateDescriptorId):
-			return NotImplemented
-		
-		return self.name == other.name and self.version == other.version
-	
-	def __repr__(self) -> str:
-		return f"{type(self).__qualname__}({self.name!r}, {self.version!r})"
-	
-	def __str__(self) -> str:
-		return f"{self.name!r} v{self.version}"
-
-
-class SDLStreamHeader(object):
-	class Flags(structs.IntFlag):
-		has_uoid = 1 << 0
-		var_length_io = 1 << 15
-		
-		supported = (
-			has_uoid
-			| var_length_io
-		)
-	
-	descriptor_id: StateDescriptorId
-	uoid: typing.Optional[structs.Uoid]
-	
-	def __init__(
-		self,
-		descriptor_id: StateDescriptorId,
-		uoid: typing.Optional[structs.Uoid] = None,
-	) -> None:
-		super().__init__()
-		
-		self.descriptor_id = descriptor_id
-		self.uoid = uoid
-	
-	def __eq__(self, other: object) -> bool:
-		if not isinstance(other, SDLStreamHeader):
-			return NotImplemented
-		
-		return (
-			self.descriptor_id == other.descriptor_id
-			and self.uoid == other.uoid
-		)
-	
-	def __repr__(self) -> str:
-		parts = [repr(self.descriptor_id)]
-		
-		if self.uoid is not None:
-			parts.append(f"uoid={self.uoid!r}")
-		
-		joined_parts = ", ".join(parts)
-		return f"{type(self).__qualname__}({joined_parts})"
-	
-	@classmethod
-	def from_stream(cls, stream: typing.BinaryIO) -> "SDLStreamHeader":
-		(flags,) = structs.stream_unpack(stream, structs.UINT16)
-		flags = SDLStreamHeader.Flags(flags)
-		if SDLStreamHeader.Flags.var_length_io not in flags:
-			raise ValueError(f"SDL stream header does not have required flag var_length_io set: {flags!r}")
-		elif flags & ~SDLStreamHeader.Flags.supported:
-			raise ValueError(f"SDL stream header has unsupported flags set: {flags!r}")
-		
-		descriptor_name = structs.read_safe_string(stream)
-		(descriptor_version,) = structs.stream_unpack(stream, structs.UINT16)
-		
-		uoid: typing.Optional[structs.Uoid]
-		if SDLStreamHeader.Flags.has_uoid in flags:
-			uoid = structs.Uoid.from_stream(stream)
-		else:
-			uoid = None
-		
-		return cls(StateDescriptorId(descriptor_name, descriptor_version), uoid)
-	
-	def write(self, stream: typing.BinaryIO) -> None:
-		flags = SDLStreamHeader.Flags.var_length_io
-		if self.uoid is not None:
-			flags |= SDLStreamHeader.Flags.has_uoid
-		stream.write(structs.UINT16.pack(flags))
-		
-		structs.write_safe_string(stream, self.descriptor_id.name)
-		stream.write(structs.UINT16.pack(self.descriptor_id.version))
-		
-		if self.uoid is not None:
-			self.uoid.write(stream)
-
-
-class VariableValueBase(structs.FieldBasedRepr):
-	"""Base class for all SDL variable values (simple and nested SDL).
-	
-	Parses and writes the header structure common to all variables,
-	i. e. the notification info.
-	"""
-	
-	class Flags(structs.IntFlag):
-		has_notification_info = 1 << 1
-		
-		supported = has_notification_info
-	
-	hint: typing.Optional[bytes]
-	
-	def __init__(self, *, hint: typing.Optional[bytes] = None) -> None:
-		super().__init__()
-		
-		self.hint = hint
-	
-	def __eq__(self, other: object) -> bool:
-		if not isinstance(other, VariableValueBase):
-			return NotImplemented
-		
-		return self.hint == other.hint
-	
-	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = super().repr_fields()
-		if self.hint is not None:
-			fields["hint"] = repr(self.hint)
-		return fields
-	
-	@abc.abstractmethod
-	def copy(self) -> "VariableValueBase":
-		raise NotImplementedError()
-	
-	def base_read(self, stream: typing.BinaryIO) -> None:
-		"""Read the part of the variable value structure that does *not* vary depending on the state descriptor."""
-		
-		(flags,) = structs.read_exact(stream, 1)
-		flags = VariableValueBase.Flags(flags)
-		if flags & ~VariableValueBase.Flags.supported:
-			raise ValueError(f"SDL variable value header has unsupported flags set: {flags!r}")
-		
-		if flags & VariableValueBase.Flags.has_notification_info:
-			(notification_info_flags,) = structs.read_exact(stream, 1)
-			if notification_info_flags != 0:
-				raise ValueError(f"SDL variable notification info has unsupported flags set: 0x{notification_info_flags:>02x}")
-			
-			self.hint = structs.read_safe_string(stream)
-		else:
-			self.hint = None
-	
-	def base_write(self, stream: typing.BinaryIO) -> None:
-		"""Write the part of the variable value structure that does *not* vary depending on the state descriptor."""
-		
-		flags = VariableValueBase.Flags(0)
-		if self.hint is not None:
-			flags |= VariableValueBase.Flags.has_notification_info
-		stream.write(bytes([flags]))
-		
-		if self.hint is not None:
-			stream.write(b"\x00")
-			structs.write_safe_string(stream, self.hint)
-
-
-class SimpleVariableValueBase(VariableValueBase):
-	"""Base class for the normal and guessing implementations of simple SDL variable values.
-	
-	Parses and writes the flags and timestamp fields,
-	which are structured identically for all simple SDL variable values,
-	regardless of the state descriptor.
-	"""
-	
-	class Flags(structs.IntFlag):
-		has_timestamp = 1 << 2
-		same_as_default = 1 << 3
-		dirty = 1 << 4
-		want_timestamp = 1 << 5
-		
-		supported = (
-			has_timestamp
-			| same_as_default
-			| dirty
-			| want_timestamp
-		)
-	
-	flags: "SimpleVariableValueBase.Flags"
-	timestamp: typing.Optional[datetime.datetime]
-	
-	def __init__(
-		self,
-		*,
-		hint: typing.Optional[bytes] = None,
-		flags: "SimpleVariableValueBase.Flags" = Flags(0),
-		timestamp: typing.Optional[datetime.datetime] = None,
-	) -> None:
-		super().__init__(hint=hint)
-		
-		self.flags = flags
-		self.timestamp = timestamp
-	
-	def __eq__(self, other: object) -> bool:
-		if not isinstance(other, SimpleVariableValueBase):
-			return NotImplemented
-		
-		return (
-			super().__eq__(other)
-			and self.flags == other.flags
-			and self.timestamp == other.timestamp
-		)
-	
-	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = super().repr_fields()
-		fields["flags"] = repr(self.flags)
-		if self.timestamp is not None:
-			fields["timestamp"] = repr(self.timestamp)
-		return fields
-	
-	@abc.abstractmethod
-	def copy(self) -> "SimpleVariableValueBase":
-		raise NotImplementedError()
-	
-	def base_read(self, stream: typing.BinaryIO) -> None:
-		super().base_read(stream)
-		
-		(flags,) = structs.read_exact(stream, 1)
-		self.flags = SimpleVariableValueBase.Flags(flags)
-		if self.flags & ~SimpleVariableValueBase.Flags.supported:
-			raise ValueError(f"Simple SDL variable value has unsupported flags set: {self.flags!r}")
-		
-		if self.flags & SimpleVariableValueBase.Flags.has_timestamp:
-			self.timestamp = structs.read_unified_time(stream)
-		else:
-			self.timestamp = None
-	
-	def base_write(self, stream: typing.BinaryIO) -> None:
-		super().base_write(stream)
-		
-		stream.write(bytes([self.flags]))
-		
-		if self.flags & SimpleVariableValueBase.Flags.has_timestamp:
-			assert self.timestamp is not None
-			structs.write_unified_time(stream, self.timestamp)
-		else:
-			assert self.timestamp is None
+from .. import structs
+from . import common
 
 
 MIN_REASONABLE_TIMESTAMP = datetime.datetime(2020, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
@@ -336,7 +96,7 @@ def format_simple_variable_data(data: bytes) -> str:
 	return repr(data)
 
 
-class GuessedSimpleVariableValue(SimpleVariableValueBase):
+class GuessedSimpleVariableValue(common.SimpleVariableValueBase):
 	"""A simple variable value whose size was guessed rather than known from a state descriptor.
 	
 	The variable's contents are not parsed further.
@@ -351,7 +111,7 @@ class GuessedSimpleVariableValue(SimpleVariableValueBase):
 		self,
 		*,
 		hint: typing.Optional[bytes] = None,
-		flags: SimpleVariableValueBase.Flags = SimpleVariableValueBase.Flags(0),
+		flags: common.SimpleVariableValueBase.Flags = common.SimpleVariableValueBase.Flags(0),
 		timestamp: typing.Optional[datetime.datetime] = None,
 		data: bytes = b"",
 	) -> None:
@@ -372,18 +132,18 @@ class GuessedSimpleVariableValue(SimpleVariableValueBase):
 	
 	def __str__(self) -> str:
 		flags = self.flags
-		if SimpleVariableValueBase.Flags.same_as_default in flags:
+		if common.SimpleVariableValueBase.Flags.same_as_default in flags:
 			assert not self.data
-			flags &= ~SimpleVariableValueBase.Flags.same_as_default
+			flags &= ~common.SimpleVariableValueBase.Flags.same_as_default
 			res = "<default>"
 		else:
 			res = format_simple_variable_data(self.data)
 		
 		if self.timestamp is None:
-			assert SimpleVariableValueBase.Flags.has_timestamp not in flags
+			assert common.SimpleVariableValueBase.Flags.has_timestamp not in flags
 		else:
-			assert SimpleVariableValueBase.Flags.has_timestamp in flags
-			flags &= ~SimpleVariableValueBase.Flags.has_timestamp
+			assert common.SimpleVariableValueBase.Flags.has_timestamp in flags
+			flags &= ~common.SimpleVariableValueBase.Flags.has_timestamp
 			res += f" @ {self.timestamp.isoformat()}"
 		
 		if flags:
@@ -412,93 +172,6 @@ class GuessedSimpleVariableValue(SimpleVariableValueBase):
 		stream.write(self.data)
 
 
-class SimpleVariableValue(SimpleVariableValueBase):
-	"""A parsed simple variable value."""
-	
-	values: typing.List[typing.Any]
-	
-	def __init__(
-		self,
-		*,
-		hint: typing.Optional[bytes] = None,
-		flags: SimpleVariableValueBase.Flags = SimpleVariableValueBase.Flags(0),
-		timestamp: typing.Optional[datetime.datetime] = None,
-		values: typing.List[typing.Any],
-	) -> None:
-		super().__init__(hint=hint, flags=flags, timestamp=timestamp)
-		
-		self.values = values
-	
-	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = super().repr_fields()
-		fields["values"] = repr(self.values)
-		return fields
-	
-	def __eq__(self, other: object) -> bool:
-		if not isinstance(other, SimpleVariableValue):
-			return NotImplemented
-		
-		return super().__eq__(other) and self.values == other.values
-	
-	def copy(self) -> "SimpleVariableValue":
-		return SimpleVariableValue(
-			hint=self.hint,
-			flags=self.flags,
-			timestamp=self.timestamp,
-			values=list(self.values),
-		)
-	
-	def read(self, stream: typing.BinaryIO, element_count: typing.Optional[int], element_reader: typing.Callable[[typing.BinaryIO], typing.Any]) -> None:
-		"""Read a full variable value from an SDL blob.
-		
-		To work correctly,
-		this method needs to know the declared array element count for the variable.
-		Reading the individual elements is delegated to a function passed in by the caller,
-		which must read the correct amount of data for each element
-		and parse the data as desired.
-		"""
-		
-		self.base_read(stream)
-		
-		if element_count is None:
-			(element_count,) = structs.stream_unpack(stream, structs.UINT32)
-		
-		self.values = [element_reader(stream) for _ in range(element_count)]
-	
-	def write(self, stream: typing.BinaryIO, write_element_count: bool, element_writer: typing.Callable[[typing.BinaryIO, typing.Any], None]) -> None:
-		"""Write the full variable value to an SDL blob.
-		
-		To work correctly,
-		this method needs to know whether the variable is a variable-length array,
-		i. e. whether an explicit element count field needs to be written.
-		Writing the individual elements is delegated to a function passed in by the caller.
-		"""
-		
-		self.base_write(stream)
-		
-		if write_element_count:
-			stream.write(structs.UINT32.pack(len(self.values)))
-		
-		for element in self.values:
-			element_writer(stream, element)
-
-
-class NestedSDLVariableValueBase(VariableValueBase):
-	"""Base class for the normal and guessing implementations of nested SDL variable values."""
-	
-	def base_read(self, stream: typing.BinaryIO) -> None:
-		super().base_read(stream)
-		
-		(flags,) = structs.read_exact(stream, 1)
-		if flags:
-			raise ValueError(f"Nested SDL variable value has unsupported flags set: {flags!r}")
-	
-	def base_write(self, stream: typing.BinaryIO) -> None:
-		super().base_write(stream)
-		
-		stream.write(b"\x00")
-
-
 def _looks_like_start_of_blob_body(data: bytes) -> bool:
 	"""Check whether the given data looks like the start of an SDL blob body."""
 	
@@ -521,7 +194,7 @@ def _find_start_of_blob_body(data: bytes) -> int:
 		next_pos = pos + 2
 
 
-class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
+class GuessedNestedSDLVariableValue(common.NestedSDLVariableValueBase):
 	variable_array_length: typing.Optional[int]
 	values_indices: bool
 	values: "typing.Dict[int, GuessedSDLRecord]"
@@ -654,97 +327,6 @@ class GuessedNestedSDLVariableValue(NestedSDLVariableValueBase):
 			value.write(stream)
 
 
-class NestedSDLVariableValue(NestedSDLVariableValueBase):
-	variable_array_length: typing.Optional[int]
-	values: "typing.Dict[int, SDLRecordBase]" # TODO Use SDLRecord class once it exists
-	
-	def __init__(
-		self,
-		*,
-		hint: typing.Optional[bytes] = None,
-		variable_array_length: typing.Optional[int] = None,
-		values: "typing.Dict[int, SDLRecordBase]",
-	) -> None:
-		super().__init__(hint=hint)
-		
-		self.variable_array_length = variable_array_length
-		self.values = values
-	
-	def __eq__(self, other: object) -> bool:
-		if not isinstance(other, NestedSDLVariableValue):
-			return NotImplemented
-		
-		return (
-			super().__eq__(other)
-			and self.variable_array_length == other.variable_array_length
-			and self.values == other.values
-		)
-	
-	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = super().repr_fields()
-		if self.variable_array_length is not None:
-			fields["variable_array_length"] = repr(self.variable_array_length)
-		fields["values"] = repr(self.values)
-		return fields
-	
-	def copy(self) -> "NestedSDLVariableValue":
-		return NestedSDLVariableValue(
-			hint=self.hint,
-			variable_array_length=self.variable_array_length,
-			values=dict(self.values),
-		)
-	
-	# TODO read, write
-
-
-class SDLRecordBase(structs.FieldBasedRepr):
-	"""Base class for the normal and guessing implementations of SDL records."""
-	
-	class Flags(structs.IntFlag):
-		volatile = 1 << 0
-		
-		supported = volatile
-	
-	IO_VERSION: int = 6
-	
-	flags: "SDLRecordBase.Flags"
-	
-	def __init__(self, *, flags: "SDLRecordBase.Flags" = Flags(0)) -> None:
-		super().__init__()
-		
-		self.flags = flags
-	
-	def __eq__(self, other: object) -> bool:
-		if not isinstance(other, SDLRecordBase):
-			return NotImplemented
-		
-		return self.flags == other.flags
-	
-	def repr_fields(self) -> "collections.OrderedDict[str, str]":
-		fields = super().repr_fields()
-		if self.flags:
-			fields["flags"] = repr(self.flags)
-		return fields
-	
-	@abc.abstractmethod
-	def copy(self) -> "SDLRecordBase":
-		raise NotImplementedError()
-	
-	def base_read(self, stream: typing.BinaryIO) -> None:
-		(flags,) = structs.stream_unpack(stream, structs.UINT16)
-		self.flags = SDLRecordBase.Flags(flags)
-		if self.flags & ~SDLRecordBase.Flags.supported:
-			raise ValueError(f"SDL blob has unsupported flags set: {self.flags!r}")
-		
-		(io_version,) = structs.read_exact(stream, 1)
-		if io_version != SDLRecordBase.IO_VERSION:
-			raise ValueError(f"SDL blob has unsupported IO version: {io_version}")
-	
-	def base_write(self, stream: typing.BinaryIO) -> None:
-		stream.write(structs.UINT16.pack(self.flags))
-		stream.write(bytes([SDLRecordBase.IO_VERSION]))
-
-
 def _looks_like_start_of_variable(data: bytes) -> bool:
 	"""Check whether the given data looks like the start of an SDL variable."""
 	
@@ -775,7 +357,7 @@ def _find_start_of_variable(data: bytes) -> int:
 		next_pos = pos + 2
 
 
-class GuessedSDLRecord(SDLRecordBase):
+class GuessedSDLRecord(common.SDLRecordBase):
 	"""An SDL record parsed by guessing the structure of an SDL blob rather than knowing it from a state descriptor.
 	
 	SDL blobs aren't meant to be parsed on their own -
@@ -799,7 +381,7 @@ class GuessedSDLRecord(SDLRecordBase):
 	def __init__(
 		self,
 		*,
-		flags: SDLRecordBase.Flags = SDLRecordBase.Flags(0),
+		flags: common.SDLRecordBase.Flags = common.SDLRecordBase.Flags(0),
 		simple_values_indices: bool = False,
 		simple_values: typing.Dict[int, GuessedSimpleVariableValue],
 		nested_sdl_values_indices: bool = False,
@@ -837,7 +419,7 @@ class GuessedSDLRecord(SDLRecordBase):
 		return fields
 	
 	def as_multiline_str(self) -> typing.Iterable[str]:
-		if SDLRecordBase.Flags.volatile in self.flags:
+		if common.SDLRecordBase.Flags.volatile in self.flags:
 			prefix = "volatile, "
 		else:
 			prefix = ""
@@ -1051,8 +633,8 @@ class GuessedSDLRecord(SDLRecordBase):
 		return changed
 
 
-def guess_parse_sdl_blob(stream: typing.BinaryIO) -> typing.Tuple[SDLStreamHeader, GuessedSDLRecord]:
-	header = SDLStreamHeader.from_stream(stream)
+def guess_parse_sdl_blob(stream: typing.BinaryIO) -> typing.Tuple[common.SDLStreamHeader, GuessedSDLRecord]:
+	header = common.SDLStreamHeader.from_stream(stream)
 	
 	try:
 		record = GuessedSDLRecord.from_stream(stream)

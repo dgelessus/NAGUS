@@ -20,17 +20,18 @@ import typing
 import unittest
 
 from nagus import sdl
+import nagus.sdl.guess
 
 
 def _make_header(name: bytes, version: int) -> sdl.SDLStreamHeader:
 	return sdl.SDLStreamHeader(sdl.StateDescriptorId(name, version))
 
 
-def _make_all_default_record(indices: typing.Iterable[int], explicit: bool) -> sdl.GuessedSDLRecord:
+def _make_all_default_record(indices: typing.Iterable[int], explicit: bool) -> sdl.guess.GuessedSDLRecord:
 	simple_values = {}
 	for i in indices:
-		simple_values[i] = sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags.same_as_default, data=b"")
-	return sdl.GuessedSDLRecord(simple_values_indices=explicit, simple_values=simple_values, nested_sdl_values_indices=True, nested_sdl_values={})
+		simple_values[i] = sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags.same_as_default, data=b"")
+	return sdl.guess.GuessedSDLRecord(simple_values_indices=explicit, simple_values=simple_values, nested_sdl_values_indices=True, nested_sdl_values={})
 
 
 # Age SDL blobs.
@@ -62,13 +63,13 @@ PERSONAL_V41_DEFAULT_DATA = b"\x00\x80\x08\xf0\xaf\x9a\x8d\x8c\x90\x91\x9e\x93)\
 
 APPEARANCE_OPTIONS_V2_HEADER = _make_header(b"appearanceOptions", 2)
 
-APPEARANCE_OPTIONS_V2_FEMALE_DEFAULT_RECORD = sdl.GuessedSDLRecord(
+APPEARANCE_OPTIONS_V2_FEMALE_DEFAULT_RECORD = sdl.guess.GuessedSDLRecord(
 	simple_values_indices=False,
 	simple_values={
 		# RGB8 skinTint[1]
-		0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xd6\xb5"),
+		0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xd6\xb5"),
 		# BYTE faceBlends[]
-		1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+		1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
 	},
 	nested_sdl_values_indices=True,
 	nested_sdl_values={},
@@ -77,15 +78,15 @@ APPEARANCE_OPTIONS_V2_FEMALE_DEFAULT_DATA = b"\x00\x80\x11\xf0\x9e\x8f\x8f\x9a\x
 
 CLOTHING_ITEM_V3_HEADER = _make_header(b"clothingItem", 3)
 
-CLOTHING_ITEM_V3_FEMALE_FACE_DEFAULT_RECORD = sdl.GuessedSDLRecord(
+CLOTHING_ITEM_V3_FEMALE_FACE_DEFAULT_RECORD = sdl.guess.GuessedSDLRecord(
 	simple_values_indices=False,
 	simple_values={
 		# PLKEY item[1]
-		0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x03\x00\x05\xff\x04\x00\xb5\x00\r\x00\x00\x00\n\xf0\xbc\xb6\x8b\x92\xa0\xb9\xb9\x9e\x9c\x9a"),
+		0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x03\x00\x05\xff\x04\x00\xb5\x00\r\x00\x00\x00\n\xf0\xbc\xb6\x8b\x92\xa0\xb9\xb9\x9e\x9c\x9a"),
 		# RGB8 tint[1]
-		1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x7fL3"),
+		1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x7fL3"),
 		# RGB8 tint2[1]
-		2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
+		2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
 	},
 	nested_sdl_values_indices=True,
 	nested_sdl_values={},
@@ -98,68 +99,68 @@ CLOTHING_ITEM_V3_FEMALE_FACE_DEFAULT_DATA = b"\x00\x80\x0c\xf0\x9c\x93\x90\x8b\x
 
 AVATAR_V7_HEADER = _make_header(b"avatar", 7)
 
-AVATAR_V7_FEMALE_WAVE_RECORD = sdl.GuessedSDLRecord(
+AVATAR_V7_FEMALE_WAVE_RECORD = sdl.guess.GuessedSDLRecord(
 	flags=sdl.SDLRecordBase.Flags.volatile,
 	simple_values_indices=False,
 	simple_values={
 		# BYTE invisibilityLevel[1]
-		0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x38), data=b""),
+		0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x38), data=b""),
 	},
 	nested_sdl_values_indices=False,
 	nested_sdl_values={
 		# VAR $brainUnion VERSION 1 brainStack[]
-		0: sdl.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=1, values={
-			0: sdl.GuessedSDLRecord(
+		0: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=1, values={
+			0: sdl.guess.GuessedSDLRecord(
 				simple_values_indices=True,
 				simple_values={},
 				nested_sdl_values_indices=False,
 				nested_sdl_values={
 					# VAR $genericBrain VERSION 3 fGenericBrain[]
-					0: sdl.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=1, values={
-						0: sdl.GuessedSDLRecord(
+					0: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=1, values={
+						0: sdl.guess.GuessedSDLRecord(
 							simple_values_indices=True,
 							simple_values={
 								# BYTE currentStage[1]
-								1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+								1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 								# PLKEY callbackRcvr[1]
-								3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+								3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 								# BOOL movingForward[1]
-								4: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+								4: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 								# BYTE exitFlags[1]
-								5: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x07"),
+								5: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x07"),
 								# BYTE type[1]
-								6: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x04"),
+								6: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x04"),
 								# BYTE mode[1]
-								7: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+								7: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 								# FLOAT fadeIn[1]
-								8: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x00\x00@"),
+								8: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x00\x00@"),
 								# FLOAT fadeOut[1]
-								9: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x00\x00@"),
+								9: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x00\x00@"),
 								# BYTE moveMode[1]
-								10: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x03"),
+								10: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x03"),
 								# BYTE bodyUsage[1]
-								11: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+								11: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 							},
 							nested_sdl_values_indices=False,
 							nested_sdl_values={
 								# VAR $standardStage VERSION 3 stages[]
-								0: sdl.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=1, values={
-									0: sdl.GuessedSDLRecord(
+								0: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=1, values={
+									0: sdl.guess.GuessedSDLRecord(
 										simple_values_indices=True,
 										simple_values={
-											0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"Wave\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
-											1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
-											2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
-											3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
-											4: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
-											5: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
-											6: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
-											7: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
-											8: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
-											9: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
-											11: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
-											12: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
-											13: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"Wave\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+											1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											4: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											5: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											6: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											7: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											8: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											9: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											11: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											12: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											13: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 										},
 										nested_sdl_values_indices=False,
 										nested_sdl_values={},
@@ -168,9 +169,9 @@ AVATAR_V7_FEMALE_WAVE_RECORD = sdl.GuessedSDLRecord(
 							}),
 					}),
 					# VAR $climbBrain VERSION 1 fClimbBrain[]
-					1: sdl.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=0, values_indices=True, values={}),
+					1: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=0, values_indices=True, values={}),
 					# VAR $driveBrain VERSION 1 fDriveBrain[]
-					2: sdl.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=0, values_indices=True, values={}),
+					2: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=0, values_indices=True, values={}),
 				},
 			),
 		}),
@@ -178,279 +179,279 @@ AVATAR_V7_FEMALE_WAVE_RECORD = sdl.GuessedSDLRecord(
 )
 AVATAR_V7_FEMALE_WAVE_DATA = b"\x00\x80\x06\xf0\x9e\x89\x9e\x8b\x9e\x8d\x07\x00\x01\x00\x06\x01\x02\x00\x00\xf08\x01\x02\x00\x00\xf0\x00\x01\x00\x00\x00\x01\x00\x00\x06\x00\x03\x02\x00\x00\xf0\x00\x01\x00\x00\x00\x01\x00\x00\x06\n\x01\x02\x00\x00\xf0\x18\x03\x02\x00\x00\xf0\x18\x04\x02\x00\x00\xf0\x18\x05\x02\x00\x00\xf0\x10\x07\x06\x02\x00\x00\xf0\x10\x04\x07\x02\x00\x00\xf0\x10\x01\x08\x02\x00\x00\xf0\x10\x00\x00\x00@\t\x02\x00\x00\xf0\x10\x00\x00\x00@\n\x02\x00\x00\xf0\x10\x03\x0b\x02\x00\x00\xf0\x10\x01\x01\x02\x00\x00\xf0\x00\x01\x00\x00\x00\x01\x00\x00\x06\r\x00\x02\x00\x00\xf0\x10Wave\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02\x00\x00\xf0\x18\x02\x02\x00\x00\xf0\x10\x02\x03\x02\x00\x00\xf0\x18\x04\x02\x00\x00\xf0\x10\x01\x05\x02\x00\x00\xf0\x18\x06\x02\x00\x00\xf0\x18\x07\x02\x00\x00\xf0\x18\x08\x02\x00\x00\xf0\x18\t\x02\x00\x00\xf0\x18\x0b\x02\x00\x00\xf0\x18\x0c\x02\x00\x00\xf0\x18\r\x02\x00\x00\xf0\x10\x01\x00\x02\x00\x00\xf0\x00\x00\x00\x00\x00\x00\x02\x00\x00\xf0\x00\x00\x00\x00\x00\x00"
 
-AVATAR_V7_ZANDI_RECORD = sdl.GuessedSDLRecord(
+AVATAR_V7_ZANDI_RECORD = sdl.guess.GuessedSDLRecord(
 	flags=sdl.SDLRecordBase.Flags.volatile,
 	simple_values_indices=False,
 	simple_values={
 		# BYTE invisibilityLevel[1]
-		0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x38), data=b""),
+		0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x38), data=b""),
 	},
 	nested_sdl_values_indices=False,
 	nested_sdl_values={
 		# VAR $brainUnion VERSION 1 brainStack[]
-		0: sdl.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=1, values={
-			0: sdl.GuessedSDLRecord(
+		0: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=1, values={
+			0: sdl.guess.GuessedSDLRecord(
 				simple_values_indices=True,
 				simple_values={},
 				nested_sdl_values_indices=False,
 				nested_sdl_values={
 					# VAR $genericBrain VERSION 3 fGenericBrain[]
-					0: sdl.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=1, values={
-						0: sdl.GuessedSDLRecord(
+					0: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=1, values={
+						0: sdl.guess.GuessedSDLRecord(
 							simple_values_indices=True,
 							simple_values={
 								# BYTE currentStage[1]
-								1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+								1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 								# PLKEY callbackRcvr[1]
-								3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00=\x00\x07\x00\x00\x00\xa2\x00\x01\x00\x00\x00\x11\xf0\x9c\xaf\x86\x8b\x97\xa5\x9e\x91\x9b\x96\xbc\x90\x91\x8b\x8d\x90\x93"),
+								3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00=\x00\x07\x00\x00\x00\xa2\x00\x01\x00\x00\x00\x11\xf0\x9c\xaf\x86\x8b\x97\xa5\x9e\x91\x9b\x96\xbc\x90\x91\x8b\x8d\x90\x93"),
 								# BOOL movingForward[1]
-								4: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+								4: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 								# BYTE exitFlags[1]
-								5: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+								5: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 								# BYTE type[1]
-								6: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+								6: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 								# BYTE mode[1]
-								7: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x03"),
+								7: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x03"),
 								# FLOAT fadeIn[1]
-								8: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x00\xc0@"),
+								8: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x00\xc0@"),
 								# FLOAT fadeOut[1]
-								9: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x00\x00\x00"),
+								9: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x00\x00\x00"),
 								# BYTE moveMode[1]
-								10: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+								10: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 								# BYTE bodyUsage[1]
-								11: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+								11: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 							},
 							nested_sdl_values_indices=False,
 							nested_sdl_values={
 								# VAR $standardStage VERSION 3 stages[]
-								0: sdl.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=7, values={
-									0: sdl.GuessedSDLRecord(
+								0: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=7, values={
+									0: sdl.guess.GuessedSDLRecord(
 										simple_values_indices=True,
 										simple_values={
 											# STRING32 name[1]
-											0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ZandiIdle\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+											0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ZandiIdle\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
 											# SHORT numLoops[1]
-											1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff"),
+											1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff"),
 											# BYTE forward[1]
-											2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE backward[1]
-											3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE stageAdvance[1]
-											4: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											4: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE stageRegress[1]
-											5: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											5: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyEnter[1]
-											6: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											6: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyLoop[1]
-											7: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											7: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyStageAdvance[1]
-											8: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											8: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyStageRegress[1]
-											9: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											9: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# FLOAT localTime[1]
-											11: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											11: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# SHORT currentLoop[1]
-											12: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											12: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL isAttached[1]
-											13: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											13: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 										},
 										nested_sdl_values_indices=True,
 										nested_sdl_values={},
 									),
-									1: sdl.GuessedSDLRecord(
+									1: sdl.guess.GuessedSDLRecord(
 										simple_values_indices=True,
 										simple_values={
 											# STRING32 name[1]
-											0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b'ZandiScratchHead\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'),
+											0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b'ZandiScratchHead\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'),
 											# SHORT numLoops[1]
-											1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE forward[1]
-											2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE backward[1]
-											3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE stageAdvance[1]
-											4: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											4: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE stageRegress[1]
-											5: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											5: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyEnter[1]
-											6: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											6: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyLoop[1]
-											7: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											7: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyStageAdvance[1]
-											8: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											8: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 											# BOOL notifyStageRegress[1]
-											9: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											9: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 											# FLOAT localTime[1]
-											11: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											11: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# SHORT currentLoop[1]
-											12: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											12: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL isAttached[1]
-											13: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											13: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 										},
 										nested_sdl_values_indices=True,
 										nested_sdl_values={},
 									),
-									2: sdl.GuessedSDLRecord(
+									2: sdl.guess.GuessedSDLRecord(
 										simple_values_indices=True,
 										simple_values={
 											# STRING32 name[1]
-											0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ZandiTurnPage\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+											0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ZandiTurnPage\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
 											# SHORT numLoops[1]
-											1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE forward[1]
-											2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE backward[1]
-											3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE stageAdvance[1]
-											4: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											4: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE stageRegress[1]
-											5: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											5: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyEnter[1]
-											6: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											6: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyLoop[1]
-											7: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											7: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyStageAdvance[1]
-											8: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											8: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 											# BOOL notifyStageRegress[1]
-											9: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											9: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 											# FLOAT localTime[1]
-											11: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											11: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# SHORT currentLoop[1]
-											12: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											12: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL isAttached[1]
-											13: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											13: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 										},
 										nested_sdl_values_indices=True,
 										nested_sdl_values={},
 									),
-									3: sdl.GuessedSDLRecord(
+									3: sdl.guess.GuessedSDLRecord(
 										simple_values_indices=True,
 										simple_values={
 											# STRING32 name[1]
-											0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ZandiDirections\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+											0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ZandiDirections\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
 											# SHORT numLoops[1]
-											1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE forward[1]
-											2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE backward[1]
-											3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE stageAdvance[1]
-											4: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											4: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE stageRegress[1]
-											5: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											5: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyEnter[1]
-											6: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											6: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyLoop[1]
-											7: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											7: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyStageAdvance[1]
-											8: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											8: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 											# BOOL notifyStageRegress[1]
-											9: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											9: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 											# FLOAT localTime[1]
-											11: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											11: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# SHORT currentLoop[1]
-											12: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											12: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL isAttached[1]
-											13: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											13: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 										},
 										nested_sdl_values_indices=True,
 										nested_sdl_values={},
 									),
-									4: sdl.GuessedSDLRecord(
+									4: sdl.guess.GuessedSDLRecord(
 										simple_values_indices=True,
 										simple_values={
 											# STRING32 name[1]
-											0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ZandiCrossLegs\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+											0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ZandiCrossLegs\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
 											# SHORT numLoops[1]
-											1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE forward[1]
-											2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE backward[1]
-											3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE stageAdvance[1]
-											4: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											4: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE stageRegress[1]
-											5: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											5: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyEnter[1]
-											6: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											6: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyLoop[1]
-											7: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											7: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyStageAdvance[1]
-											8: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											8: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 											# BOOL notifyStageRegress[1]
-											9: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											9: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 											# FLOAT localTime[1]
-											11: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											11: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# SHORT currentLoop[1]
-											12: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											12: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL isAttached[1]
-											13: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											13: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 										},
 										nested_sdl_values_indices=True,
 										nested_sdl_values={},
 									),
-									5: sdl.GuessedSDLRecord(
+									5: sdl.guess.GuessedSDLRecord(
 										simple_values_indices=True,
 										simple_values={
 											# STRING32 name[1]
-											0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ZandiRubNose\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+											0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ZandiRubNose\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
 											# SHORT numLoops[1]
-											1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE forward[1]
-											2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE backward[1]
-											3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE stageAdvance[1]
-											4: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											4: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE stageRegress[1]
-											5: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											5: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyEnter[1]
-											6: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											6: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyLoop[1]
-											7: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											7: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyStageAdvance[1]
-											8: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											8: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 											# BOOL notifyStageRegress[1]
-											9: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
+											9: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01"),
 											# FLOAT localTime[1]
-											11: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											11: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# SHORT currentLoop[1]
-											12: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											12: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL isAttached[1]
-											13: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											13: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 										},
 										nested_sdl_values_indices=True,
 										nested_sdl_values={},
 									),
-									6: sdl.GuessedSDLRecord(
+									6: sdl.guess.GuessedSDLRecord(
 										simple_values_indices=True,
 										simple_values={
 											# STRING32 name[1]
-											0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ZandiTurnPage\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+											0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ZandiTurnPage\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
 											# SHORT numLoops[1]
-											1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE forward[1]
-											2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE backward[1]
-											3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BYTE stageAdvance[1]
-											4: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
+											4: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x02"),
 											# BYTE stageRegress[1]
-											5: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											5: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyEnter[1]
-											6: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											6: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyLoop[1]
-											7: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											7: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyStageAdvance[1]
-											8: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											8: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL notifyStageRegress[1]
-											9: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											9: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# FLOAT localTime[1]
-											11: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											11: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# SHORT currentLoop[1]
-											12: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											12: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 											# BOOL isAttached[1]
-											13: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+											13: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 										},
 										nested_sdl_values_indices=False,
 										nested_sdl_values={},
@@ -460,9 +461,9 @@ AVATAR_V7_ZANDI_RECORD = sdl.GuessedSDLRecord(
 						),
 					}),
 					# VAR $climbBrain VERSION 1 fClimbBrain[]
-					1: sdl.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=0, values_indices=True, values={}),
+					1: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=0, values_indices=True, values={}),
 					# VAR $driveBrain VERSION 1 fDriveBrain[]
-					2: sdl.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=0, values_indices=True, values={}),
+					2: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=0, values_indices=True, values={}),
 				},
 			),
 		}),
@@ -472,16 +473,16 @@ AVATAR_V7_ZANDI_DATA = b"\x00\x80\x06\xf0\x9e\x89\x9e\x8b\x9e\x8d\x07\x00\x01\x0
 
 AVATAR_PHYSICAL_V1_HEADER = _make_header(b"avatarPhysical", 1)
 
-AVATAR_PHYSICAL_V1_TEST_RECORD = sdl.GuessedSDLRecord(
+AVATAR_PHYSICAL_V1_TEST_RECORD = sdl.guess.GuessedSDLRecord(
 	flags=sdl.SDLRecordBase.Flags.volatile,
 	simple_values_indices=False,
 	simple_values={
 		# POINT3 position[1]
-		0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\x16\xdc\xeaC!\xf2E\xc2\x8d\x8e\xad?"),
+		0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\x16\xdc\xeaC!\xf2E\xc2\x8d\x8e\xad?"),
 		# FLOAT rotation[1]
-		1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\xf3f\xdf>"),
+		1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\xf3f\xdf>"),
 		# PLKEY subworld[1]
-		2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x38), data=b""),
+		2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x38), data=b""),
 	},
 	nested_sdl_values_indices=True,
 	nested_sdl_values={},
@@ -490,119 +491,119 @@ AVATAR_PHYSICAL_V1_TEST_DATA = b"\x00\x80\x0e\xf0\x9e\x89\x9e\x8b\x9e\x8d\xaf\x9
 
 CLOTHING_V4_HEADER = _make_header(b"clothing", 4)
 
-CLOTHING_V4_FEMALE_DEFAULT_RECORD = sdl.GuessedSDLRecord(
+CLOTHING_V4_FEMALE_DEFAULT_RECORD = sdl.guess.GuessedSDLRecord(
 	flags=sdl.SDLRecordBase.Flags.volatile,
 	simple_values={
 		# PLKEY linkInAnim[1]
-		0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x38), data=b""),
+		0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x38), data=b""),
 	},
 	nested_sdl_values={
 		# $clothingItem VERSION 3 wardrobe[]
-		0: sdl.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=8, values={
-			0: sdl.GuessedSDLRecord(
+		0: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=8, values={
+			0: sdl.guess.GuessedSDLRecord(
 				simple_values={
 					# PLKEY item[1]
-					0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x03\x00\x05\xff\x04\x00\xb5\x00\r\x00\x00\x00\n\xf0\xbc\xb6\x8b\x92\xa0\xb9\xb9\x9e\x9c\x9a"),
+					0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x03\x00\x05\xff\x04\x00\xb5\x00\r\x00\x00\x00\n\xf0\xbc\xb6\x8b\x92\xa0\xb9\xb9\x9e\x9c\x9a"),
 					# RGB8 tint[1]
-					1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x7fL3"),
+					1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x7fL3"),
 					# RGB8 tint2[1]
-					2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
+					2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
 				},
 				nested_sdl_values_indices=True,
 				nested_sdl_values={},
 			),
-			1: sdl.GuessedSDLRecord(
+			1: sdl.guess.GuessedSDLRecord(
 				simple_values={
 					# PLKEY item[1]
-					0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x03\x00\x05\xff\x04\x00\xb5\x00\x10\x00\x00\x00\x12\xf0\xbc\xb6\x8b\x92\xa0\xcf\xce\xa0\xb9\xb3\x9a\x98\x8c\xcf\xce\xa0\xcf\xce"),
+					0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x03\x00\x05\xff\x04\x00\xb5\x00\x10\x00\x00\x00\x12\xf0\xbc\xb6\x8b\x92\xa0\xcf\xce\xa0\xb9\xb3\x9a\x98\x8c\xcf\xce\xa0\xcf\xce"),
 					# RGB8 tint[1]
-					1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"`s\xb0"),
+					1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"`s\xb0"),
 					# RGB8 tint2[1]
-					2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x00\x00"),
+					2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x00\x00"),
 				},
 				nested_sdl_values_indices=True,
 				nested_sdl_values={},
 			),
-			2: sdl.GuessedSDLRecord(
+			2: sdl.guess.GuessedSDLRecord(
 				simple_values={
 					# PLKEY item[1]
-					0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x05\x00\x05\xff\x04\x00\xb5\x00(\x00\x00\x00\x13\xf0\xbc\xb6\x8b\x92\xa0\xcf\xcd\xa0\xb9\xab\x90\x8d\x8c\x90\xce\xcd\xa0\xcf\xce"),
+					0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x05\x00\x05\xff\x04\x00\xb5\x00(\x00\x00\x00\x13\xf0\xbc\xb6\x8b\x92\xa0\xcf\xcd\xa0\xb9\xab\x90\x8d\x8c\x90\xce\xcd\xa0\xcf\xce"),
 					# RGB8 tint[1]
-					1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"a\x89\xb3"),
+					1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"a\x89\xb3"),
 					# RGB8 tint2[1]
-					2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
+					2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
 				},
 				nested_sdl_values_indices=True,
 				nested_sdl_values={},
 			),
-			3: sdl.GuessedSDLRecord(
+			3: sdl.guess.GuessedSDLRecord(
 				simple_values={
 					# PLKEY item[1]
-					0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x03\x00\x05\xff\x04\x00\xb5\x00\x13\x00\x00\x00\x13\xf0\xbc\xb6\x8b\x92\xa0\xcf\xce\xa0\xb9\xb3\xb7\x9e\x91\x9b\xcf\xce\xa0\xcf\xce"),
+					0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x03\x00\x05\xff\x04\x00\xb5\x00\x13\x00\x00\x00\x13\xf0\xbc\xb6\x8b\x92\xa0\xcf\xce\xa0\xb9\xb3\xb7\x9e\x91\x9b\xcf\xce\xa0\xcf\xce"),
 					# RGB8 tint[1]
-					1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
+					1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
 					# RGB8 tint2[1]
-					2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
+					2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
 				},
 				nested_sdl_values_indices=True,
 				nested_sdl_values={},
 			),
-			4: sdl.GuessedSDLRecord(
+			4: sdl.guess.GuessedSDLRecord(
 				simple_values={
 					# PLKEY item[1]
-					0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x03\x00\x05\xff\x04\x00\xb5\x00\x12\x00\x00\x00\x13\xf0\xbc\xb6\x8b\x92\xa0\xcf\xce\xa0\xb9\xad\xb7\x9e\x91\x9b\xcf\xce\xa0\xcf\xce"),
+					0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x03\x00\x05\xff\x04\x00\xb5\x00\x12\x00\x00\x00\x13\xf0\xbc\xb6\x8b\x92\xa0\xcf\xce\xa0\xb9\xad\xb7\x9e\x91\x9b\xcf\xce\xa0\xcf\xce"),
 					# RGB8 tint[1]
-					1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
+					1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
 					# RGB8 tint2[1]
-					2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
+					2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
 				},
 				nested_sdl_values_indices=True,
 				nested_sdl_values={},
 			),
-			5: sdl.GuessedSDLRecord(
+			5: sdl.guess.GuessedSDLRecord(
 				simple_values={
 					# PLKEY item[1]
-					0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x05\x00\x05\xff\x04\x00\xb5\x00\t\x00\x00\x00\x12\xf0\xbc\xb6\x8b\x92\xa0\xcf\xcd\xa0\xb9\xb7\x9e\x96\x8d\xcf\xcc\xa0\xcf\xce"),
+					0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x05\x00\x05\xff\x04\x00\xb5\x00\t\x00\x00\x00\x12\xf0\xbc\xb6\x8b\x92\xa0\xcf\xcd\xa0\xb9\xb7\x9e\x96\x8d\xcf\xcc\xa0\xcf\xce"),
 					# RGB8 tint[1]
-					1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x7fL3"),
+					1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x7fL3"),
 					# RGB8 tint2[1]
-					2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
+					2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
 				},
 				nested_sdl_values_indices=True,
 				nested_sdl_values={},
 			),
-			6: sdl.GuessedSDLRecord(
+			6: sdl.guess.GuessedSDLRecord(
 				simple_values={
 					# PLKEY item[1]
-					0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x05\x00\x05\xff\x04\x00\xb5\x00!\x00\x00\x00\x13\xf0\xbc\xb6\x8b\x92\xa0\xcf\xcd\xa0\xb9\xb3\xb9\x90\x90\x8b\xcf\xcc\xa0\xcf\xce"),
+					0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x05\x00\x05\xff\x04\x00\xb5\x00!\x00\x00\x00\x13\xf0\xbc\xb6\x8b\x92\xa0\xcf\xcd\xa0\xb9\xb3\xb9\x90\x90\x8b\xcf\xcc\xa0\xcf\xce"),
 					# RGB8 tint[1]
-					1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
+					1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
 					# RGB8 tint2[1]
-					2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
+					2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
 				},
 				nested_sdl_values_indices=True,
 				nested_sdl_values={},
 			),
-			7: sdl.GuessedSDLRecord(
+			7: sdl.guess.GuessedSDLRecord(
 				simple_values={
 					# PLKEY item[1]
-					0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x05\x00\x05\xff\x04\x00\xb5\x00#\x00\x00\x00\x13\xf0\xbc\xb6\x8b\x92\xa0\xcf\xcd\xa0\xb9\xad\xb9\x90\x90\x8b\xcf\xcc\xa0\xcf\xce"),
+					0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x05\x00\x05\xff\x04\x00\xb5\x00#\x00\x00\x00\x13\xf0\xbc\xb6\x8b\x92\xa0\xcf\xcd\xa0\xb9\xad\xb9\x90\x90\x8b\xcf\xcc\xa0\xcf\xce"),
 					# RGB8 tint[1]
-					1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
+					1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
 					# RGB8 tint2[1]
-					2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
+					2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xff\xff"),
 				},
 				nested_sdl_values={},
 			),
 		}),
 		# appearanceOptions VERSION 2 appearance[1]
-		1: sdl.GuessedNestedSDLVariableValue(hint=b"", values={
-			0: sdl.GuessedSDLRecord(
+		1: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", values={
+			0: sdl.guess.GuessedSDLRecord(
 				simple_values={
 					# RGB8 skinTint[1]
-					0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xd6\xb5"),
+					0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xff\xd6\xb5"),
 					# BYTE faceBlends[]
-					1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+					1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
 				},
 				nested_sdl_values_indices=True,
 				nested_sdl_values={},
@@ -614,36 +615,36 @@ CLOTHING_V4_FEMALE_DEFAULT_DATA = b"\x00\x80\x08\xf0\x9c\x93\x90\x8b\x97\x96\x91
 
 LAYER_V6_HEADER = _make_header(b"Layer", 6)
 
-LAYER_V6_CLEFT_IMAGER_NOISE_RECORD = sdl.GuessedSDLRecord(
+LAYER_V6_CLEFT_IMAGER_NOISE_RECORD = sdl.guess.GuessedSDLRecord(
 	flags=sdl.SDLRecordBase.Flags.volatile,
 	simple_values_indices=True,
 	simple_values={
 		# FLOAT transform[]
-		1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\x10\x00\x00\x00\x00\x00\x80?\x00\x00\x00\x00\x00\x00\x00\x00\xa5Y\x92\xc1\x00\x00\x00\x00\x00\x00\x80?\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80?\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80?"),
+		1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\x10\x00\x00\x00\x00\x00\x80?\x00\x00\x00\x00\x00\x00\x00\x00\xa5Y\x92\xc1\x00\x00\x00\x00\x00\x00\x80?\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80?\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80?"),
 	},
 	nested_sdl_values_indices=False,
 	nested_sdl_values={
 		# $AnimTimeConvert VERSION 6 atc[1]
-		0: sdl.GuessedNestedSDLVariableValue(hint=b"", values={
-			0: sdl.GuessedSDLRecord(
+		0: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", values={
+			0: sdl.guess.GuessedSDLRecord(
 				simple_values_indices=False,
 				simple_values={
 					# INT flags[1]
-					0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\"\x00\x00\x00"),
+					0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\"\x00\x00\x00"),
 					# FLOAT lastStateAnimTime[1]
-					1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+					1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 					# FLOAT loopEnd[1]
-					2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xab\xaajA"),
+					2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xab\xaajA"),
 					# FLOAT loopBegin[1]
-					3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+					3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 					# FLOAT speed[1]
-					4: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+					4: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 					# BYTE currentEaseCurve[1]
-					5: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+					5: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 					# TIME currentEaseBeginWorldTime[1]
-					6: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xe1\x00\xd2eu\xf9\x05\x00"),
+					6: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xe1\x00\xd2eu\xf9\x05\x00"),
 					# TIME lastStateChange[1]
-					7: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x16\x01\xd2ev\x18\x0b\x00"),
+					7: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x16\x01\xd2ev\x18\x0b\x00"),
 				},
 				nested_sdl_values_indices=True,
 				nested_sdl_values={},
@@ -653,34 +654,34 @@ LAYER_V6_CLEFT_IMAGER_NOISE_RECORD = sdl.GuessedSDLRecord(
 )
 LAYER_V6_CLEFT_IMAGER_NOISE_DATA = b"\x00\x80\x05\xf0\xb3\x9e\x86\x9a\x8d\x06\x00\x01\x00\x06\x01\x01\x02\x00\x00\xf00\x10\x00\x00\x00\x00\x00\x80?\x00\x00\x00\x00\x00\x00\x00\x00\xa5Y\x92\xc1\x00\x00\x00\x00\x00\x00\x80?\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80?\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80?\x01\x02\x00\x00\xf0\x00\x01\x00\x00\x06\x08\x02\x00\x00\xf0\x10\"\x00\x00\x00\x02\x00\x00\xf0\x18\x02\x00\x00\xf0\x10\xab\xaajA\x02\x00\x00\xf0\x18\x02\x00\x00\xf0\x18\x02\x00\x00\xf0\x18\x02\x00\x00\xf0\x10\xe1\x00\xd2eu\xf9\x05\x00\x02\x00\x00\xf0\x10\x16\x01\xd2ev\x18\x0b\x00\x00"
 
-LAYER_V6_FEMALE_KI_LIGHT_RECORD = sdl.GuessedSDLRecord(
+LAYER_V6_FEMALE_KI_LIGHT_RECORD = sdl.guess.GuessedSDLRecord(
 	simple_values_indices=True,
 	simple_values={
 		# BYTE channelData[]
-		2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+		2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
 	},
 	nested_sdl_values={
 		# $AnimTimeConvert VERSION 6 atc[1]
-		0: sdl.GuessedNestedSDLVariableValue(hint=b"", values={
-			0: sdl.GuessedSDLRecord(
+		0: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", values={
+			0: sdl.guess.GuessedSDLRecord(
 				simple_values_indices=False,
 				simple_values={
 					# INT flags[1]
-					0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01\x00\x00\x00"),
+					0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x01\x00\x00\x00"),
 					# FLOAT lastStateAnimTime[1]
-					1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+					1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 					# FLOAT loopEnd[1]
-					2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ww\xf7?"),
+					2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"ww\xf7?"),
 					# FLOAT loopBegin[1]
-					3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+					3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 					# FLOAT speed[1]
-					4: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+					4: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 					# BYTE currentEaseCurve[1]
-					5: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
+					5: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x18), data=b""),
 					# TIME currentEaseBeginWorldTime[1]
-					6: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xe1\x00\xd2eu\xf9\x05\x00"),
+					6: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xe1\x00\xd2eu\xf9\x05\x00"),
 					# TIME lastStateChange[1]
-					7: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xe1\x00\xd2eu\xf9\x05\x00"),
+					7: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\xe1\x00\xd2eu\xf9\x05\x00"),
 				},
 				nested_sdl_values_indices=True,
 				nested_sdl_values={},
@@ -692,20 +693,20 @@ LAYER_V6_FEMALE_KI_LIGHT_DATA = b"\x00\x80\x05\xf0\xb3\x9e\x86\x9a\x8d\x06\x00\x
 
 MORPH_SEQUENCE_V2_HEADER = _make_header(b"MorphSequence", 2)
 
-MORPH_SEQUENCE_V2_FEMALE_HIGH_DEFAULT_RECORD = sdl.GuessedSDLRecord(
-	flags=sdl.GuessedSDLRecord.Flags.volatile,
+MORPH_SEQUENCE_V2_FEMALE_HIGH_DEFAULT_RECORD = sdl.guess.GuessedSDLRecord(
+	flags=sdl.guess.GuessedSDLRecord.Flags.volatile,
 	simple_values_indices=True,
 	simple_values={},
 	nested_sdl_values_indices=False,
 	nested_sdl_values={
 		# $MorphSet VERSION 2 morphs[]
-		0: sdl.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=1, values={
-			0: sdl.GuessedSDLRecord(
+		0: sdl.guess.GuessedNestedSDLVariableValue(hint=b"", variable_array_length=1, values={
+			0: sdl.guess.GuessedSDLRecord(
 				simple_values={
 					# PLKEY mesh[1]
-					0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x03\x00\x05\xff\x04\x00\xcc\x00\x07\x00\x00\x00\x0b\xf0\xb9\xb7\xb9\x9e\x9c\x9a\xa0\xac\xb2\x8c\x97"),
+					0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\x00\x03\x00\x05\xff\x04\x00\xcc\x00\x07\x00\x00\x00\x0b\xf0\xb9\xb7\xb9\x9e\x9c\x9a\xa0\xac\xb2\x8c\x97"),
 					# BYTE weights[]
-					1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\t\x00\x00\x00\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f"),
+					1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x10), data=b"\t\x00\x00\x00\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f"),
 				},
 				nested_sdl_values_indices=True,
 				nested_sdl_values={},
@@ -717,17 +718,17 @@ MORPH_SEQUENCE_V2_FEMALE_HIGH_DEFAULT_DATA = b"\x00\x80\r\xf0\xb2\x90\x8d\x8f\x9
 
 PHYSICAL_V2_HEADER = _make_header(b"physical", 2)
 
-PHYSICAL_V2_TEST_RECORD = sdl.GuessedSDLRecord(
+PHYSICAL_V2_TEST_RECORD = sdl.guess.GuessedSDLRecord(
 	simple_values_indices=True,
 	simple_values={
 		# POINT3 position[1]
-		0: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\x1c\x88\xc0C\xc8n\x95B\x13\xc83\xc1"),
+		0: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\x1c\x88\xc0C\xc8n\x95B\x13\xc83\xc1"),
 		# QUATERNION orientation[1]
-		1: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\xa9\xb4\xda\xbeh\xfd\x11?\x99\xb4\x0f?\x8a\x88\xd7\xbe"),
+		1: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\xa9\xb4\xda\xbeh\xfd\x11?\x99\xb4\x0f?\x8a\x88\xd7\xbe"),
 		# VECTOR3 linear[1]
-		2: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\x1c\x94\xe6\xbb\x92\xe0\x06<p\x1d\x98\xbd"),
+		2: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"\x1c\x94\xe6\xbb\x92\xe0\x06<p\x1d\x98\xbd"),
 		# VECTOR3 angular[1]
-		3: sdl.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"9\xefc\xbd\xd8j\xef\xbc\xb6\xbe\x1c\xbb"),
+		3: sdl.guess.GuessedSimpleVariableValue(hint=b"", flags=sdl.SimpleVariableValueBase.Flags(0x30), data=b"9\xefc\xbd\xd8j\xef\xbc\xb6\xbe\x1c\xbb"),
 	},
 	nested_sdl_values_indices=True,
 	nested_sdl_values={},
@@ -813,7 +814,7 @@ class GuessedSDLRecordTest(unittest.TestCase):
 		for data, header, record in TEST_SDL_BLOBS:
 			with self.subTest(header=header):
 				with io.BytesIO(data) as stream:
-					parsed_header, parsed_record = sdl.guess_parse_sdl_blob(stream)
+					parsed_header, parsed_record = sdl.guess.guess_parse_sdl_blob(stream)
 					self.assertEqual(parsed_header, header)
 					self.assertEqual(parsed_record, record)
 	
