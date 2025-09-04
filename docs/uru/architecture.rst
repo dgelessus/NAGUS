@@ -121,21 +121,21 @@ The client does not communicate with them directly
 and no open-source server software implements them in this form,
 so they are not relevant here.
 
-As of 2022,
+As of 2025,
 Cyan's MOULa shard uses the following hosts for its public-facing servers:
 
 * account.mystonline.com (184.73.198.22): status, gatekeeper, auth, game
-* 172.30.4.226: auth (true address reported by :ref:`auth2cli_server_addr`)
-* 52.72.29.91: TODO unclear --- only contacted very briefly when the login screen appears
-* 54.236.8.109: file
+* 172.30.4.226: auth (true address reported by :ref:`auth2cli_server_addr`) (as of 2022 --- TODO check if still up-to-date)
+* 3.95.134.103: file
 
 All fan-run shards use a single host for all public-facing "servers",
 including the status server.
 For example,
 Minkata uses foundry.openuru.org aka urufoundry.haverhillcoop.net (70.91.173.88)
-and Gehn uses guildofwriters.org (155.254.30.63).
+and Gehn uses gehn.guildofwriters.org aka guildofwriters-gehn.centralus.cloudapp.azure.com (20.12.193.203).
 
 .. warning::
   
-  You probably shouldn't hardcode these IP addresses anywhere,
-  although they seem to be quite stable.
+  You shouldn't hardcode these IP addresses anywhere if possible.
+  They are *somewhat* stable,
+  but some do change occasionally over the years.
