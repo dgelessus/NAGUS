@@ -14,17 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Helper functions for reading vault nodes and refs from MoulKI .vault files.
-
-These are currently not (and might never be) used by NAGUS.
-They're only meant as manual debugging utilities.
-"""
+"""Reads vault nodes and refs from MoulKI .vault files."""
 
 import collections
 import typing
 
-from . import state
-from . import structs
+from .. import state
+from .. import structs
 
 
 class MoulKIVault(structs.FieldBasedRepr):

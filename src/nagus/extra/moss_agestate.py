@@ -14,19 +14,15 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Helper functions for reading object SDL blobs from MOSS .agestate files.
-
-These are currently not (and might never be) used by NAGUS.
-They're only meant as manual debugging utilities.
-"""
+"""Reads object SDL blobs from MOSS .agestate files."""
 
 import io
 import typing
 
-from . import game_server
-from . import sdl
-from .sdl import guess
-from . import structs
+from .. import game_server
+from .. import sdl
+from ..sdl import guess
+from .. import structs
 
 
 def read_single_moss_agestate(stream: typing.BinaryIO) -> bytes:
