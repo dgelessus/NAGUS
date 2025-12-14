@@ -1114,13 +1114,10 @@ These data types/structures are used in multiple different parts of the protocol
     Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
     otherwise defaults to 0.
     If present,
-    it should never be 0.
-    If not 0,
-    the cloner KI number should also not be 0,
+    the clone ID should never be 0,
     and this UOID refers to a clone of a template object.
-    If 0 (not present),
-    the cloner KI number should also be 0 (not present),
-    and this UOID refers to a non-clone object.
+    If the clone IDs aren't present,
+    this UOID refers to a non-clone object.
   * **Ignored:** 2-byte unsigned int.
     Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set.
     Should always be 0.
