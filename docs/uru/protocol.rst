@@ -1110,25 +1110,23 @@ These data types/structures are used in multiple different parts of the protocol
     The object name is unique only in combination with the location and class index.
     Object names are less likely to change than object IDs,
     but slower to look up.
-  * **Clone ID:** 2-byte unsigned int.
-    Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
-    otherwise defaults to 0.
-    If present,
-    the clone ID should never be 0,
-    and this UOID refers to a clone of a template object.
-    If the clone IDs aren't present,
-    this UOID refers to a non-clone object.
-  * **Ignored:** 2-byte unsigned int.
-    Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set.
-    Should always be 0.
-    Seems to exist only for backwards compatibility.
-  * **Cloner KI number:** 4-byte unsigned int.
-    Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
-    otherwise defaults to 0.
-    If present,
-    should never be 0.
-    KI number of the avatar that created this clone of the object.
-    Prevents clone ID conflicts between multiple clients.
+  * **Clone IDs:** Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
+    in which case the UOID refers to a clone of a template object.
+    If these fields aren't present,
+    they all default to 0
+    and the UOID refers to a non-clone object.
+    
+    * **Clone ID:** 2-byte unsigned int.
+      If present,
+      should never be 0.
+    * **Ignored:** 2-byte unsigned int.
+      Should always be 0.
+      Seems to exist only for backwards compatibility.
+    * **Cloner KI number:** 4-byte unsigned int.
+      If present,
+      should never be 0.
+      KI number of the avatar that created this clone of the object.
+      Prevents clone ID conflicts between multiple clients.
   
   Every ``hsKeyedObject`` is uniquely identified by a UOID.
   The structure of a UOID is a bit complex.
