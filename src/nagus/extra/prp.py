@@ -214,7 +214,7 @@ class PRPIndex(object):
 		return cls(keys_by_class_index)
 
 
-def _uoid_sort_key(uoid: structs.Uoid) -> object:
+def _uoid_sort_key(uoid: structs.Uoid) -> typing.Tuple[typing.Any, ...]:
 	return uoid.location.sequence_number, uoid.location.flags, uoid.class_index, uoid.name, uoid.load_mask, uoid.id, uoid.clone_ids
 
 
