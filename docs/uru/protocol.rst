@@ -1110,6 +1110,11 @@ These data types/structures are used in multiple different parts of the protocol
     The object name is unique only in combination with the location and class index.
     Object names are less likely to change than object IDs,
     but slower to look up.
+    The engine looks up object names case-insensitively,
+    but some other parts of the game treat them case-sensitively.
+    Thus,
+    it's safest to always use matching capitalization,
+    but also never define two objects whose names differ only in capitalization.
   * **Clone IDs:** Only present if the :cpp:enumerator:`~ContentsFlags::kHasCloneIDs` flag is set,
     in which case the UOID refers to a clone of a template object.
     If these fields aren't present,
