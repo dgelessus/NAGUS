@@ -46,6 +46,10 @@ There is still no support for multiplayer or serving files to clients.
 * Fixed inconsistent parsing of sequence numbers
   when deriving the age sequence prefix on link-in.
   This fixes an exception in the game server when linking to Veelay Tsahvahn.
+* Fixed rare random connection failures.
+  NAGUS incorrectly assumed that a certain encryption-related network message always has a fixed length,
+  when actually the length can vary (rarely)
+  depending on a random value chosen by the client.
 
 Version 0.1.1
 -------------

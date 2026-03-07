@@ -424,11 +424,11 @@ class BaseMOULConnection(object):
 			else:
 				# Encryption is enabled,
 				# so do the key exchange.
-				if len(data) != 64:
-					raise ProtocolError(f"Expected Diffie-Hellman y value to be 64 bytes long, but client sent {len(data)} bytes")
+				if len(data) > 64:
+					raise ProtocolError(f"Diffie-Hellman y value can be at most 64 bytes long, but client sent {len(data)} bytes")
 				
 				dh_y = int.from_bytes(data, "little")
-				logger_crypt.debug("Received y from client: %#x", dh_y)
+				logger_crypt.debug("Received y from client (%d bits): %#x", dh_y.bit_length(), dh_y)
 				
 				seed = random.randrange(2**56)
 				seed_data = seed.to_bytes(7, "little")
