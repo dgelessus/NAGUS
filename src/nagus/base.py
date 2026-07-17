@@ -368,7 +368,7 @@ class BaseMOULConnection(object):
 			raise ProtocolError(f"Client sent string of length {length} in string field with maximum length {max_length}")
 		return (await self.read(2 * length)).decode("utf-16-le")
 	
-	async def write_message(self, message_type: int, data: bytes) -> None:
+	async def write_message(self, message_type: int, data: typing.Union[bytes, bytearray]) -> None:
 		await self.write(structs.UINT16.pack(message_type) + data)
 	
 	async def read_connect_packet_header(self) -> None:
